@@ -1,16 +1,49 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Profile, Project, Task } from "@/lib/types";
+import type {
+  ChecklistItem,
+  Profile,
+  Project,
+  Task,
+  TaskAttachment,
+  TaskComment,
+  TaskHourEntry,
+} from "@/lib/types";
 import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
 
-// Todo bloco que a gente gera automaticamente na página da Wiki (o "resumo
-// da tarefa") usa esse prefixo no id. Assim dá pra achar e trocar só essa
-// parte depois — o resto da página continua livre pra pessoa escrever.
+// Cada seção que a gente gera automaticamente na página da Wiki (resumo,
+// checklist, anexos, comentários, horas) usa um prefixo próprio no id dos
+// blocos. Assim dá pra achar e trocar só aquela seção depois, sem mexer no
+// resto — nem nas outras seções, nem no que a pessoa escreveu por conta
+// própria na página.
 const PREFIXO_RESUMO = "resumo-tarefa-";
+const PREFIXO_CHECKLIST = "checklist-tarefa-";
+const PREFIXO_ANEXOS = "anexos-tarefa-";
+const PREFIXO_COMENTARIOS = "comentarios-tarefa-";
+const PREFIXO_HORAS = "horas-tarefa-";
 
-function linha(id: string, rotulo: string, valor: string) {
+// Ordem em que as seções aparecem na página, sempre — não importa qual
+// seção foi atualizada por último.
+const ORDEM_SECOES = [
+  PREFIXO_RESUMO,
+  PREFIXO_CHECKLIST,
+  PREFIXO_ANEXOS,
+  PREFIXO_COMENTARIOS,
+  PREFIXO_HORAS,
+];
+
+function heading(prefixo: string, texto: string) {
   return {
-    id: `${PREFIXO_RESUMO}${id}`,
+    id: `${prefixo}heading`,
+    type: "heading",
+    props: { level: 3 },
+    content: texto,
+  };
+}
+
+function linha(prefixo: string, id: string, rotulo: string, valor: string) {
+  return {
+    id: `${prefixo}${id}`,
     type: "paragraph",
     content: [
       { type: "text", text: `${rotulo}: `, styles: { bold: true } },
@@ -54,53 +87,182 @@ export function buildTaskSummaryBlocks(
   const cor = corTarefa(task.color).nome;
 
   const blocos: unknown[] = [
-    {
-      id: `${PREFIXO_RESUMO}heading`,
-      type: "heading",
-      props: { level: 3 },
-      content: "📋 Resumo da tarefa",
-    },
-    linha("titulo", "Título", task.title),
+    heading(PREFIXO_RESUMO, "📋 Resumo da tarefa"),
+    linha(PREFIXO_RESUMO, "titulo", "Título", task.title),
   ];
 
   if (task.description) {
-    blocos.push(linha("descricao", "Descrição", task.description));
+    blocos.push(linha(PREFIXO_RESUMO, "descricao", "Descrição", task.description));
   }
 
   blocos.push(
-    linha("status", "Status", statusLabel),
-    linha("data", "Data", formatarData(task.due_date)),
+    linha(PREFIXO_RESUMO, "status", "Status", statusLabel),
+    linha(PREFIXO_RESUMO, "data", "Data", formatarData(task.due_date)),
     linha(
+      PREFIXO_RESUMO,
       "horario",
       "Horário",
       task.due_time ? task.due_time.slice(0, 5) : "Sem horário"
     ),
-    linha("repetir", "Repetir", repeatLabel),
-    linha("responsavel", "Responsável", responsavelNome),
-    linha("projeto", "Projeto", projeto ? projeto.name : "Geral"),
-    linha("cor", "Cor", cor),
-    {
-      id: `${PREFIXO_RESUMO}fim`,
-      type: "paragraph",
-    }
+    linha(PREFIXO_RESUMO, "repetir", "Repetir", repeatLabel),
+    linha(PREFIXO_RESUMO, "responsavel", "Responsável", responsavelNome),
+    linha(PREFIXO_RESUMO, "projeto", "Projeto", projeto ? projeto.name : "Geral"),
+    linha(PREFIXO_RESUMO, "cor", "Cor", cor),
+    { id: `${PREFIXO_RESUMO}fim`, type: "paragraph" }
   );
 
   return blocos;
 }
 
-// Troca só os blocos do resumo (identificados pelo prefixo no id) dentro
-// do conteúdo existente da página — tudo que a pessoa escreveu por conta
-// própria embaixo continua intacto.
-export function mesclarResumoNoConteudo(
-  conteudoAtual: unknown,
-  blocosResumo: unknown[]
+// Checklist: usa o bloco nativo de "item com caixinha" do BlockNote, que já
+// vem com a marcação de feito/não feito.
+export function buildChecklistBlocks(items: ChecklistItem[]) {
+  if (items.length === 0) return [];
+  const ordenados = [...items].sort((a, b) => a.position - b.position);
+  return [
+    heading(PREFIXO_CHECKLIST, "✅ Checklist"),
+    ...ordenados.map((item) => ({
+      id: `${PREFIXO_CHECKLIST}${item.id}`,
+      type: "checkListItem",
+      props: { checked: item.done },
+      content: item.title,
+    })),
+  ];
+}
+
+// Anexos: um link clicável por arquivo, apontando pro mesmo arquivo que já
+// tá no Storage (bucket público de anexos de tarefa).
+export function buildAnexosBlocks(
+  supabase: SupabaseClient,
+  attachments: TaskAttachment[]
 ) {
-  const resto = Array.isArray(conteudoAtual)
-    ? (conteudoAtual as { id?: string }[]).filter(
-        (bloco) => !bloco?.id || !bloco.id.startsWith(PREFIXO_RESUMO)
-      )
+  if (attachments.length === 0) return [];
+  return [
+    heading(PREFIXO_ANEXOS, "📎 Anexos"),
+    ...attachments.map((anexo) => {
+      const { data } = supabase.storage
+        .from("task-attachments")
+        .getPublicUrl(anexo.file_path);
+      return {
+        id: `${PREFIXO_ANEXOS}${anexo.id}`,
+        type: "paragraph",
+        content: [
+          {
+            type: "link",
+            href: data.publicUrl,
+            content: [{ type: "text", text: `📎 ${anexo.file_name}`, styles: {} }],
+          },
+        ],
+      };
+    }),
+  ];
+}
+
+// Comentários: quem escreveu em negrito, seguido do texto.
+export function buildComentariosBlocks(comments: TaskComment[]) {
+  if (comments.length === 0) return [];
+  const ordenados = [...comments].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  return [
+    heading(PREFIXO_COMENTARIOS, "💬 Comentários"),
+    ...ordenados.map((c) => ({
+      id: `${PREFIXO_COMENTARIOS}${c.id}`,
+      type: "paragraph",
+      content: [
+        { type: "text", text: `${c.created_by_label || "Alguém"}: `, styles: { bold: true } },
+        { type: "text", text: c.content, styles: {} },
+      ],
+    })),
+  ];
+}
+
+// Horas: um lançamento por linha, mais uma linha de total no final.
+export function buildHorasBlocks(entries: TaskHourEntry[]) {
+  if (entries.length === 0) return [];
+  const total = entries.reduce((soma, e) => soma + Number(e.hours || 0), 0);
+  return [
+    heading(PREFIXO_HORAS, "⏱️ Horas"),
+    ...entries.map((e) => ({
+      id: `${PREFIXO_HORAS}${e.id}`,
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: `${e.created_by_label || "Alguém"} — `,
+          styles: { bold: true },
+        },
+        {
+          type: "text",
+          text: `${e.hours}h${e.note ? " · " + e.note : ""}`,
+          styles: {},
+        },
+      ],
+    })),
+    {
+      id: `${PREFIXO_HORAS}total`,
+      type: "paragraph",
+      content: [
+        { type: "text", text: "Total: ", styles: { bold: true } },
+        { type: "text", text: `${total}h`, styles: {} },
+      ],
+    },
+  ];
+}
+
+// Troca só os blocos de UMA seção (identificados pelo prefixo no id) dentro
+// do conteúdo existente da página, reordenando tudo na ordem certa — as
+// outras seções e o que a pessoa escreveu por conta própria continuam lá.
+function mesclarSecaoNoConteudo(
+  conteudoAtual: unknown,
+  prefixoSecao: string,
+  blocosNovos: unknown[]
+) {
+  const atual = Array.isArray(conteudoAtual)
+    ? (conteudoAtual as { id?: string }[])
     : [];
-  return [...blocosResumo, ...resto];
+
+  const porPrefixo: Record<string, { id?: string }[]> = {};
+  const resto: { id?: string }[] = [];
+
+  atual.forEach((bloco) => {
+    const prefixoDoBloco = ORDEM_SECOES.find((p) => bloco?.id?.startsWith(p));
+    if (prefixoDoBloco) {
+      porPrefixo[prefixoDoBloco] = porPrefixo[prefixoDoBloco] ?? [];
+      porPrefixo[prefixoDoBloco].push(bloco);
+    } else {
+      resto.push(bloco);
+    }
+  });
+
+  porPrefixo[prefixoSecao] = blocosNovos as { id?: string }[];
+
+  const secoes = ORDEM_SECOES.flatMap((p) => porPrefixo[p] ?? []);
+  return [...secoes, ...resto];
+}
+
+async function atualizarSecaoNaWiki(
+  supabase: SupabaseClient,
+  pageId: string,
+  prefixoSecao: string,
+  blocosNovos: unknown[]
+) {
+  const { data: pagina } = await supabase
+    .from("pages")
+    .select("content")
+    .eq("id", pageId)
+    .maybeSingle();
+
+  const novoConteudo = mesclarSecaoNoConteudo(
+    pagina?.content,
+    prefixoSecao,
+    blocosNovos
+  );
+
+  await supabase
+    .from("pages")
+    .update({ content: novoConteudo, updated_at: new Date().toISOString() })
+    .eq("id", pageId);
 }
 
 // Atualiza a página da Wiki vinculada à tarefa (se houver) com o resumo
@@ -112,20 +274,66 @@ export async function syncTaskWiki(
   projects: Project[]
 ) {
   if (!task.page_id) return;
-
-  const { data: pagina } = await supabase
-    .from("pages")
-    .select("content")
-    .eq("id", task.page_id)
-    .maybeSingle();
-
-  const novoConteudo = mesclarResumoNoConteudo(
-    pagina?.content,
+  await atualizarSecaoNaWiki(
+    supabase,
+    task.page_id,
+    PREFIXO_RESUMO,
     buildTaskSummaryBlocks(task, profiles, projects)
   );
+}
 
-  await supabase
-    .from("pages")
-    .update({ content: novoConteudo, updated_at: new Date().toISOString() })
-    .eq("id", task.page_id);
+export async function syncChecklistWiki(
+  supabase: SupabaseClient,
+  pageId: string | null,
+  items: ChecklistItem[]
+) {
+  if (!pageId) return;
+  await atualizarSecaoNaWiki(
+    supabase,
+    pageId,
+    PREFIXO_CHECKLIST,
+    buildChecklistBlocks(items)
+  );
+}
+
+export async function syncAnexosWiki(
+  supabase: SupabaseClient,
+  pageId: string | null,
+  attachments: TaskAttachment[]
+) {
+  if (!pageId) return;
+  await atualizarSecaoNaWiki(
+    supabase,
+    pageId,
+    PREFIXO_ANEXOS,
+    buildAnexosBlocks(supabase, attachments)
+  );
+}
+
+export async function syncComentariosWiki(
+  supabase: SupabaseClient,
+  pageId: string | null,
+  comments: TaskComment[]
+) {
+  if (!pageId) return;
+  await atualizarSecaoNaWiki(
+    supabase,
+    pageId,
+    PREFIXO_COMENTARIOS,
+    buildComentariosBlocks(comments)
+  );
+}
+
+export async function syncHorasWiki(
+  supabase: SupabaseClient,
+  pageId: string | null,
+  entries: TaskHourEntry[]
+) {
+  if (!pageId) return;
+  await atualizarSecaoNaWiki(
+    supabase,
+    pageId,
+    PREFIXO_HORAS,
+    buildHorasBlocks(entries)
+  );
 }

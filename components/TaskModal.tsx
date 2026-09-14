@@ -16,7 +16,14 @@ import type {
 } from "@/lib/types";
 import { CORES_TAREFA } from "@/lib/task-colors";
 import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
-import { buildTaskSummaryBlocks, syncTaskWiki } from "@/lib/task-wiki-sync";
+import {
+  buildTaskSummaryBlocks,
+  syncTaskWiki,
+  syncChecklistWiki,
+  syncAnexosWiki,
+  syncComentariosWiki,
+  syncHorasWiki,
+} from "@/lib/task-wiki-sync";
 
 type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas";
 
@@ -431,19 +438,28 @@ export default function TaskModal({
           )}
 
           {aba === "checklist" && current && (
-            <ChecklistTab taskId={current.id} />
+            <ChecklistTab taskId={current.id} pageId={current.page_id} />
           )}
           {aba === "anexos" && current && (
-            <AnexosTab taskId={current.id} currentUserLabel={currentUserLabel} />
+            <AnexosTab
+              taskId={current.id}
+              pageId={current.page_id}
+              currentUserLabel={currentUserLabel}
+            />
           )}
           {aba === "comentarios" && current && (
             <ComentariosTab
               taskId={current.id}
+              pageId={current.page_id}
               currentUserLabel={currentUserLabel}
             />
           )}
           {aba === "horas" && current && (
-            <HorasTab taskId={current.id} currentUserLabel={currentUserLabel} />
+            <HorasTab
+              taskId={current.id}
+              pageId={current.page_id}
+              currentUserLabel={currentUserLabel}
+            />
           )}
         </div>
 
@@ -472,7 +488,13 @@ export default function TaskModal({
   );
 }
 
-function ChecklistTab({ taskId }: { taskId: string }) {
+function ChecklistTab({
+  taskId,
+  pageId,
+}: {
+  taskId: string;
+  pageId: string | null;
+}) {
   const supabase = createClient();
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [novoItem, setNovoItem] = useState("");
@@ -537,24 +559,32 @@ function ChecklistTab({ taskId }: { taskId: string }) {
       .select()
       .single();
     if (!error && data) {
-      setItems((c) => (c.some((i) => i.id === data.id) ? c : [...c, data]));
+      const proximos = items.some((i) => i.id === data.id)
+        ? items
+        : [...items, data];
+      setItems(proximos);
       setNovoItem("");
+      syncChecklistWiki(supabase, pageId, proximos).catch(() => {});
     }
   }
 
   async function alternar(item: ChecklistItem) {
-    setItems((c) =>
-      c.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i))
+    const proximos = items.map((i) =>
+      i.id === item.id ? { ...i, done: !i.done } : i
     );
+    setItems(proximos);
     await supabase
       .from("task_checklist_items")
       .update({ done: !item.done })
       .eq("id", item.id);
+    syncChecklistWiki(supabase, pageId, proximos).catch(() => {});
   }
 
   async function remover(item: ChecklistItem) {
-    setItems((c) => c.filter((i) => i.id !== item.id));
+    const proximos = items.filter((i) => i.id !== item.id);
+    setItems(proximos);
     await supabase.from("task_checklist_items").delete().eq("id", item.id);
+    syncChecklistWiki(supabase, pageId, proximos).catch(() => {});
   }
 
   const feitos = items.filter((i) => i.done).length;
@@ -616,9 +646,11 @@ function ChecklistTab({ taskId }: { taskId: string }) {
 
 function AnexosTab({
   taskId,
+  pageId,
   currentUserLabel,
 }: {
   taskId: string;
+  pageId: string | null;
   currentUserLabel: string;
 }) {
   const supabase = createClient();
@@ -698,14 +730,20 @@ function AnexosTab({
     setEnviando(false);
     e.target.value = "";
     if (!error && data) {
-      setAnexos((c) => (c.some((a) => a.id === data.id) ? c : [data, ...c]));
+      const proximos = anexos.some((a) => a.id === data.id)
+        ? anexos
+        : [data, ...anexos];
+      setAnexos(proximos);
+      syncAnexosWiki(supabase, pageId, proximos).catch(() => {});
     }
   }
 
   async function remover(anexo: TaskAttachment) {
-    setAnexos((c) => c.filter((a) => a.id !== anexo.id));
+    const proximos = anexos.filter((a) => a.id !== anexo.id);
+    setAnexos(proximos);
     await supabase.storage.from("task-attachments").remove([anexo.file_path]);
     await supabase.from("task_attachments").delete().eq("id", anexo.id);
+    syncAnexosWiki(supabase, pageId, proximos).catch(() => {});
   }
 
   function urlPublica(caminho: string) {
@@ -758,9 +796,11 @@ function AnexosTab({
 
 function ComentariosTab({
   taskId,
+  pageId,
   currentUserLabel,
 }: {
   taskId: string;
+  pageId: string | null;
   currentUserLabel: string;
 }) {
   const supabase = createClient();
@@ -819,8 +859,12 @@ function ComentariosTab({
       .select()
       .single();
     if (!error && data) {
-      setComentarios((c) => (c.some((cm) => cm.id === data.id) ? c : [...c, data]));
+      const proximos = comentarios.some((cm) => cm.id === data.id)
+        ? comentarios
+        : [...comentarios, data];
+      setComentarios(proximos);
       setNovoComentario("");
+      syncComentariosWiki(supabase, pageId, proximos).catch(() => {});
     }
   }
 
@@ -860,9 +904,11 @@ function ComentariosTab({
 
 function HorasTab({
   taskId,
+  pageId,
   currentUserLabel,
 }: {
   taskId: string;
+  pageId: string | null;
   currentUserLabel: string;
 }) {
   const supabase = createClient();
@@ -926,15 +972,21 @@ function HorasTab({
       .select()
       .single();
     if (!error && data) {
-      setLancamentos((c) => (c.some((h) => h.id === data.id) ? c : [data, ...c]));
+      const proximos = lancamentos.some((h) => h.id === data.id)
+        ? lancamentos
+        : [data, ...lancamentos];
+      setLancamentos(proximos);
       setHoras("");
       setNota("");
+      syncHorasWiki(supabase, pageId, proximos).catch(() => {});
     }
   }
 
   async function remover(item: TaskHourEntry) {
-    setLancamentos((c) => c.filter((h) => h.id !== item.id));
+    const proximos = lancamentos.filter((h) => h.id !== item.id);
+    setLancamentos(proximos);
     await supabase.from("task_hours").delete().eq("id", item.id);
+    syncHorasWiki(supabase, pageId, proximos).catch(() => {});
   }
 
   const total = lancamentos.reduce((soma, h) => soma + Number(h.hours), 0);
