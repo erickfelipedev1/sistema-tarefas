@@ -9,12 +9,17 @@ import type { Project } from "@/lib/types";
 export default function ProjectsList({
   initialProjects,
   currentUserId = null,
+  currentUserLabel = "",
   verTudo = false,
 }: {
   initialProjects: Project[];
   // Usados pra filtrar o que chega em tempo real, do mesmo jeito que a
   // busca inicial já vem filtrada do servidor.
   currentUserId?: string | null;
+  // Nome/usuário de quem está logado, gravado no projeto na hora de criar —
+  // é o que aparece no card pra identificar o dono (útil pra quem tem
+  // "ve_tudo", hoje só a Emily).
+  currentUserLabel?: string;
   // Quem tem "ve_tudo" (hoje só a Emily) não filtra nada — vê o projeto de
   // todo mundo assim que é criado.
   verTudo?: boolean;
@@ -67,7 +72,7 @@ export default function ProjectsList({
     setCreating(true);
     const { data, error } = await supabase
       .from("projects")
-      .insert({ name: nome.trim() })
+      .insert({ name: nome.trim(), created_by_label: currentUserLabel })
       .select()
       .single();
     setCreating(false);
@@ -117,6 +122,11 @@ export default function ProjectsList({
               <p className="mt-1 text-xs text-slate-400">
                 Quadro de tarefas e Wiki próprios
               </p>
+              {project.created_by_label && (
+                <p className="mt-1 text-xs text-slate-400">
+                  por {project.created_by_label}
+                </p>
+              )}
             </Link>
             <button
               onClick={() => handleDelete(project)}

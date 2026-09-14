@@ -8,6 +8,9 @@ export default async function ProjetosPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const currentUserLabel =
+    (user?.user_metadata?.username as string | undefined) ?? user?.email ?? "";
+
   // Projetos individual: só entram projetos que eu criei, ou onde eu tenho
   // pelo menos uma tarefa (criada por mim ou atribuída a mim). Exceto pra
   // quem tem "ve_tudo" (hoje só a Emily), que enxerga todos os projetos.
@@ -53,6 +56,7 @@ export default async function ProjetosPage() {
       <ProjectsList
         initialProjects={projects ?? []}
         currentUserId={user?.id ?? null}
+        currentUserLabel={currentUserLabel}
         verTudo={verTudo}
       />
     </main>

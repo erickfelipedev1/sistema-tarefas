@@ -76,6 +76,7 @@ export interface Project {
   // pra mandar pro cliente — sem precisar de login pra ver.
   share_token: string;
   created_by: string | null;
+  created_by_label: string | null;
   created_at: string;
 }
 
