@@ -38,8 +38,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLoginRoute = pathname.startsWith("/login");
   const isOnboardingRoute = pathname.startsWith("/onboarding");
+  // Página pública de progresso do projeto (link que o cliente recebe) —
+  // não passa por login, o acesso é controlado pelo token na própria URL.
+  const isPublicRoute = pathname.startsWith("/progresso");
 
-  if (!user && !isLoginRoute) {
+  if (!user && !isLoginRoute && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -51,7 +54,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && !isOnboardingRoute && !isLoginRoute) {
+  if (user && !isOnboardingRoute && !isLoginRoute && !isPublicRoute) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("name")

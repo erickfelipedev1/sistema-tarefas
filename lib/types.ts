@@ -69,7 +69,27 @@ export interface Page {
 export interface Project {
   id: string;
   name: string;
+  // Código do link público de progresso ("/progresso/<share_token>") que dá
+  // pra mandar pro cliente — sem precisar de login pra ver.
+  share_token: string;
   created_at: string;
+}
+
+// Resposta da função get_project_progress(token) — o resumo público que a
+// página /progresso/<token> mostra pro cliente, sem informações internas.
+export interface ProjectProgress {
+  project_name: string;
+  total: number;
+  concluidas: number;
+  andamento: number;
+  abertas: number;
+  canceladas: number;
+  tasks: {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    due_date: string | null;
+  }[];
 }
 
 export interface Client {

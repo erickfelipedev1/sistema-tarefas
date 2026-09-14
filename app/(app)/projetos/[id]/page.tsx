@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import TaskBoard from "@/components/TaskBoard";
 import NewPageButton from "@/components/NewPageButton";
 import DeletePageButton from "@/components/DeletePageButton";
+import ShareProjectLink from "@/components/ShareProjectLink";
 
 export default async function ProjetoPage({
   params,
@@ -55,7 +56,9 @@ export default async function ProjetoPage({
       >
         ← Voltar para Projetos
       </Link>
-      <h1 className="mb-6 mt-2 text-2xl font-semibold">{project.name}</h1>
+      <h1 className="mb-4 mt-2 text-2xl font-semibold">{project.name}</h1>
+
+      <ShareProjectLink projectId={id} shareToken={project.share_token} />
 
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-700">
