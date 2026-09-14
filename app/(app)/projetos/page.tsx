@@ -48,6 +48,11 @@ export default async function ProjetosPage() {
       .order("created_at", { ascending: false }));
   }
 
+  // Fotinha de quem criou cada projeto (mostrada no card, junto do nome).
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, name, avatar_url");
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
       <h1 className="mb-6 text-2xl font-semibold">
@@ -58,6 +63,7 @@ export default async function ProjetosPage() {
         currentUserId={user?.id ?? null}
         currentUserLabel={currentUserLabel}
         verTudo={verTudo}
+        profiles={profiles ?? []}
       />
     </main>
   );
