@@ -24,9 +24,30 @@ export default async function AppLayout({
   const userLabel =
     (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
 
+  // Mesmo filtro individual da tela de Projetos: só os que eu criei, ou
+  // onde eu tenho pelo menos uma tarefa.
+  const { data: minhasTarefas } = await supabase
+    .from("tasks")
+    .select("project_id")
+    .or(`created_by.eq.${user.id},assigned_to.eq.${user.id}`)
+    .not("project_id", "is", null);
+
+  const idsDeProjetos = Array.from(
+    new Set(
+      (minhasTarefas ?? [])
+        .map((t) => t.project_id)
+        .filter((id): id is string => !!id)
+    )
+  );
+
+  const filtroProjetos = idsDeProjetos.length
+    ? `created_by.eq.${user.id},id.in.(${idsDeProjetos.join(",")})`
+    : `created_by.eq.${user.id}`;
+
   const { data: projects } = await supabase
     .from("projects")
     .select("*")
+    .or(filtroProjetos)
     .order("name", { ascending: true });
 
   const { data: clients } = await supabase
@@ -38,6 +59,7 @@ export default async function AppLayout({
     <NotificationsProvider currentUserId={user.id}>
       <div className="flex min-h-screen">
         <Sidebar
+          currentUserId={user.id}
           userLabel={userLabel}
           userName={profile?.name ?? null}
           avatarUrl={profile?.avatar_url ?? null}

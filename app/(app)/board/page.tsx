@@ -7,9 +7,13 @@ export default async function BoardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Quadro principal é individual: só entram as tarefas que eu criei ou que
+  // foram atribuídas a mim. O quadro de dentro de um projeto específico
+  // continua mostrando todo mundo (ver app/(app)/projetos/[id]/page.tsx).
   const { data: tasks } = await supabase
     .from("tasks")
     .select("*")
+    .or(`created_by.eq.${user?.id},assigned_to.eq.${user?.id}`)
     .order("position", { ascending: true });
 
   const { data: projects } = await supabase
@@ -29,12 +33,14 @@ export default async function BoardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-semibold">Quadro de tarefas</h1>
+      <h1 className="mb-6 text-2xl font-semibold">Minhas tarefas</h1>
 
       <TaskBoard
         initialTasks={tasks ?? []}
+        currentUserId={user?.id ?? null}
         currentUserLabel={userLabel}
         allProjects
+        soMinhas
         projects={projects ?? []}
         profiles={profiles ?? []}
       />

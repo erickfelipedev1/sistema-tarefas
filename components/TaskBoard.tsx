@@ -18,19 +18,27 @@ const COLUNAS: { key: TaskStatus; label: string }[] = [
 
 export default function TaskBoard({
   initialTasks,
+  currentUserId = null,
   currentUserLabel,
   projectId = null,
   allProjects = false,
+  soMinhas = false,
   projects = [],
   profiles = [],
 }: {
   initialTasks: Task[];
+  // Só é usado quando soMinhas=true, pra filtrar o que chega em tempo real.
+  currentUserId?: string | null;
   currentUserLabel: string;
   // Quadro de um único projeto (ou "Geral", quando null).
   projectId?: string | null;
   // Quadro principal: mostra tarefas de todos os projetos juntas, cada
   // uma com uma etiqueta indicando de qual projeto ela é.
   allProjects?: boolean;
+  // Quadro individual: só mostra as tarefas que eu criei ou que foram
+  // atribuídas a mim (usado no quadro principal — dentro de um projeto
+  // específico o quadro continua mostrando todo mundo).
+  soMinhas?: boolean;
   projects?: Project[];
   profiles?: Profile[];
 }) {
@@ -51,6 +59,13 @@ export default function TaskBoard({
     [profiles]
   );
 
+  // Se o quadro é individual (soMinhas), só deixa entrar uma tarefa que eu
+  // criei ou que foi atribuída a mim.
+  function minha(task: Task) {
+    if (!soMinhas) return true;
+    return task.created_by === currentUserId || task.assigned_to === currentUserId;
+  }
+
   // Mantém o quadro sincronizado em tempo real entre todos que estiverem
   // logados ao mesmo tempo (exige Realtime habilitado na tabela "tasks").
   useEffect(() => {
@@ -68,13 +83,18 @@ export default function TaskBoard({
               if (!allProjects && (novo.project_id ?? null) !== projectId) {
                 return current;
               }
+              if (!minha(novo)) return current;
               if (current.some((t) => t.id === novo.id)) return current;
               return [...current, novo];
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Task;
-              if (!allProjects && (atualizado.project_id ?? null) !== projectId) {
-                // Se a tarefa foi movida para outro projeto, ela some deste quadro.
+              if (
+                (!allProjects && (atualizado.project_id ?? null) !== projectId) ||
+                !minha(atualizado)
+              ) {
+                // Se a tarefa foi movida pra outro projeto, ou deixou de ser
+                // minha (reatribuída pra outra pessoa), ela some do quadro.
                 return current.filter((t) => t.id !== atualizado.id);
               }
               const jaEstava = current.some((t) => t.id === atualizado.id);
@@ -97,7 +117,7 @@ export default function TaskBoard({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, allProjects]);
+  }, [projectId, allProjects, soMinhas, currentUserId]);
 
   function getNextPosition(status: TaskStatus) {
     const maxPosition = tasks

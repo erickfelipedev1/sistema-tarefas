@@ -19,12 +19,14 @@ const ITEMS = [
 ];
 
 export default function Sidebar({
+  currentUserId,
   userLabel,
   userName,
   avatarUrl,
   initialProjects,
   initialClients,
 }: {
+  currentUserId: string;
   userLabel: string;
   userName: string | null;
   avatarUrl: string | null;
@@ -51,6 +53,10 @@ export default function Sidebar({
           setProjects((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Project;
+              // Menu individual: só entra na hora se o projeto for meu — se
+              // eu ganhar uma tarefa num projeto de outra pessoa, ele só
+              // aparece aqui no próximo carregamento da página.
+              if (novo.created_by !== currentUserId) return current;
               if (current.some((p) => p.id === novo.id)) return current;
               return [...current, novo].sort((a, b) =>
                 a.name.localeCompare(b.name)
@@ -62,6 +68,8 @@ export default function Sidebar({
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Project;
+              const jaEstava = current.some((p) => p.id === atualizado.id);
+              if (!jaEstava) return current;
               return current
                 .map((p) => (p.id === atualizado.id ? atualizado : p))
                 .sort((a, b) => a.name.localeCompare(b.name));
@@ -76,7 +84,7 @@ export default function Sidebar({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUserId]);
 
   // O mesmo, só que pra lista de clientes (Drive de arquivos).
   useEffect(() => {

@@ -65,9 +65,13 @@ function buildGrid(ano: number, mes: number) {
 
 export default function CalendarView({
   initialTasks,
+  currentUserId,
   currentUserLabel,
 }: {
   initialTasks: Task[];
+  // Esse calendário é sempre individual — usado pra filtrar o que chega
+  // em tempo real, além do que já veio filtrado do servidor.
+  currentUserId: string | null;
   currentUserLabel: string;
 }) {
   const supabase = createClient();
@@ -87,13 +91,19 @@ export default function CalendarView({
           setTasks((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Task;
-              if (!novo.due_date) return current;
+              const minha =
+                novo.created_by === currentUserId ||
+                novo.assigned_to === currentUserId;
+              if (!novo.due_date || !minha) return current;
               if (current.some((t) => t.id === novo.id)) return current;
               return [...current, novo];
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Task;
-              if (!atualizado.due_date) {
+              const minha =
+                atualizado.created_by === currentUserId ||
+                atualizado.assigned_to === currentUserId;
+              if (!atualizado.due_date || !minha) {
                 return current.filter((t) => t.id !== atualizado.id);
               }
               const existe = current.some((t) => t.id === atualizado.id);
@@ -117,7 +127,7 @@ export default function CalendarView({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUserId]);
 
   const celulas = useMemo(() => buildGrid(ano, mes), [ano, mes]);
 

@@ -61,6 +61,7 @@ export interface Page {
   // Conteúdo em formato de blocos do BlockNote (array de objetos JSON).
   content: unknown;
   project_id: string | null;
+  created_by: string | null;
   created_by_label: string | null;
   created_at: string;
   updated_at: string;
@@ -72,6 +73,7 @@ export interface Project {
   // Código do link público de progresso ("/progresso/<share_token>") que dá
   // pra mandar pro cliente — sem precisar de login pra ver.
   share_token: string;
+  created_by: string | null;
   created_at: string;
 }
 
