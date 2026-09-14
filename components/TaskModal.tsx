@@ -343,50 +343,50 @@ export default function TaskModal({
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
-                    Responsáveis
-                  </label>
-                  <div className="flex flex-wrap items-center gap-1">
-                    {assignedTo.map((id) => {
-                      const p = profiles.find((pr) => pr.id === id);
-                      return (
-                        <span
-                          key={id}
-                          className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600"
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Responsáveis
+                </label>
+                <div className="flex flex-wrap items-center gap-1">
+                  {assignedTo.map((id) => {
+                    const p = profiles.find((pr) => pr.id === id);
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600"
+                      >
+                        {p?.name || p?.username || "?"}
+                        <button
+                          type="button"
+                          onClick={() => removerResponsavel(id)}
+                          className="text-indigo-400 hover:text-indigo-700"
                         >
-                          {p?.name || p?.username || "?"}
-                          <button
-                            type="button"
-                            onClick={() => removerResponsavel(id)}
-                            className="text-indigo-400 hover:text-indigo-700"
-                          >
-                            ✕
-                          </button>
-                        </span>
-                      );
-                    })}
-                    {assignedTo.length === 0 && (
-                      <span className="text-xs text-slate-400">Ninguém</span>
-                    )}
-                  </div>
-                  <select
-                    value=""
-                    onChange={(e) => adicionarResponsavel(e.target.value)}
-                    className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
-                  >
-                    <option value="">+ Adicionar responsável</option>
-                    {profiles
-                      .filter((p) => !assignedTo.includes(p.id))
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name || p.username || "Sem nome"}
-                        </option>
-                      ))}
-                  </select>
+                          ✕
+                        </button>
+                      </span>
+                    );
+                  })}
+                  {assignedTo.length === 0 && (
+                    <span className="text-xs text-slate-400">Ninguém</span>
+                  )}
                 </div>
+                <select
+                  value=""
+                  onChange={(e) => adicionarResponsavel(e.target.value)}
+                  className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                >
+                  <option value="">+ Adicionar responsável</option>
+                  {profiles
+                    .filter((p) => !assignedTo.includes(p.id))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name || p.username || "Sem nome"}
+                      </option>
+                    ))}
+                </select>
+              </div>
 
+              <div className="flex flex-wrap gap-3">
                 {projects.length > 0 && (
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-500">
