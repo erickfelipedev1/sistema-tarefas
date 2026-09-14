@@ -15,9 +15,11 @@ const COLUNAS: { key: TaskStatus; label: string }[] = [
 export default function TaskBoard({
   initialTasks,
   currentUserLabel,
+  projectId = null,
 }: {
   initialTasks: Task[];
   currentUserLabel: string;
+  projectId?: string | null;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -33,7 +35,7 @@ export default function TaskBoard({
   // logados ao mesmo tempo (exige Realtime habilitado na tabela "tasks").
   useEffect(() => {
     const channel = supabase
-      .channel("tasks-realtime")
+      .channel(`tasks-realtime-${projectId ?? "geral"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks" },
@@ -41,11 +43,19 @@ export default function TaskBoard({
           setTasks((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Task;
+              // Só entra no quadro se for deste mesmo projeto (ou "Geral").
+              if ((novo.project_id ?? null) !== projectId) return current;
               if (current.some((t) => t.id === novo.id)) return current;
               return [...current, novo];
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Task;
+              // Se a tarefa foi movida para outro projeto, ela some deste quadro.
+              if ((atualizado.project_id ?? null) !== projectId) {
+                return current.filter((t) => t.id !== atualizado.id);
+              }
+              const jaEstava = current.some((t) => t.id === atualizado.id);
+              if (!jaEstava) return [...current, atualizado];
               return current.map((t) =>
                 t.id === atualizado.id ? atualizado : t
               );
@@ -64,7 +74,7 @@ export default function TaskBoard({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [projectId]);
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
@@ -83,6 +93,7 @@ export default function TaskBoard({
         position: maxPosition + 1,
         due_date: newDueDate || null,
         color: newColor,
+        project_id: projectId,
         created_by_label: currentUserLabel,
       })
       .select()
@@ -190,17 +201,34 @@ export default function TaskBoard({
       .insert({
         title: task.title,
         content: [],
+        project_id: projectId,
         created_by_label: currentUserLabel,
       })
       .select()
       .single();
 
-    if (error || !data) return;
+    if (error || !data) {
+      window.alert("Não deu pra criar a página da Wiki. Tenta de novo.");
+      return;
+    }
 
-    setTasks((current) =>
-      current.map((t) => (t.id === task.id ? { ...t, page_id: data.id } : t))
-    );
-    await supabase.from("tasks").update({ page_id: data.id }).eq("id", task.id);
+    const { error: erroVinculo } = await supabase
+      .from("tasks")
+      .update({ page_id: data.id })
+      .eq("id", task.id);
+
+    if (erroVinculo) {
+      // A página foi criada, mas não deu pra salvar o vínculo com a
+      // tarefa — provavelmente a coluna "page_id" ainda não existe no
+      // banco (falta rodar a migration 0011_task_wiki_link.sql).
+      window.alert(
+        "A página foi criada, mas não consegui vincular ela à tarefa. Confere se a migration 0011_task_wiki_link.sql já foi rodada no Supabase."
+      );
+    } else {
+      setTasks((current) =>
+        current.map((t) => (t.id === task.id ? { ...t, page_id: data.id } : t))
+      );
+    }
     router.push(`/wiki/${data.id}`);
   }
 

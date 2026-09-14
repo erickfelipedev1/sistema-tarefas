@@ -9,6 +9,7 @@ export interface Task {
   due_date: string | null;
   color: string | null;
   page_id: string | null;
+  project_id: string | null;
   created_by_label: string | null;
   created_at: string;
 }
@@ -18,9 +19,16 @@ export interface Page {
   title: string;
   // Conteúdo em formato de blocos do BlockNote (array de objetos JSON).
   content: unknown;
+  project_id: string | null;
   created_by_label: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  created_at: string;
 }
 
 export interface Profile {

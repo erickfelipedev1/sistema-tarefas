@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/board", label: "Tarefas" },
   { href: "/calendario", label: "Calendário" },
   { href: "/wiki", label: "Wiki" },
+  { href: "/projetos", label: "Projetos" },
   { href: "/chat", label: "Mensagens" },
 ];
 

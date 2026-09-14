@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function NewPageButton() {
+export default function NewPageButton({
+  projectId = null,
+}: {
+  projectId?: string | null;
+} = {}) {
   const router = useRouter();
   const supabase = createClient();
   const [creating, setCreating] = useState(false);
@@ -26,6 +30,7 @@ export default function NewPageButton() {
       .insert({
         title: "Sem título",
         content: [],
+        project_id: projectId,
         created_by_label: label,
       })
       .select()

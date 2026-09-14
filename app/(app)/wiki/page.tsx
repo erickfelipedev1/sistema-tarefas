@@ -9,13 +9,14 @@ export default async function WikiListPage() {
   const { data: pages } = await supabase
     .from("pages")
     .select("id, title, created_by_label, updated_at")
+    .is("project_id", null)
     .order("updated_at", { ascending: false });
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Wiki</h1>
-        <NewPageButton />
+        <NewPageButton projectId={null} />
       </header>
 
       <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
