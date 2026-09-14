@@ -10,8 +10,12 @@ export default async function BoardPage() {
   const { data: tasks } = await supabase
     .from("tasks")
     .select("*")
-    .is("project_id", null)
     .order("position", { ascending: true });
+
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("*")
+    .order("name", { ascending: true });
 
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??
@@ -25,7 +29,8 @@ export default async function BoardPage() {
       <TaskBoard
         initialTasks={tasks ?? []}
         currentUserLabel={userLabel}
-        projectId={null}
+        allProjects
+        projects={projects ?? []}
       />
     </main>
   );

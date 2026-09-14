@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Project, Task, TaskStatus } from "@/lib/types";
 import { CORES_TAREFA, corTarefa } from "@/lib/task-colors";
 
 const COLUNAS: { key: TaskStatus; label: string }[] = [
@@ -16,10 +17,17 @@ export default function TaskBoard({
   initialTasks,
   currentUserLabel,
   projectId = null,
+  allProjects = false,
+  projects = [],
 }: {
   initialTasks: Task[];
   currentUserLabel: string;
+  // Quadro de um único projeto (ou "Geral", quando null).
   projectId?: string | null;
+  // Quadro principal: mostra tarefas de todos os projetos juntas, cada
+  // uma com uma etiqueta indicando de qual projeto ela é.
+  allProjects?: boolean;
+  projects?: Project[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -27,15 +35,21 @@ export default function TaskBoard({
   const [newTitle, setNewTitle] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [newColor, setNewColor] = useState("gray");
+  const [newTaskProjectId, setNewTaskProjectId] = useState("");
   const [adding, setAdding] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
+
+  const projectsById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects]
+  );
 
   // Mantém o quadro sincronizado em tempo real entre todos que estiverem
   // logados ao mesmo tempo (exige Realtime habilitado na tabela "tasks").
   useEffect(() => {
     const channel = supabase
-      .channel(`tasks-realtime-${projectId ?? "geral"}`)
+      .channel(`tasks-realtime-${allProjects ? "all" : projectId ?? "geral"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks" },
@@ -43,15 +57,18 @@ export default function TaskBoard({
           setTasks((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Task;
-              // Só entra no quadro se for deste mesmo projeto (ou "Geral").
-              if ((novo.project_id ?? null) !== projectId) return current;
+              // Num quadro de projeto único, só entra se for deste mesmo
+              // projeto (ou "Geral"). No quadro principal, entra sempre.
+              if (!allProjects && (novo.project_id ?? null) !== projectId) {
+                return current;
+              }
               if (current.some((t) => t.id === novo.id)) return current;
               return [...current, novo];
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Task;
-              // Se a tarefa foi movida para outro projeto, ela some deste quadro.
-              if ((atualizado.project_id ?? null) !== projectId) {
+              if (!allProjects && (atualizado.project_id ?? null) !== projectId) {
+                // Se a tarefa foi movida para outro projeto, ela some deste quadro.
                 return current.filter((t) => t.id !== atualizado.id);
               }
               const jaEstava = current.some((t) => t.id === atualizado.id);
@@ -74,7 +91,7 @@ export default function TaskBoard({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, allProjects]);
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
@@ -85,6 +102,8 @@ export default function TaskBoard({
       .filter((t) => t.status === "todo")
       .reduce((max, t) => Math.max(max, t.position), 0);
 
+    const destinoProjectId = allProjects ? newTaskProjectId || null : projectId;
+
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -93,7 +112,7 @@ export default function TaskBoard({
         position: maxPosition + 1,
         due_date: newDueDate || null,
         color: newColor,
-        project_id: projectId,
+        project_id: destinoProjectId,
         created_by_label: currentUserLabel,
       })
       .select()
@@ -107,6 +126,7 @@ export default function TaskBoard({
       setNewTitle("");
       setNewDueDate("");
       setNewColor("gray");
+      setNewTaskProjectId("");
     }
   }
 
@@ -201,7 +221,7 @@ export default function TaskBoard({
       .insert({
         title: task.title,
         content: [],
-        project_id: projectId,
+        project_id: task.project_id ?? null,
         created_by_label: currentUserLabel,
       })
       .select()
@@ -263,6 +283,21 @@ export default function TaskBoard({
             />
           ))}
         </div>
+        {allProjects && (
+          <select
+            value={newTaskProjectId}
+            onChange={(e) => setNewTaskProjectId(e.target.value)}
+            title="Projeto (opcional) — deixe em branco para Geral"
+            className="rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+          >
+            <option value="">Geral</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="submit"
           disabled={adding}
@@ -305,6 +340,15 @@ export default function TaskBoard({
                     <p className="text-sm font-medium text-slate-800">
                       {task.title}
                     </p>
+                    {allProjects && task.project_id && (
+                      <Link
+                        href={`/projetos/${task.project_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
+                      >
+                        {projectsById.get(task.project_id) ?? "Projeto"}
+                      </Link>
+                    )}
                     {task.created_by_label && (
                       <p className="mt-1 text-xs text-slate-400">
                         por {task.created_by_label}
