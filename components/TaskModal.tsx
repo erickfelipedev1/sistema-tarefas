@@ -16,7 +16,7 @@ import type {
 } from "@/lib/types";
 import { CORES_TAREFA } from "@/lib/task-colors";
 import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
-import { syncTaskWiki } from "@/lib/task-wiki-sync";
+import { buildTaskSummaryBlocks, syncTaskWiki } from "@/lib/task-wiki-sync";
 
 type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas";
 
@@ -113,8 +113,33 @@ export default function TaskModal({
       setErro("Não deu pra criar a tarefa. Confere se a migration 0013_task_details.sql já foi rodada no Supabase.");
       return;
     }
-    setCurrent(data);
-    onCreated(data);
+
+    // Já cria a página da Wiki dessa tarefa na hora, sem precisar clicar em
+    // nada — vem com o resumo (status, data, responsável...) preenchido.
+    let tarefaFinal = data as Task;
+    const { data: pagina, error: erroPagina } = await supabase
+      .from("pages")
+      .insert({
+        title: tarefaFinal.title,
+        content: buildTaskSummaryBlocks(tarefaFinal, profiles, projects),
+        project_id: tarefaFinal.project_id,
+        created_by_label: currentUserLabel,
+      })
+      .select()
+      .single();
+
+    if (!erroPagina && pagina) {
+      const { error: erroVinculo } = await supabase
+        .from("tasks")
+        .update({ page_id: pagina.id })
+        .eq("id", tarefaFinal.id);
+      if (!erroVinculo) {
+        tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
+      }
+    }
+
+    setCurrent(tarefaFinal);
+    onCreated(tarefaFinal);
   }
 
   async function salvarCampo(campos: Partial<Task>) {

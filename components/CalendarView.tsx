@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Task, TaskStatus } from "@/lib/types";
 import { corTarefa } from "@/lib/task-colors";
+import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
 
 const MESES = [
   "Janeiro",
@@ -171,8 +172,34 @@ export default function CalendarView({
       .single();
 
     if (!error && data) {
+      // Já cria a página da Wiki dessa tarefa na hora, sem precisar clicar
+      // em nada — vem com o resumo preenchido.
+      let tarefaFinal = data as Task;
+      const { data: pagina, error: erroPagina } = await supabase
+        .from("pages")
+        .insert({
+          title: tarefaFinal.title,
+          content: buildTaskSummaryBlocks(tarefaFinal, [], []),
+          project_id: tarefaFinal.project_id,
+          created_by_label: currentUserLabel,
+        })
+        .select()
+        .single();
+
+      if (!erroPagina && pagina) {
+        const { error: erroVinculo } = await supabase
+          .from("tasks")
+          .update({ page_id: pagina.id })
+          .eq("id", tarefaFinal.id);
+        if (!erroVinculo) {
+          tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
+        }
+      }
+
       setTasks((current) =>
-        current.some((t) => t.id === data.id) ? current : [...current, data]
+        current.some((t) => t.id === tarefaFinal.id)
+          ? current
+          : [...current, tarefaFinal]
       );
     }
   }
