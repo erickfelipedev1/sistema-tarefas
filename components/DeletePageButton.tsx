@@ -25,9 +25,10 @@ export default function DeletePageButton({ pageId }: { pageId: string }) {
     <button
       onClick={handleDelete}
       disabled={deleting}
-      className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50"
+      title="Excluir página"
+      className="text-sm text-slate-400 hover:text-red-600 disabled:opacity-50"
     >
-      {deleting ? "Excluindo..." : "excluir"}
+      {deleting ? "…" : "🗑️"}
     </button>
   );
 }

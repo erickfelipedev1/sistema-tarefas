@@ -421,9 +421,10 @@ export default function TaskModal({
                 ) : (
                   <button
                     onClick={excluirTarefa}
-                    className="text-xs text-slate-400 hover:text-red-600"
+                    title="Excluir tarefa"
+                    className="text-sm text-slate-400 hover:text-red-600"
                   >
-                    Excluir tarefa
+                    🗑️
                   </button>
                 )}
               </div>
