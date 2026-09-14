@@ -15,6 +15,7 @@ export interface Task {
   page_id: string | null;
   project_id: string | null;
   assigned_to: string | null;
+  created_by: string | null;
   created_by_label: string | null;
   created_at: string;
 }
@@ -109,6 +110,23 @@ export interface Profile {
   username: string | null;
   name: string | null;
   avatar_url: string | null;
+}
+
+export type TaskRequestStatus = "pending" | "accepted" | "declined";
+
+export interface TaskRequest {
+  id: string;
+  title: string;
+  description: string | null;
+  project_id: string | null;
+  requested_by: string;
+  requested_by_label: string | null;
+  requested_to: string;
+  status: TaskRequestStatus;
+  // Preenchido quando aceita: o id da tarefa criada a partir do pedido.
+  task_id: string | null;
+  created_at: string;
+  resolved_at: string | null;
 }
 
 export interface Channel {

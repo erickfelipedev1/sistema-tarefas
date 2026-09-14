@@ -14,6 +14,7 @@ const ITEMS = [
   { href: "/wiki", label: "Wiki" },
   { href: "/projetos", label: "Projetos" },
   { href: "/arquivos", label: "Arquivos" },
+  { href: "/solicitacoes", label: "Solicitações" },
   { href: "/chat", label: "Mensagens" },
 ];
 
@@ -34,6 +35,7 @@ export default function Sidebar({
   const supabase = createClient();
   const {
     totalUnread,
+    pendingTaskRequests,
     notificationPermission,
     requestNotificationPermission,
   } = useNotifications();
@@ -129,7 +131,13 @@ export default function Sidebar({
       <nav className="flex-1 space-y-1 px-2">
         {ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
-          const showBadge = item.href === "/chat" && totalUnread > 0;
+          const badgeCount =
+            item.href === "/chat"
+              ? totalUnread
+              : item.href === "/solicitacoes"
+                ? pendingTaskRequests
+                : 0;
+          const showBadge = badgeCount > 0;
 
           if (item.href === "/projetos") {
             return (
@@ -178,7 +186,7 @@ export default function Sidebar({
               <span>{item.label}</span>
               {showBadge && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white">
-                  {totalUnread > 99 ? "99+" : totalUnread}
+                  {badgeCount > 99 ? "99+" : badgeCount}
                 </span>
               )}
             </Link>
