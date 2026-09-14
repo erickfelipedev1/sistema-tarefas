@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Project, Task, TaskStatus } from "@/lib/types";
-import { CORES_TAREFA, corTarefa } from "@/lib/task-colors";
+import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
+import { corTarefa } from "@/lib/task-colors";
+import TaskModal from "./TaskModal";
 
 const COLUNAS: { key: TaskStatus; label: string }[] = [
   { key: "todo", label: "A Fazer" },
   { key: "doing", label: "Em Andamento" },
   { key: "done", label: "Concluído" },
+  { key: "cancelled", label: "Cancelada" },
 ];
 
 export default function TaskBoard({
@@ -19,6 +21,7 @@ export default function TaskBoard({
   projectId = null,
   allProjects = false,
   projects = [],
+  profiles = [],
 }: {
   initialTasks: Task[];
   currentUserLabel: string;
@@ -28,21 +31,23 @@ export default function TaskBoard({
   // uma com uma etiqueta indicando de qual projeto ela é.
   allProjects?: boolean;
   projects?: Project[];
+  profiles?: Profile[];
 }) {
   const supabase = createClient();
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [newTitle, setNewTitle] = useState("");
-  const [newDueDate, setNewDueDate] = useState("");
-  const [newColor, setNewColor] = useState("gray");
-  const [newTaskProjectId, setNewTaskProjectId] = useState("");
-  const [adding, setAdding] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [tarefaEditando, setTarefaEditando] = useState<Task | null>(null);
 
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
     [projects]
+  );
+  const profilesById = useMemo(
+    () => new Map(profiles.map((p) => [p.id, p.name || p.username || "?"])),
+    [profiles]
   );
 
   // Mantém o quadro sincronizado em tempo real entre todos que estiverem
@@ -93,55 +98,42 @@ export default function TaskBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, allProjects]);
 
-  async function addTask(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    setAdding(true);
-
+  function getNextPosition(status: TaskStatus) {
     const maxPosition = tasks
-      .filter((t) => t.status === "todo")
+      .filter((t) => t.status === status)
       .reduce((max, t) => Math.max(max, t.position), 0);
-
-    const destinoProjectId = allProjects ? newTaskProjectId || null : projectId;
-
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        title: newTitle.trim(),
-        status: "todo",
-        position: maxPosition + 1,
-        due_date: newDueDate || null,
-        color: newColor,
-        project_id: destinoProjectId,
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-
-    setAdding(false);
-    if (!error && data) {
-      setTasks((current) =>
-        current.some((t) => t.id === data.id) ? current : [...current, data]
-      );
-      setNewTitle("");
-      setNewDueDate("");
-      setNewColor("gray");
-      setNewTaskProjectId("");
-    }
+    return maxPosition + 1;
   }
 
-  async function updateDueDate(task: Task, dueDate: string | null) {
-    setTasks((current) =>
-      current.map((t) => (t.id === task.id ? { ...t, due_date: dueDate } : t))
-    );
-    await supabase.from("tasks").update({ due_date: dueDate }).eq("id", task.id);
+  function abrirCriar() {
+    setTarefaEditando(null);
+    setModalAberto(true);
   }
 
-  async function updateColor(task: Task, color: string) {
+  function abrirEditar(task: Task) {
+    setTarefaEditando(task);
+    setModalAberto(true);
+  }
+
+  function fecharModal() {
+    setModalAberto(false);
+    setTarefaEditando(null);
+  }
+
+  function handleCreated(nova: Task) {
     setTasks((current) =>
-      current.map((t) => (t.id === task.id ? { ...t, color } : t))
+      current.some((t) => t.id === nova.id) ? current : [...current, nova]
     );
-    await supabase.from("tasks").update({ color }).eq("id", task.id);
+  }
+
+  function handleUpdated(atualizada: Task) {
+    setTasks((current) =>
+      current.map((t) => (t.id === atualizada.id ? atualizada : t))
+    );
+  }
+
+  function handleDeleted(taskId: string) {
+    setTasks((current) => current.filter((t) => t.id !== taskId));
   }
 
   async function moveTaskTo(task: Task, novoStatus: TaskStatus) {
@@ -208,9 +200,10 @@ export default function TaskBoard({
     await supabase.from("tasks").delete().eq("id", task.id);
   }
 
-  // Abre a "versão detalhada" da tarefa na Wiki — cria a página na hora,
-  // na primeira vez, e depois é só reabrir a mesma.
-  async function abrirDetalhes(task: Task) {
+  // Abre a "página na Wiki" da tarefa — cria a página na hora, na primeira
+  // vez, e depois é só reabrir a mesma. Isso é separado do modal de
+  // detalhes: aqui é uma página de texto livre da Wiki.
+  async function abrirWiki(task: Task) {
     if (task.page_id) {
       router.push(`/wiki/${task.page_id}`);
       return;
@@ -238,9 +231,6 @@ export default function TaskBoard({
       .eq("id", task.id);
 
     if (erroVinculo) {
-      // A página foi criada, mas não deu pra salvar o vínculo com a
-      // tarefa — provavelmente a coluna "page_id" ainda não existe no
-      // banco (falta rodar a migration 0011_task_wiki_link.sql).
       window.alert(
         "A página foi criada, mas não consegui vincular ela à tarefa. Confere se a migration 0011_task_wiki_link.sql já foi rodada no Supabase."
       );
@@ -254,60 +244,14 @@ export default function TaskBoard({
 
   return (
     <div>
-      <form onSubmit={addTask} className="mb-6 flex flex-wrap gap-2">
-        <input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Nova tarefa..."
-          className="min-w-[200px] flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <input
-          type="date"
-          value={newDueDate}
-          onChange={(e) => setNewDueDate(e.target.value)}
-          title="Prazo (opcional) — se preencher, a tarefa aparece no Calendário"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
-        />
-        <div className="flex items-center gap-1 rounded-lg border border-slate-300 px-2">
-          {CORES_TAREFA.map((cor) => (
-            <button
-              key={cor.key}
-              type="button"
-              title={cor.nome}
-              onClick={() => setNewColor(cor.key)}
-              className={`h-4 w-4 rounded-full ${cor.dot} ${
-                newColor === cor.key
-                  ? "ring-2 ring-slate-400 ring-offset-1"
-                  : ""
-              }`}
-            />
-          ))}
-        </div>
-        {allProjects && (
-          <select
-            value={newTaskProjectId}
-            onChange={(e) => setNewTaskProjectId(e.target.value)}
-            title="Projeto (opcional) — deixe em branco para Geral"
-            className="rounded-lg border border-slate-300 px-2 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">Geral</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
-        <button
-          type="submit"
-          disabled={adding}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          Adicionar
-        </button>
-      </form>
+      <button
+        onClick={abrirCriar}
+        className="mb-6 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+      >
+        + Nova tarefa
+      </button>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {COLUNAS.map((coluna) => (
           <div
             key={coluna.key}
@@ -340,64 +284,63 @@ export default function TaskBoard({
                     <p className="text-sm font-medium text-slate-800">
                       {task.title}
                     </p>
-                    {allProjects && task.project_id && (
-                      <Link
-                        href={`/projetos/${task.project_id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
-                      >
-                        {projectsById.get(task.project_id) ?? "Projeto"}
-                      </Link>
-                    )}
-                    {task.created_by_label && (
+
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {allProjects && task.project_id && (
+                        <Link
+                          href={`/projetos/${task.project_id}`}
+                          className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
+                        >
+                          {projectsById.get(task.project_id) ?? "Projeto"}
+                        </Link>
+                      )}
+                      {task.assigned_to && (
+                        <span className="inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-500">
+                          👤 {profilesById.get(task.assigned_to) ?? "?"}
+                        </span>
+                      )}
+                    </div>
+
+                    {(task.due_date || task.created_by_label) && (
                       <p className="mt-1 text-xs text-slate-400">
-                        por {task.created_by_label}
+                        {task.due_date && (
+                          <>
+                            📅 {task.due_date.split("-").reverse().join("/")}
+                            {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
+                            {task.created_by_label ? " · " : ""}
+                          </>
+                        )}
+                        {task.created_by_label && `por ${task.created_by_label}`}
                       </p>
                     )}
-                    <label className="mt-2 flex items-center gap-1 text-xs text-slate-400">
-                      📅
-                      <input
-                        type="date"
-                        value={task.due_date ?? ""}
-                        onChange={(e) =>
-                          updateDueDate(task, e.target.value || null)
-                        }
-                        className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-slate-500 hover:border-slate-200 focus:border-slate-300 focus:outline-none"
-                      />
-                    </label>
-                    <div className="mt-2 flex items-center gap-1">
-                      {CORES_TAREFA.map((cor) => (
-                        <button
-                          key={cor.key}
-                          type="button"
-                          title={cor.nome}
-                          onClick={() => updateColor(task, cor.key)}
-                          className={`h-3.5 w-3.5 rounded-full ${cor.dot} ${
-                            (task.color ?? "gray") === cor.key
-                              ? "ring-2 ring-slate-400 ring-offset-1"
-                              : ""
-                          }`}
-                        />
-                      ))}
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => abrirEditar(task)}
+                        className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
+                      >
+                        ✏️ Abrir
+                      </button>
+                      <button
+                        onClick={() => abrirWiki(task)}
+                        className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
+                      >
+                        {task.page_id ? "📄 Wiki" : "📄 Criar página"}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => abrirDetalhes(task)}
-                      className="mt-2 text-xs text-slate-500 hover:text-slate-800 hover:underline"
-                    >
-                      {task.page_id ? "📄 Ver detalhes" : "📄 Adicionar detalhes"}
-                    </button>
+
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex gap-1">
                         <button
                           onClick={() => moveTask(task, -1)}
-                          disabled={coluna.key === "todo"}
+                          disabled={coluna.key === COLUNAS[0].key}
                           className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30"
                         >
                           ←
                         </button>
                         <button
                           onClick={() => moveTask(task, 1)}
-                          disabled={coluna.key === "done"}
+                          disabled={coluna.key === COLUNAS[COLUNAS.length - 1].key}
                           className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30"
                         >
                           →
@@ -419,6 +362,21 @@ export default function TaskBoard({
           </div>
         ))}
       </div>
+
+      {modalAberto && (
+        <TaskModal
+          task={tarefaEditando}
+          projectId={projectId}
+          projects={projects}
+          profiles={profiles}
+          currentUserLabel={currentUserLabel}
+          getNextPosition={getNextPosition}
+          onClose={fecharModal}
+          onCreated={handleCreated}
+          onUpdated={handleUpdated}
+          onDeleted={handleDeleted}
+        />
+      )}
     </div>
   );
 }

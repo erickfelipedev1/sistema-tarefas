@@ -29,6 +29,7 @@ const CORES_STATUS: Record<TaskStatus, string> = {
   todo: "bg-slate-100 text-slate-700 border-slate-200",
   doing: "bg-blue-50 text-blue-700 border-blue-200",
   done: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  cancelled: "bg-red-50 text-red-600 border-red-200",
 };
 
 function corDaTarefa(task: Task) {

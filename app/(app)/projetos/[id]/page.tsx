@@ -36,6 +36,11 @@ export default async function ProjetoPage({
     .eq("project_id", id)
     .order("position", { ascending: true });
 
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, name")
+    .order("name", { ascending: true });
+
   const { data: pages } = await supabase
     .from("pages")
     .select("id, title, created_by_label, updated_at")
@@ -60,6 +65,7 @@ export default async function ProjetoPage({
           initialTasks={tasks ?? []}
           currentUserLabel={userLabel}
           projectId={id}
+          profiles={profiles ?? []}
         />
       </section>
 

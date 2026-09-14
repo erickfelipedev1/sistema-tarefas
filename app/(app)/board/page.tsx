@@ -17,6 +17,11 @@ export default async function BoardPage() {
     .select("*")
     .order("name", { ascending: true });
 
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, name")
+    .order("name", { ascending: true });
+
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??
     user?.email ??
@@ -31,6 +36,7 @@ export default async function BoardPage() {
         currentUserLabel={userLabel}
         allProjects
         projects={projects ?? []}
+        profiles={profiles ?? []}
       />
     </main>
   );

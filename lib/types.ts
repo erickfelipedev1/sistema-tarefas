@@ -1,4 +1,6 @@
-export type TaskStatus = "todo" | "doing" | "done";
+export type TaskStatus = "todo" | "doing" | "done" | "cancelled";
+
+export type RepeatRule = "none" | "daily" | "weekly" | "monthly";
 
 export interface Task {
   id: string;
@@ -7,9 +9,47 @@ export interface Task {
   status: TaskStatus;
   position: number;
   due_date: string | null;
+  due_time: string | null;
+  repeat_rule: RepeatRule;
   color: string | null;
   page_id: string | null;
   project_id: string | null;
+  assigned_to: string | null;
+  created_by_label: string | null;
+  created_at: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  task_id: string;
+  title: string;
+  done: boolean;
+  position: number;
+  created_at: string;
+}
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  content: string;
+  created_by_label: string | null;
+  created_at: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  file_name: string;
+  file_path: string;
+  uploaded_by_label: string | null;
+  created_at: string;
+}
+
+export interface TaskHourEntry {
+  id: string;
+  task_id: string;
+  hours: number;
+  note: string | null;
   created_by_label: string | null;
   created_at: string;
 }
