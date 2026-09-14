@@ -19,7 +19,7 @@ export default async function BoardPage() {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, name")
+    .select("id, username, name, avatar_url")
     .order("name", { ascending: true });
 
   const userLabel =
