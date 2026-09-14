@@ -15,20 +15,8 @@ import type {
   TaskStatus,
 } from "@/lib/types";
 import { CORES_TAREFA } from "@/lib/task-colors";
-
-const STATUS_OPTIONS: { key: TaskStatus; label: string }[] = [
-  { key: "todo", label: "Abertas" },
-  { key: "doing", label: "Em andamento" },
-  { key: "done", label: "Concluída" },
-  { key: "cancelled", label: "Cancelada" },
-];
-
-const REPEAT_OPTIONS: { key: RepeatRule; label: string }[] = [
-  { key: "none", label: "Nunca" },
-  { key: "daily", label: "Diariamente" },
-  { key: "weekly", label: "Semanalmente" },
-  { key: "monthly", label: "Mensalmente" },
-];
+import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
+import { syncTaskWiki } from "@/lib/task-wiki-sync";
 
 type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas";
 
@@ -135,6 +123,15 @@ export default function TaskModal({
     setCurrent(atualizado);
     onUpdated(atualizado);
     await supabase.from("tasks").update(campos).eq("id", current.id);
+
+    // Se essa tarefa já tem uma página vinculada na Wiki, mantém o resumo
+    // lá em cima sempre atualizado com os dados mais recentes.
+    if (atualizado.page_id) {
+      syncTaskWiki(supabase, atualizado, profiles, projects).catch(() => {
+        // Falha silenciosa: a tarefa já foi salva, só o resumo na Wiki
+        // que não atualizou dessa vez — não trava o autosave por isso.
+      });
+    }
   }
 
   async function excluirTarefa() {

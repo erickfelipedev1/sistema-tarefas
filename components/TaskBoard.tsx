@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
 import { corTarefa } from "@/lib/task-colors";
+import { buildTaskSummaryBlocks, syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
 
 const COLUNAS: { key: TaskStatus; label: string }[] = [
@@ -155,6 +156,20 @@ export default function TaskBoard({
       .from("tasks")
       .update({ status: novoStatus, position: maxPosition + 1 })
       .eq("id", task.id);
+
+    // Arrastar entre colunas também muda o status — se a tarefa tem página
+    // na Wiki, o resumo lá precisa acompanhar.
+    if (task.page_id) {
+      syncTaskWiki(
+        supabase,
+        { ...task, status: novoStatus, position: maxPosition + 1 },
+        profiles,
+        projects
+      ).catch(() => {
+        // Falha silenciosa: a tarefa já mudou de coluna, só o resumo na
+        // Wiki que não atualizou dessa vez.
+      });
+    }
   }
 
   async function moveTask(task: Task, direction: -1 | 1) {
@@ -213,7 +228,9 @@ export default function TaskBoard({
       .from("pages")
       .insert({
         title: task.title,
-        content: [],
+        // Já cria com o resumo da tarefa (status, data, responsável, etc)
+        // no topo — o resto da página fica livre pra escrever.
+        content: buildTaskSummaryBlocks(task, profiles, projects),
         project_id: task.project_id ?? null,
         created_by_label: currentUserLabel,
       })
