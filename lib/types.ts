@@ -25,7 +25,9 @@ export interface Page {
 
 export interface Profile {
   id: string;
-  email: string | null;
+  // Nem toda consulta busca o e-mail (a maior parte da tela usa username);
+  // por isso é opcional em vez de sempre exigido.
+  email?: string | null;
   username: string | null;
   name: string | null;
   avatar_url: string | null;
