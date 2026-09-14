@@ -13,7 +13,7 @@ export default async function SolicitacoesPage() {
   const userLabel =
     (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
 
-  const [{ data: requests }, { data: profiles }, { data: projects }] =
+  const [{ data: requests }, { data: profiles }, { data: projects }, { data: clients }] =
     await Promise.all([
       supabase
         .from("task_requests")
@@ -24,6 +24,7 @@ export default async function SolicitacoesPage() {
         .select("id, username, name, avatar_url")
         .order("name", { ascending: true }),
       supabase.from("projects").select("*").order("name", { ascending: true }),
+      supabase.from("clients").select("*").order("name", { ascending: true }),
     ]);
 
   return (
@@ -36,6 +37,7 @@ export default async function SolicitacoesPage() {
         initialRequests={requests ?? []}
         profiles={profiles ?? []}
         projects={projects ?? []}
+        clients={clients ?? []}
       />
     </main>
   );

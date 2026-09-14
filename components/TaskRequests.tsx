@@ -3,9 +3,26 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, Project, TaskRequest } from "@/lib/types";
+import type { Client, Profile, Project, Task, TaskRequest } from "@/lib/types";
+import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
 
 type Aba = "recebidas" | "enviadas";
+
+const DEMAND_TYPE_OPTIONS = [
+  "Design",
+  "Marketing",
+  "Vídeo",
+  "Social Media",
+  "Tráfego pago",
+  "Desenvolvimento",
+  "Outro",
+];
+
+const CONTEXT_STATUS_OPTIONS = ["Novo", "Em andamento", "Recorrente", "Ajuste/Revisão"];
+
+const URGENCY_OPTIONS = ["Baixa", "Média", "Alta", "Urgente"];
+
+const DESCRICAO_MAX = 2000;
 
 export default function TaskRequests({
   currentUserId,
@@ -13,23 +30,29 @@ export default function TaskRequests({
   initialRequests,
   profiles,
   projects,
+  clients,
 }: {
   currentUserId: string;
   currentUserLabel: string;
   initialRequests: TaskRequest[];
   profiles: Profile[];
   projects: Project[];
+  clients: Client[];
 }) {
   const supabase = createClient();
   const [requests, setRequests] = useState<TaskRequest[]>(initialRequests);
   const [aba, setAba] = useState<Aba>("recebidas");
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [processando, setProcessando] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [demandType, setDemandType] = useState("");
   const [requestedTo, setRequestedTo] = useState("");
+  const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [contextStatus, setContextStatus] = useState("");
+  const [urgency, setUrgency] = useState("");
+  const [driveUrl, setDriveUrl] = useState("");
+  const [description, setDescription] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -40,6 +63,14 @@ export default function TaskRequests({
     });
     return mapa;
   }, [profiles]);
+
+  const clientsById = useMemo(() => {
+    const mapa: Record<string, Client> = {};
+    clients.forEach((c) => {
+      mapa[c.id] = c;
+    });
+    return mapa;
+  }, [clients]);
 
   function nomeDe(userId: string) {
     const p = profilesById[userId];
@@ -88,13 +119,26 @@ export default function TaskRequests({
 
   const recebidas = requests.filter((r) => r.requested_to === currentUserId);
   const enviadas = requests.filter((r) => r.requested_by === currentUserId);
-  const pendentesRecebidas = recebidas.filter(
-    (r) => r.status === "pending"
-  ).length;
 
+  function limparForm() {
+    setTitle("");
+    setDemandType("");
+    setRequestedTo("");
+    setClientId("");
+    setProjectId("");
+    setContextStatus("");
+    setUrgency("");
+    setDriveUrl("");
+    setDescription("");
+    setMostrarForm(false);
+  }
+
+  // Ao enviar, a tarefa já é criada na hora — não fica esperando ninguém
+  // aceitar ou recusar. O pedido fica registrado (pra aparecer em
+  // "Enviadas"/"Recebidas"), já com status "accepted" e ligado à tarefa.
   async function criarSolicitacao() {
     if (!title.trim()) {
-      setErro("Dá um nome pra tarefa antes de enviar.");
+      setErro("Dá um nome pra demanda antes de enviar.");
       return;
     }
     if (!requestedTo) {
@@ -104,38 +148,20 @@ export default function TaskRequests({
     setSalvando(true);
     setErro(null);
 
-    const { data, error } = await supabase
-      .from("task_requests")
-      .insert({
-        title: title.trim(),
-        description: description.trim() || null,
-        project_id: projectId || null,
-        requested_to: requestedTo,
-        requested_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
+    const nomeCliente = clientId ? clientsById[clientId]?.name : null;
+    const detalhes: string[] = [];
+    if (demandType) detalhes.push(`Tipo de demanda: ${demandType}`);
+    if (nomeCliente) detalhes.push(`Empresa: ${nomeCliente}`);
+    if (contextStatus) detalhes.push(`Status: ${contextStatus}`);
+    if (urgency) detalhes.push(`Urgência: ${urgency}`);
+    if (driveUrl.trim()) detalhes.push(`Drive: ${driveUrl.trim()}`);
 
-    setSalvando(false);
-    if (error || !data) {
-      setErro(
-        "Não deu pra enviar a solicitação. Confere se a migration 0016_task_requests.sql já foi rodada no Supabase."
-      );
-      return;
-    }
-
-    setRequests((current) =>
-      current.some((r) => r.id === data.id) ? current : [data, ...current]
-    );
-    setTitle("");
-    setDescription("");
-    setRequestedTo("");
-    setProjectId("");
-    setMostrarForm(false);
-  }
-
-  async function aceitar(req: TaskRequest) {
-    setProcessando(req.id);
+    const descricaoTarefa = [
+      description.trim(),
+      detalhes.length ? `📋 Detalhes da solicitação:\n${detalhes.join("\n")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const { data: ultimaTarefa } = await supabase
       .from("tasks")
@@ -149,64 +175,84 @@ export default function TaskRequests({
     const { data: novaTarefa, error: erroTarefa } = await supabase
       .from("tasks")
       .insert({
-        title: req.title,
-        description: req.description,
+        title: title.trim(),
+        description: descricaoTarefa || null,
         status: "todo",
         position: proximaPosicao,
-        project_id: req.project_id,
-        assigned_to: currentUserId,
+        project_id: projectId || null,
+        assigned_to: requestedTo,
         created_by_label: currentUserLabel,
       })
       .select()
       .single();
 
     if (erroTarefa || !novaTarefa) {
-      window.alert("Não deu pra criar a tarefa a partir do pedido. Tenta de novo.");
-      setProcessando(null);
+      setSalvando(false);
+      setErro("Não deu pra criar a tarefa a partir do pedido. Tenta de novo.");
       return;
     }
 
+    let tarefaFinal = novaTarefa as Task;
+
+    // Cria a página da Wiki dessa tarefa na hora, igual acontece quando a
+    // tarefa é criada pelo quadro normal.
+    const { data: pagina } = await supabase
+      .from("pages")
+      .insert({
+        title: tarefaFinal.title,
+        content: buildTaskSummaryBlocks(tarefaFinal, profiles, projects),
+        project_id: tarefaFinal.project_id,
+        created_by_label: currentUserLabel,
+      })
+      .select()
+      .single();
+
+    if (pagina) {
+      await supabase
+        .from("tasks")
+        .update({ page_id: pagina.id })
+        .eq("id", tarefaFinal.id);
+      tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
+    }
+
     const resolvedAt = new Date().toISOString();
-    const { data: pedidoAtualizado } = await supabase
+    const { data, error } = await supabase
       .from("task_requests")
-      .update({
+      .insert({
+        title: title.trim(),
+        description: description.trim() || null,
+        project_id: projectId || null,
+        client_id: clientId || null,
+        demand_type: demandType || null,
+        context_status: contextStatus || null,
+        urgency: urgency || null,
+        drive_url: driveUrl.trim() || null,
+        requested_to: requestedTo,
+        requested_by_label: currentUserLabel,
         status: "accepted",
-        task_id: novaTarefa.id,
+        task_id: tarefaFinal.id,
         resolved_at: resolvedAt,
       })
-      .eq("id", req.id)
       .select()
       .single();
 
-    setProcessando(null);
-    if (pedidoAtualizado) {
-      setRequests((current) =>
-        current.map((r) => (r.id === req.id ? pedidoAtualizado : r))
+    setSalvando(false);
+    if (error || !data) {
+      setErro(
+        "A tarefa foi criada, mas não deu pra registrar o pedido em Solicitações. Confere se a migration 0019_task_requests_extra_fields.sql já foi rodada no Supabase."
       );
+      return;
     }
-  }
 
-  async function recusar(req: TaskRequest) {
-    setProcessando(req.id);
-    const resolvedAt = new Date().toISOString();
-    const { data: pedidoAtualizado } = await supabase
-      .from("task_requests")
-      .update({ status: "declined", resolved_at: resolvedAt })
-      .eq("id", req.id)
-      .select()
-      .single();
-
-    setProcessando(null);
-    if (pedidoAtualizado) {
-      setRequests((current) =>
-        current.map((r) => (r.id === req.id ? pedidoAtualizado : r))
-      );
-    }
+    setRequests((current) =>
+      current.some((r) => r.id === data.id) ? current : [data, ...current]
+    );
+    limparForm();
   }
 
   function statusLabel(status: TaskRequest["status"]) {
     if (status === "pending") return { texto: "Pendente", classe: "bg-amber-50 text-amber-600 border-amber-200" };
-    if (status === "accepted") return { texto: "Aceita", classe: "bg-emerald-50 text-emerald-600 border-emerald-200" };
+    if (status === "accepted") return { texto: "Criada", classe: "bg-emerald-50 text-emerald-600 border-emerald-200" };
     return { texto: "Recusada", classe: "bg-slate-100 text-slate-500 border-slate-200" };
   }
 
@@ -225,11 +271,6 @@ export default function TaskRequests({
             }`}
           >
             Recebidas
-            {pendentesRecebidas > 0 && (
-              <span className="ml-1.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                {pendentesRecebidas}
-              </span>
-            )}
           </button>
           <button
             onClick={() => setAba("enviadas")}
@@ -253,54 +294,167 @@ export default function TaskRequests({
 
       {mostrarForm && (
         <div className="mb-6 space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Nome da tarefa"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descrição (opcional)"
-            rows={3}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <select
-              value={requestedTo}
-              onChange={(e) => setRequestedTo(e.target.value)}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              Nome da Demanda
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Escreva um nome para a demanda"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Pedir pra quem?</option>
-              {profiles
-                .filter((p) => p.id !== currentUserId)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || p.username}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                Tipo de demanda
+              </label>
+              <select
+                value={demandType}
+                onChange={(e) => setDemandType(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Selecione</option>
+                {DEMAND_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
                   </option>
                 ))}
-            </select>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Sem projeto</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                Pedir pra quem?
+              </label>
+              <select
+                value={requestedTo}
+                onChange={(e) => setRequestedTo(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Selecione</option>
+                {profiles
+                  .filter((p) => p.id !== currentUserId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || p.username}
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                Qual Empresa?
+              </label>
+              <select
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Sem empresa</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                Projeto
+              </label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Sem projeto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                Status
+              </label>
+              <select
+                value={contextStatus}
+                onChange={(e) => setContextStatus(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Selecione</option>
+                {CONTEXT_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">
+                Urgência
+              </label>
+              <select
+                value={urgency}
+                onChange={(e) => setUrgency(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Selecione</option>
+                {URGENCY_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              Drive com materiais
+            </label>
+            <input
+              value={driveUrl}
+              onChange={(e) => setDriveUrl(e.target.value)}
+              placeholder="Cole a url do drive"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
+              <span>Escreva sua ideia</span>
+              <span className="text-slate-400">
+                {description.length}/{DESCRICAO_MAX}
+              </span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, DESCRICAO_MAX))}
+              placeholder="Adicione aqui detalhadamente qual é a ideia que você quer desenvolver"
+              rows={3}
+              maxLength={DESCRICAO_MAX}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
           {erro && <p className="text-sm text-red-600">{erro}</p>}
           <button
             onClick={criarSolicitacao}
             disabled={salvando}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {salvando ? "Enviando..." : "Enviar solicitação"}
+            {salvando ? "Enviando..." : "Enviar"}
           </button>
         </div>
       )}
@@ -308,6 +462,7 @@ export default function TaskRequests({
       <div className="space-y-2">
         {lista.map((req) => {
           const s = statusLabel(req.status);
+          const nomeCliente = req.client_id ? clientsById[req.client_id]?.name : null;
           return (
             <div
               key={req.id}
@@ -323,10 +478,15 @@ export default function TaskRequests({
                       {req.description}
                     </p>
                   )}
-                  <p className="mt-2 text-xs text-slate-400">
-                    {aba === "recebidas"
-                      ? `Pedido por ${req.requested_by_label || nomeDe(req.requested_by)}`
-                      : `Pedido pra ${nomeDe(req.requested_to)}`}
+                  <p className="mt-2 flex flex-wrap gap-x-3 text-xs text-slate-400">
+                    <span>
+                      {aba === "recebidas"
+                        ? `Pedido por ${req.requested_by_label || nomeDe(req.requested_by)}`
+                        : `Pedido pra ${nomeDe(req.requested_to)}`}
+                    </span>
+                    {req.demand_type && <span>· {req.demand_type}</span>}
+                    {nomeCliente && <span>· {nomeCliente}</span>}
+                    {req.urgency && <span>· Urgência: {req.urgency}</span>}
                   </p>
                 </div>
                 <span
@@ -335,25 +495,6 @@ export default function TaskRequests({
                   {s.texto}
                 </span>
               </div>
-
-              {aba === "recebidas" && req.status === "pending" && (
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => aceitar(req)}
-                    disabled={processando === req.id}
-                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    ✓ Aceitar
-                  </button>
-                  <button
-                    onClick={() => recusar(req)}
-                    disabled={processando === req.id}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    Recusar
-                  </button>
-                </div>
-              )}
 
               {req.status === "accepted" && req.task_id && (
                 <Link
@@ -371,7 +512,7 @@ export default function TaskRequests({
           <p className="text-sm text-slate-400">
             {aba === "recebidas"
               ? "Nenhuma solicitação recebida ainda."
-              : "Você ainda não pediu nenhuma tarefa."}
+              : "Você ainda não pediu nenhuma demanda."}
           </p>
         )}
       </div>

@@ -147,6 +147,14 @@ export interface TaskRequest {
   task_id: string | null;
   created_at: string;
   resolved_at: string | null;
+  // Campos extras do formulário (estilo "Solicitação Marketing").
+  client_id: string | null;
+  demand_type: string | null;
+  phone: string | null;
+  context_status: string | null;
+  urgency: string | null;
+  due_date: string | null;
+  drive_url: string | null;
 }
 
 export interface Channel {

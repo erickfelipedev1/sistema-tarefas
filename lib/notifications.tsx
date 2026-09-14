@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Message, Task, TaskRequest } from "@/lib/types";
+import type { Message, Task } from "@/lib/types";
 
 export function dmKey(otherUserId: string) {
   return `dm:${otherUserId}`;
@@ -26,9 +26,6 @@ type NotificationsContextValue = {
   setOpenConversation: (conversationKey: string | null) => void;
   notificationPermission: NotificationPermission | "unsupported";
   requestNotificationPermission: () => void;
-  // Quantos pedidos de tarefa ("solicitações") estão esperando minha
-  // resposta (pending, requested_to = eu).
-  pendingTaskRequests: number;
 };
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(
@@ -59,7 +56,6 @@ export default function NotificationsProvider({
   const [permission, setPermission] = useState<
     NotificationPermission | "unsupported"
   >("default");
-  const [pendingTaskRequests, setPendingTaskRequests] = useState(0);
 
   // Guardados em ref (não em state) porque só são lidos dentro do listener
   // do realtime, que é montado uma única vez.
@@ -93,7 +89,6 @@ export default function NotificationsProvider({
         { data: channels },
         { data: channelMessages },
         { data: dmMessages },
-        { count: pendentesCount },
       ] = await Promise.all([
         supabase
           .from("message_reads")
@@ -109,11 +104,6 @@ export default function NotificationsProvider({
           .from("messages")
           .select("id, sender_id, created_at")
           .eq("recipient_id", currentUserId),
-        supabase
-          .from("task_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("requested_to", currentUserId)
-          .eq("status", "pending"),
       ]);
 
       if (cancelado) return;
@@ -155,7 +145,6 @@ export default function NotificationsProvider({
       });
 
       setUnreadByConversation(contagem);
-      setPendingTaskRequests(pendentesCount ?? 0);
     })();
 
     return () => {
@@ -237,62 +226,6 @@ export default function NotificationsProvider({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "task_requests" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const novo = payload.new as TaskRequest;
-            if (novo.requested_to !== currentUserId) return;
-            if (novo.status !== "pending") return;
-
-            setPendingTaskRequests((atual) => atual + 1);
-
-            if (
-              typeof window !== "undefined" &&
-              "Notification" in window &&
-              Notification.permission === "granted"
-            ) {
-              try {
-                const notificacao = new Notification(
-                  "Nova solicitação de tarefa",
-                  { body: novo.title }
-                );
-                notificacao.onclick = () => {
-                  window.focus();
-                  window.location.href = "/solicitacoes";
-                };
-              } catch {
-                // alguns navegadores recusam notificação fora de contexto
-                // específico — ignora silenciosamente.
-              }
-            }
-            return;
-          }
-
-          if (payload.eventType === "UPDATE") {
-            const antigo = payload.old as TaskRequest;
-            const atualizado = payload.new as TaskRequest;
-            if (atualizado.requested_to !== currentUserId) return;
-            const eraPendente = antigo.status === "pending";
-            const continuaPendente = atualizado.status === "pending";
-            if (eraPendente && !continuaPendente) {
-              setPendingTaskRequests((atual) => Math.max(0, atual - 1));
-            } else if (!eraPendente && continuaPendente) {
-              setPendingTaskRequests((atual) => atual + 1);
-            }
-            return;
-          }
-
-          if (payload.eventType === "DELETE") {
-            const antigo = payload.old as TaskRequest;
-            if (antigo.requested_to !== currentUserId) return;
-            if (antigo.status === "pending") {
-              setPendingTaskRequests((atual) => Math.max(0, atual - 1));
-            }
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const nova = payload.new as Message;
@@ -366,7 +299,6 @@ export default function NotificationsProvider({
         setOpenConversation,
         notificationPermission: permission,
         requestNotificationPermission,
-        pendingTaskRequests,
       }}
     >
       {children}

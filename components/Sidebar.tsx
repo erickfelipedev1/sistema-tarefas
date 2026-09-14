@@ -33,12 +33,8 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const supabase = createClient();
-  const {
-    totalUnread,
-    pendingTaskRequests,
-    notificationPermission,
-    requestNotificationPermission,
-  } = useNotifications();
+  const { totalUnread, notificationPermission, requestNotificationPermission } =
+    useNotifications();
 
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [clients, setClients] = useState<Client[]>(initialClients);
@@ -131,12 +127,7 @@ export default function Sidebar({
       <nav className="flex-1 space-y-1 px-2">
         {ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
-          const badgeCount =
-            item.href === "/chat"
-              ? totalUnread
-              : item.href === "/solicitacoes"
-                ? pendingTaskRequests
-                : 0;
+          const badgeCount = item.href === "/chat" ? totalUnread : 0;
           const showBadge = badgeCount > 0;
 
           if (item.href === "/projetos") {
