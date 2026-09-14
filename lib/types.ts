@@ -71,6 +71,32 @@ export interface Project {
   created_at: string;
 }
 
+export interface Client {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface DriveFolder {
+  id: string;
+  name: string;
+  client_id: string | null;
+  parent_folder_id: string | null;
+  created_by_label: string | null;
+  created_at: string;
+}
+
+export interface DriveFile {
+  id: string;
+  folder_id: string | null;
+  client_id: string | null;
+  file_name: string;
+  file_path: string;
+  file_size: number | null;
+  uploaded_by_label: string | null;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   // Nem toda consulta busca o e-mail (a maior parte da tela usa username);
