@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import { useNotifications } from "@/lib/notifications";
+import { createClient } from "@/lib/supabase/client";
+import type { Project } from "@/lib/types";
 
 const ITEMS = [
   { href: "/board", label: "Tarefas" },
@@ -17,17 +20,64 @@ export default function Sidebar({
   userLabel,
   userName,
   avatarUrl,
+  initialProjects,
 }: {
   userLabel: string;
   userName: string | null;
   avatarUrl: string | null;
+  initialProjects: Project[];
 }) {
   const pathname = usePathname();
+  const supabase = createClient();
   const {
     totalUnread,
     notificationPermission,
     requestNotificationPermission,
   } = useNotifications();
+
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projetosAbertos, setProjetosAbertos] = useState(
+    pathname.startsWith("/projetos")
+  );
+
+  // Mantém a lista de projetos do menu sincronizada em tempo real (por
+  // exemplo, quando um projeto novo é criado na tela de Projetos).
+  useEffect(() => {
+    const channel = supabase
+      .channel("sidebar-projects-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        (payload) => {
+          setProjects((current) => {
+            if (payload.eventType === "INSERT") {
+              const novo = payload.new as Project;
+              if (current.some((p) => p.id === novo.id)) return current;
+              return [...current, novo].sort((a, b) =>
+                a.name.localeCompare(b.name)
+              );
+            }
+            if (payload.eventType === "DELETE") {
+              const removidoId = (payload.old as Project).id;
+              return current.filter((p) => p.id !== removidoId);
+            }
+            if (payload.eventType === "UPDATE") {
+              const atualizado = payload.new as Project;
+              return current
+                .map((p) => (p.id === atualizado.id ? atualizado : p))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            }
+            return current;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <aside className="flex w-56 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
@@ -41,23 +91,80 @@ export default function Sidebar({
         {ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
           const showBadge = item.href === "/chat" && totalUnread > 0;
+          const isProjetos = item.href === "/projetos";
+
+          if (!isProjetos) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium ${
+                  active
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>{item.label}</span>
+                {showBadge && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white">
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </span>
+                )}
+              </Link>
+            );
+          }
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium ${
-                active
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <span>{item.label}</span>
-              {showBadge && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white">
-                  {totalUnread > 99 ? "99+" : totalUnread}
-                </span>
+            <div key={item.href}>
+              <div
+                className={`flex items-center justify-between rounded-lg pr-1 text-sm font-medium ${
+                  active
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Link href={item.href} className="flex-1 px-3 py-2">
+                  {item.label}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setProjetosAbertos((v) => !v)}
+                  title={projetosAbertos ? "Recolher" : "Expandir"}
+                  className={`rounded-md px-2 py-2 text-xs ${
+                    active ? "text-white/80 hover:text-white" : "text-slate-400 hover:text-slate-700"
+                  }`}
+                >
+                  {projetosAbertos ? "▾" : "▸"}
+                </button>
+              </div>
+
+              {projetosAbertos && (
+                <div className="ml-3 mt-1 space-y-0.5 border-l border-slate-200 pl-2">
+                  {projects.map((p) => {
+                    const href = `/projetos/${p.id}`;
+                    const subActive = pathname === href;
+                    return (
+                      <Link
+                        key={p.id}
+                        href={href}
+                        className={`block truncate rounded-md px-2 py-1 text-xs ${
+                          subActive
+                            ? "bg-slate-100 font-medium text-slate-900"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                        }`}
+                      >
+                        {p.name}
+                      </Link>
+                    );
+                  })}
+                  {projects.length === 0 && (
+                    <p className="px-2 py-1 text-xs text-slate-400">
+                      Nenhum projeto ainda.
+                    </p>
+                  )}
+                </div>
               )}
-            </Link>
+            </div>
           );
         })}
       </nav>

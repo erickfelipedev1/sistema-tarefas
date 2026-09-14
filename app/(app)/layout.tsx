@@ -24,6 +24,11 @@ export default async function AppLayout({
   const userLabel =
     (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
 
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("*")
+    .order("name", { ascending: true });
+
   return (
     <NotificationsProvider currentUserId={user.id}>
       <div className="flex min-h-screen">
@@ -31,6 +36,7 @@ export default async function AppLayout({
           userLabel={userLabel}
           userName={profile?.name ?? null}
           avatarUrl={profile?.avatar_url ?? null}
+          initialProjects={projects ?? []}
         />
         <div className="min-h-screen flex-1">{children}</div>
       </div>
