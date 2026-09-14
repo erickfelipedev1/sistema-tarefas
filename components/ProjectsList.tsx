@@ -8,8 +8,16 @@ import type { Project } from "@/lib/types";
 
 export default function ProjectsList({
   initialProjects,
+  currentUserId = null,
+  verTudo = false,
 }: {
   initialProjects: Project[];
+  // Usados pra filtrar o que chega em tempo real, do mesmo jeito que a
+  // busca inicial já vem filtrada do servidor.
+  currentUserId?: string | null;
+  // Quem tem "ve_tudo" (hoje só a Emily) não filtra nada — vê o projeto de
+  // todo mundo assim que é criado.
+  verTudo?: boolean;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -26,6 +34,13 @@ export default function ProjectsList({
           setProjects((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Project;
+              // Individual: só entra na hora se o projeto for meu (a não
+              // ser que eu tenha "ve_tudo"). Se eu ganhar uma tarefa num
+              // projeto de outra pessoa, ele só aparece aqui no próximo
+              // carregamento da página.
+              if (!verTudo && novo.created_by !== currentUserId) {
+                return current;
+              }
               if (current.some((p) => p.id === novo.id)) return current;
               return [novo, ...current];
             }
@@ -43,7 +58,7 @@ export default function ProjectsList({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUserId, verTudo]);
 
   async function handleNewProject() {
     const nome = window.prompt("Nome do novo projeto:");

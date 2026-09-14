@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import NewPageButton from "@/components/NewPageButton";
 import DeletePageButton from "@/components/DeletePageButton";
+import { podeVerTudo } from "@/lib/permissions";
 
 export default async function WikiListPage() {
   const supabase = await createClient();
@@ -12,31 +13,46 @@ export default async function WikiListPage() {
   // Wiki individual: só entram páginas que eu criei, ou que estão ligadas a
   // uma tarefa minha (criada por mim ou atribuída a mim) — por exemplo a
   // página que uma solicitação de tarefa gerou automaticamente pra mim.
-  const { data: minhasTarefas } = await supabase
-    .from("tasks")
-    .select("page_id")
-    .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
-    .not("page_id", "is", null);
+  // Exceto pra quem tem "ve_tudo" (hoje só a Emily), que enxerga a wiki de
+  // todo mundo.
+  const verTudo = await podeVerTudo(supabase, user?.id);
 
-  const idsDeTarefas = (minhasTarefas ?? [])
-    .map((t) => t.page_id)
-    .filter((id): id is string => !!id);
+  let pages;
+  if (verTudo) {
+    ({ data: pages } = await supabase
+      .from("pages")
+      .select("id, title, created_by_label, updated_at")
+      .is("project_id", null)
+      .order("updated_at", { ascending: false }));
+  } else {
+    const { data: minhasTarefas } = await supabase
+      .from("tasks")
+      .select("page_id")
+      .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
+      .not("page_id", "is", null);
 
-  const filtro = idsDeTarefas.length
-    ? `created_by.eq.${user?.id},id.in.(${idsDeTarefas.join(",")})`
-    : `created_by.eq.${user?.id}`;
+    const idsDeTarefas = (minhasTarefas ?? [])
+      .map((t) => t.page_id)
+      .filter((id): id is string => !!id);
 
-  const { data: pages } = await supabase
-    .from("pages")
-    .select("id, title, created_by_label, updated_at")
-    .is("project_id", null)
-    .or(filtro)
-    .order("updated_at", { ascending: false });
+    const filtro = idsDeTarefas.length
+      ? `created_by.eq.${user?.id},id.in.(${idsDeTarefas.join(",")})`
+      : `created_by.eq.${user?.id}`;
+
+    ({ data: pages } = await supabase
+      .from("pages")
+      .select("id, title, created_by_label, updated_at")
+      .is("project_id", null)
+      .or(filtro)
+      .order("updated_at", { ascending: false }));
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
       <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Minha Wiki</h1>
+        <h1 className="text-2xl font-semibold">
+          {verTudo ? "Wiki de todo mundo" : "Minha Wiki"}
+        </h1>
         <NewPageButton projectId={null} />
       </header>
 

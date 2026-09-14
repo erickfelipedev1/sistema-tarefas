@@ -20,6 +20,7 @@ const ITEMS = [
 
 export default function Sidebar({
   currentUserId,
+  verTudo = false,
   userLabel,
   userName,
   avatarUrl,
@@ -27,6 +28,9 @@ export default function Sidebar({
   initialClients,
 }: {
   currentUserId: string;
+  // Quem tem "ve_tudo" (hoje só a Emily) não filtra nada no menu — vê o
+  // projeto de todo mundo assim que é criado.
+  verTudo?: boolean;
   userLabel: string;
   userName: string | null;
   avatarUrl: string | null;
@@ -56,7 +60,7 @@ export default function Sidebar({
               // Menu individual: só entra na hora se o projeto for meu — se
               // eu ganhar uma tarefa num projeto de outra pessoa, ele só
               // aparece aqui no próximo carregamento da página.
-              if (novo.created_by !== currentUserId) return current;
+              if (!verTudo && novo.created_by !== currentUserId) return current;
               if (current.some((p) => p.id === novo.id)) return current;
               return [...current, novo].sort((a, b) =>
                 a.name.localeCompare(b.name)
@@ -84,7 +88,7 @@ export default function Sidebar({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId]);
+  }, [currentUserId, verTudo]);
 
   // O mesmo, só que pra lista de clientes (Drive de arquivos).
   useEffect(() => {

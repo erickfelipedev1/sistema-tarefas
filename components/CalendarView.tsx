@@ -67,12 +67,16 @@ export default function CalendarView({
   initialTasks,
   currentUserId,
   currentUserLabel,
+  verTudo = false,
 }: {
   initialTasks: Task[];
-  // Esse calendário é sempre individual — usado pra filtrar o que chega
-  // em tempo real, além do que já veio filtrado do servidor.
+  // Usado pra filtrar o que chega em tempo real, além do que já veio
+  // filtrado do servidor.
   currentUserId: string | null;
   currentUserLabel: string;
+  // Quem tem "ve_tudo" (hoje só a Emily) não filtra nada — vê o calendário
+  // de todo mundo.
+  verTudo?: boolean;
 }) {
   const supabase = createClient();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -92,6 +96,7 @@ export default function CalendarView({
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Task;
               const minha =
+                verTudo ||
                 novo.created_by === currentUserId ||
                 (!!currentUserId && novo.assigned_to.includes(currentUserId));
               if (!novo.due_date || !minha) return current;
@@ -101,6 +106,7 @@ export default function CalendarView({
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Task;
               const minha =
+                verTudo ||
                 atualizado.created_by === currentUserId ||
                 (!!currentUserId &&
                   atualizado.assigned_to.includes(currentUserId));
@@ -128,7 +134,7 @@ export default function CalendarView({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId]);
+  }, [currentUserId, verTudo]);
 
   const celulas = useMemo(() => buildGrid(ano, mes), [ano, mes]);
 
