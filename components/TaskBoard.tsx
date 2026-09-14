@@ -211,6 +211,11 @@ export default function TaskBoard({
   }
 
   async function deleteTask(task: Task) {
+    const confirmado = window.confirm(
+      `Tem certeza que quer excluir a tarefa "${task.title}"? Essa ação não pode ser desfeita.`
+    );
+    if (!confirmado) return;
+
     setTasks((current) => current.filter((t) => t.id !== task.id));
     await supabase.from("tasks").delete().eq("id", task.id);
   }
@@ -365,9 +370,10 @@ export default function TaskBoard({
                       </div>
                       <button
                         onClick={() => deleteTask(task)}
-                        className="text-xs text-slate-400 hover:text-red-600"
+                        title="Excluir tarefa"
+                        className="text-sm text-slate-400 hover:text-red-600"
                       >
-                        excluir
+                        🗑️
                       </button>
                     </div>
                   </div>
