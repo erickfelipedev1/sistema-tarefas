@@ -180,7 +180,7 @@ export default function TaskRequests({
         status: "todo",
         position: proximaPosicao,
         project_id: projectId || null,
-        assigned_to: requestedTo,
+        assigned_to: [requestedTo],
         created_by_label: currentUserLabel,
       })
       .select()

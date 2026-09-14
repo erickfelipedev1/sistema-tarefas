@@ -93,7 +93,7 @@ export default function CalendarView({
               const novo = payload.new as Task;
               const minha =
                 novo.created_by === currentUserId ||
-                novo.assigned_to === currentUserId;
+                (!!currentUserId && novo.assigned_to.includes(currentUserId));
               if (!novo.due_date || !minha) return current;
               if (current.some((t) => t.id === novo.id)) return current;
               return [...current, novo];
@@ -102,7 +102,8 @@ export default function CalendarView({
               const atualizado = payload.new as Task;
               const minha =
                 atualizado.created_by === currentUserId ||
-                atualizado.assigned_to === currentUserId;
+                (!!currentUserId &&
+                  atualizado.assigned_to.includes(currentUserId));
               if (!atualizado.due_date || !minha) {
                 return current.filter((t) => t.id !== atualizado.id);
               }

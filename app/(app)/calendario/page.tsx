@@ -13,7 +13,7 @@ export default async function CalendarioPage() {
     .from("tasks")
     .select("*")
     .not("due_date", "is", null)
-    .or(`created_by.eq.${user?.id},assigned_to.eq.${user?.id}`)
+    .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
     .order("due_date", { ascending: true });
 
   const userLabel =

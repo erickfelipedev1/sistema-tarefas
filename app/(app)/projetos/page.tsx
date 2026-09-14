@@ -12,7 +12,7 @@ export default async function ProjetosPage() {
   const { data: minhasTarefas } = await supabase
     .from("tasks")
     .select("project_id")
-    .or(`created_by.eq.${user?.id},assigned_to.eq.${user?.id}`)
+    .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
     .not("project_id", "is", null);
 
   const idsDeProjetos = Array.from(

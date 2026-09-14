@@ -15,7 +15,7 @@ export default async function WikiListPage() {
   const { data: minhasTarefas } = await supabase
     .from("tasks")
     .select("page_id")
-    .or(`created_by.eq.${user?.id},assigned_to.eq.${user?.id}`)
+    .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
     .not("page_id", "is", null);
 
   const idsDeTarefas = (minhasTarefas ?? [])

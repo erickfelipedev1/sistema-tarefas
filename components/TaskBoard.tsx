@@ -63,7 +63,10 @@ export default function TaskBoard({
   // criei ou que foi atribuída a mim.
   function minha(task: Task) {
     if (!soMinhas) return true;
-    return task.created_by === currentUserId || task.assigned_to === currentUserId;
+    return (
+      task.created_by === currentUserId ||
+      (!!currentUserId && task.assigned_to.includes(currentUserId))
+    );
   }
 
   // Mantém o quadro sincronizado em tempo real entre todos que estiverem
@@ -336,11 +339,14 @@ export default function TaskBoard({
                           {projectsById.get(task.project_id) ?? "Projeto"}
                         </Link>
                       )}
-                      {task.assigned_to && (
-                        <span className="inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-500">
-                          👤 {profilesById.get(task.assigned_to) ?? "?"}
+                      {task.assigned_to.map((id) => (
+                        <span
+                          key={id}
+                          className="inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-500"
+                        >
+                          👤 {profilesById.get(id) ?? "?"}
                         </span>
-                      )}
+                      ))}
                     </div>
 
                     {(task.due_date || task.created_by_label) && (

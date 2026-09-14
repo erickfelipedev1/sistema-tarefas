@@ -70,7 +70,9 @@ export default function TaskModal({
   const [repeatRule, setRepeatRule] = useState<RepeatRule>(
     task?.repeat_rule ?? "none"
   );
-  const [assignedTo, setAssignedTo] = useState(task?.assigned_to ?? "");
+  const [assignedTo, setAssignedTo] = useState<string[]>(
+    task?.assigned_to ?? []
+  );
   const [color, setColor] = useState(task?.color ?? "gray");
   const [taskProjectId, setTaskProjectId] = useState(
     task?.project_id ?? projectId ?? ""
@@ -109,7 +111,7 @@ export default function TaskModal({
         repeat_rule: repeatRule,
         color,
         project_id: taskProjectId || null,
-        assigned_to: assignedTo || null,
+        assigned_to: assignedTo,
         created_by_label: currentUserLabel,
       })
       .select()
@@ -164,6 +166,19 @@ export default function TaskModal({
         // que não atualizou dessa vez — não trava o autosave por isso.
       });
     }
+  }
+
+  function adicionarResponsavel(id: string) {
+    if (!id || assignedTo.includes(id)) return;
+    const proximos = [...assignedTo, id];
+    setAssignedTo(proximos);
+    if (!isNovo) salvarCampo({ assigned_to: proximos });
+  }
+
+  function removerResponsavel(id: string) {
+    const proximos = assignedTo.filter((a) => a !== id);
+    setAssignedTo(proximos);
+    if (!isNovo) salvarCampo({ assigned_to: proximos });
   }
 
   async function excluirTarefa() {
@@ -331,23 +346,44 @@ export default function TaskModal({
               <div className="flex flex-wrap gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-500">
-                    Responsável
+                    Responsáveis
                   </label>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {assignedTo.map((id) => {
+                      const p = profiles.find((pr) => pr.id === id);
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600"
+                        >
+                          {p?.name || p?.username || "?"}
+                          <button
+                            type="button"
+                            onClick={() => removerResponsavel(id)}
+                            className="text-indigo-400 hover:text-indigo-700"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {assignedTo.length === 0 && (
+                      <span className="text-xs text-slate-400">Ninguém</span>
+                    )}
+                  </div>
                   <select
-                    value={assignedTo}
-                    onChange={(e) => {
-                      setAssignedTo(e.target.value);
-                      if (!isNovo)
-                        salvarCampo({ assigned_to: e.target.value || null });
-                    }}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                    value=""
+                    onChange={(e) => adicionarResponsavel(e.target.value)}
+                    className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
                   >
-                    <option value="">Ninguém</option>
-                    {profiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name || p.username || "Sem nome"}
-                      </option>
-                    ))}
+                    <option value="">+ Adicionar responsável</option>
+                    {profiles
+                      .filter((p) => !assignedTo.includes(p.id))
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name || p.username || "Sem nome"}
+                        </option>
+                      ))}
                   </select>
                 </div>
 

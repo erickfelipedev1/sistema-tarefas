@@ -14,7 +14,9 @@ export interface Task {
   color: string | null;
   page_id: string | null;
   project_id: string | null;
-  assigned_to: string | null;
+  // Lista de ids de quem é responsável — pode ter mais de uma pessoa, ou
+  // nenhuma (array vazio).
+  assigned_to: string[];
   created_by: string | null;
   created_by_label: string | null;
   created_at: string;

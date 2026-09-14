@@ -13,7 +13,7 @@ export default async function BoardPage() {
   const { data: tasks } = await supabase
     .from("tasks")
     .select("*")
-    .or(`created_by.eq.${user?.id},assigned_to.eq.${user?.id}`)
+    .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
     .order("position", { ascending: true });
 
   const { data: projects } = await supabase

@@ -73,12 +73,13 @@ export function buildTaskSummaryBlocks(
   const repeatLabel =
     REPEAT_OPTIONS.find((r) => r.key === task.repeat_rule)?.label ?? "Nunca";
 
-  const responsavel = task.assigned_to
-    ? profiles.find((p) => p.id === task.assigned_to)
-    : null;
-  const responsavelNome = responsavel
-    ? responsavel.name || responsavel.username || "Alguém"
-    : "Ninguém";
+  const responsaveis = task.assigned_to
+    .map((id) => profiles.find((p) => p.id === id))
+    .filter((p): p is Profile => !!p);
+  const responsavelNome =
+    responsaveis.length > 0
+      ? responsaveis.map((p) => p.name || p.username || "Alguém").join(", ")
+      : "Ninguém";
 
   const projeto = task.project_id
     ? projects.find((p) => p.id === task.project_id)

@@ -197,9 +197,10 @@ export default function NotificationsProvider({
         (payload) => {
           const nova = payload.new as Task;
 
-          // Só notifica quando alguém me atribui a tarefa — se fui eu quem
-          // criou (mesmo que pra mim mesmo), não precisa de aviso.
-          if (nova.assigned_to !== currentUserId) return;
+          // Só notifica quando alguém me coloca como um dos responsáveis —
+          // se fui eu quem criou (mesmo que pra mim mesmo), não precisa de
+          // aviso.
+          if (!nova.assigned_to.includes(currentUserId)) return;
           if (nova.created_by === currentUserId) return;
 
           if (
