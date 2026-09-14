@@ -23,9 +23,11 @@ export default async function ArquivosClientePage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) notFound();
+
   const userLabel =
-    (user?.user_metadata?.username as string | undefined) ??
-    user?.email ??
+    (user.user_metadata?.username as string | undefined) ??
+    user.email ??
     "";
 
   return (
@@ -38,7 +40,11 @@ export default async function ArquivosClientePage({
       </Link>
       <h1 className="mb-6 mt-2 text-2xl font-semibold">{client.name}</h1>
 
-      <DriveBrowser clientId={id} currentUserLabel={userLabel} />
+      <DriveBrowser
+        clientId={id}
+        currentUserId={user.id}
+        currentUserLabel={userLabel}
+      />
     </main>
   );
 }

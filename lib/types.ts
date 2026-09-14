@@ -82,6 +82,8 @@ export interface DriveFolder {
   name: string;
   client_id: string | null;
   parent_folder_id: string | null;
+  // Nulo = compartilhado (todo mundo vê). Preenchido = privado, só o dono vê.
+  owner_id: string | null;
   created_by_label: string | null;
   created_at: string;
 }
@@ -90,6 +92,8 @@ export interface DriveFile {
   id: string;
   folder_id: string | null;
   client_id: string | null;
+  // Nulo = compartilhado (todo mundo vê). Preenchido = privado, só o dono vê.
+  owner_id: string | null;
   file_name: string;
   file_path: string;
   file_size: number | null;

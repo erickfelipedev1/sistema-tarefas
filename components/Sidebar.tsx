@@ -157,6 +157,10 @@ export default function Sidebar({
                 itemHref={(id) => `/arquivos/cliente/${id}`}
                 emptyLabel="Nenhum cliente ainda."
                 defaultOpen={pathname.startsWith("/arquivos")}
+                extraLinks={[
+                  { href: "/arquivos/meus", label: "🔒 Meus arquivos" },
+                  { href: "/arquivos/compartilhados", label: "👥 Compartilhados" },
+                ]}
               />
             );
           }
@@ -221,6 +225,7 @@ function ExpandableNavItem({
   itemHref,
   emptyLabel,
   defaultOpen,
+  extraLinks,
 }: {
   href: string;
   label: string;
@@ -229,6 +234,9 @@ function ExpandableNavItem({
   itemHref: (id: string) => string;
   emptyLabel: string;
   defaultOpen: boolean;
+  // Links fixos (não vêm de uma lista do banco) mostrados antes da lista,
+  // ex: "Meus arquivos" / "Compartilhados" dentro de "Arquivos".
+  extraLinks?: { href: string; label: string }[];
 }) {
   const pathname = usePathname();
   const [aberto, setAberto] = useState(defaultOpen);
@@ -257,6 +265,22 @@ function ExpandableNavItem({
 
       {aberto && (
         <div className="ml-3 mt-1 space-y-0.5 border-l border-slate-200 pl-2">
+          {extraLinks?.map((link) => {
+            const linkActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`block truncate rounded-md px-2 py-1 text-xs ${
+                  linkActive
+                    ? "bg-slate-100 font-medium text-slate-900"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           {items.map((item) => {
             const subHref = itemHref(item.id);
             const subActive = pathname === subHref;
