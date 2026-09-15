@@ -104,6 +104,23 @@ export const FileStackIcon = createIcon(
   </>
 );
 
+export const LinkIcon = createIcon(
+  "LinkIcon",
+  <>
+    <path d="M10 14a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7L10.8 7.5" />
+    <path d="M14 10a4 4 0 0 0-5.7 0L6 12.3a4 4 0 0 0 5.7 5.7l1.5-1.5" />
+  </>
+);
+
+export const InboxIcon = createIcon(
+  "InboxIcon",
+  <>
+    <path d="M4 12h4.2l1.3 2.5h4.9L15.8 12H20" />
+    <path d="M4.5 12 6 5.8A1.5 1.5 0 0 1 7.5 4.5h9A1.5 1.5 0 0 1 18 5.8L19.5 12" />
+    <path d="M4 12v5.5A1.5 1.5 0 0 0 5.5 19h13a1.5 1.5 0 0 0 1.5-1.5V12" />
+  </>
+);
+
 export const SendIcon = createIcon(
   "SendIcon",
   <path d="m4 11 16-7-6 16-2.5-7L4 11Z" />

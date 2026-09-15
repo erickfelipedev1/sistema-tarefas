@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Client, Profile, Project, Task, TaskRequest } from "@/lib/types";
 import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
+import { formatarDataHora } from "@/lib/format";
+import { Badge } from "./ui/Badge";
+import { Button } from "./ui/Button";
+import { EmptyState } from "./ui/EmptyState";
+import { PageHeader } from "./ui/PageHeader";
+import { InboxIcon, LinkIcon, PlusIcon } from "./ui/icons";
 
 type Aba = "recebidas" | "enviadas";
+type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger";
 
 const DEMAND_TYPE_OPTIONS = [
   "Design",
@@ -22,7 +30,17 @@ const CONTEXT_STATUS_OPTIONS = ["Novo", "Em andamento", "Recorrente", "Ajuste/Re
 
 const URGENCY_OPTIONS = ["Baixa", "Média", "Alta", "Urgente"];
 
+const URGENCY_TONE: Record<string, BadgeTone> = {
+  Baixa: "neutral",
+  Média: "brand",
+  Alta: "warning",
+  Urgente: "danger",
+};
+
 const DESCRICAO_MAX = 2000;
+
+const campoClasse =
+  "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
 export default function TaskRequests({
   currentUserId,
@@ -43,6 +61,7 @@ export default function TaskRequests({
   const [requests, setRequests] = useState<TaskRequest[]>(initialRequests);
   const [aba, setAba] = useState<Aba>("recebidas");
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
 
   const [title, setTitle] = useState("");
   const [demandType, setDemandType] = useState("");
@@ -51,10 +70,13 @@ export default function TaskRequests({
   const [projectId, setProjectId] = useState("");
   const [contextStatus, setContextStatus] = useState("");
   const [urgency, setUrgency] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
   const [description, setDescription] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erroTitulo, setErroTitulo] = useState<string | null>(null);
+  const [erroResponsavel, setErroResponsavel] = useState<string | null>(null);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
 
   const profilesById = useMemo(() => {
     const mapa: Record<string, Profile> = {};
@@ -71,6 +93,14 @@ export default function TaskRequests({
     });
     return mapa;
   }, [clients]);
+
+  const projectsById = useMemo(() => {
+    const mapa: Record<string, Project> = {};
+    projects.forEach((p) => {
+      mapa[p.id] = p;
+    });
+    return mapa;
+  }, [projects]);
 
   function nomeDe(userId: string) {
     const p = profilesById[userId];
@@ -120,6 +150,31 @@ export default function TaskRequests({
   const recebidas = requests.filter((r) => r.requested_to === currentUserId);
   const enviadas = requests.filter((r) => r.requested_by === currentUserId);
 
+  // Usado tanto pro aviso ao sair da página (fechar aba/atualizar) quanto
+  // pro confirm ao clicar em "Cancelar" — evita perder o que já foi
+  // preenchido sem querer.
+  const formTemDados =
+    title.trim() !== "" ||
+    demandType !== "" ||
+    requestedTo !== "" ||
+    clientId !== "" ||
+    projectId !== "" ||
+    contextStatus !== "" ||
+    urgency !== "" ||
+    dueDate !== "" ||
+    driveUrl.trim() !== "" ||
+    description.trim() !== "";
+
+  useEffect(() => {
+    function avisarAntesDeSair(e: BeforeUnloadEvent) {
+      if (!mostrarForm || !formTemDados) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", avisarAntesDeSair);
+    return () => window.removeEventListener("beforeunload", avisarAntesDeSair);
+  }, [mostrarForm, formTemDados]);
+
   function limparForm() {
     setTitle("");
     setDemandType("");
@@ -128,25 +183,37 @@ export default function TaskRequests({
     setProjectId("");
     setContextStatus("");
     setUrgency("");
+    setDueDate("");
     setDriveUrl("");
     setDescription("");
+    setErroTitulo(null);
+    setErroResponsavel(null);
+    setErroEnvio(null);
     setMostrarForm(false);
+  }
+
+  function fecharForm() {
+    if (formTemDados) {
+      const ok = window.confirm(
+        "Você preencheu dados que ainda não foram enviados. Sair sem enviar mesmo assim?"
+      );
+      if (!ok) return;
+    }
+    limparForm();
   }
 
   // Ao enviar, a tarefa já é criada na hora — não fica esperando ninguém
   // aceitar ou recusar. O pedido fica registrado (pra aparecer em
   // "Enviadas"/"Recebidas"), já com status "accepted" e ligado à tarefa.
   async function criarSolicitacao() {
-    if (!title.trim()) {
-      setErro("Dá um nome pra demanda antes de enviar.");
-      return;
-    }
-    if (!requestedTo) {
-      setErro("Escolhe pra quem é a solicitação.");
-      return;
-    }
+    const tituloValido = title.trim() !== "";
+    const responsavelValido = requestedTo !== "";
+    setErroTitulo(tituloValido ? null : "Dá um nome pra essa demanda.");
+    setErroResponsavel(responsavelValido ? null : "Escolhe pra quem é a solicitação.");
+    if (!tituloValido || !responsavelValido) return;
+
     setSalvando(true);
-    setErro(null);
+    setErroEnvio(null);
 
     const nomeCliente = clientId ? clientsById[clientId]?.name : null;
     const detalhes: string[] = [];
@@ -180,6 +247,7 @@ export default function TaskRequests({
         status: "todo",
         position: proximaPosicao,
         project_id: projectId || null,
+        due_date: dueDate || null,
         assigned_to: [requestedTo],
         created_by_label: currentUserLabel,
       })
@@ -188,7 +256,7 @@ export default function TaskRequests({
 
     if (erroTarefa || !novaTarefa) {
       setSalvando(false);
-      setErro("Não deu pra criar a tarefa a partir do pedido. Tenta de novo.");
+      setErroEnvio("Não foi possível enviar a solicitação. Tente novamente.");
       return;
     }
 
@@ -226,6 +294,7 @@ export default function TaskRequests({
         demand_type: demandType || null,
         context_status: contextStatus || null,
         urgency: urgency || null,
+        due_date: dueDate || null,
         drive_url: driveUrl.trim() || null,
         requested_to: requestedTo,
         requested_by_label: currentUserLabel,
@@ -238,7 +307,7 @@ export default function TaskRequests({
 
     setSalvando(false);
     if (error || !data) {
-      setErro(
+      setErroEnvio(
         "A tarefa foi criada, mas não deu pra registrar o pedido em Solicitações. Confere se a migration 0019_task_requests_extra_fields.sql já foi rodada no Supabase."
       );
       return;
@@ -248,274 +317,374 @@ export default function TaskRequests({
       current.some((r) => r.id === data.id) ? current : [data, ...current]
     );
     limparForm();
+    setSucesso(true);
+    setTimeout(() => setSucesso(false), 4000);
   }
 
-  function statusLabel(status: TaskRequest["status"]) {
-    if (status === "pending") return { texto: "Pendente", classe: "bg-amber-50 text-amber-600 border-amber-200" };
-    if (status === "accepted") return { texto: "Criada", classe: "bg-emerald-50 text-emerald-600 border-emerald-200" };
-    return { texto: "Recusada", classe: "bg-slate-100 text-slate-500 border-slate-200" };
+  function statusInfo(status: TaskRequest["status"]): { texto: string; tone: BadgeTone } {
+    if (status === "pending") return { texto: "Pendente", tone: "warning" };
+    if (status === "accepted") return { texto: "Criada", tone: "success" };
+    return { texto: "Recusada", tone: "neutral" };
   }
 
+  const linkDriveValido = /^https?:\/\//i.test(driveUrl.trim());
   const lista = aba === "recebidas" ? recebidas : enviadas;
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-1 rounded-lg border border-slate-200 p-1">
-          <button
-            onClick={() => setAba("recebidas")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              aba === "recebidas"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Recebidas
-          </button>
-          <button
-            onClick={() => setAba("enviadas")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              aba === "enviadas"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Enviadas
-          </button>
-        </div>
+      <PageHeader
+        title="Solicitações de tarefa"
+        subtitle="Envie uma demanda para um membro da equipe e acompanhe seu andamento."
+        actions={
+          mostrarForm ? (
+            <Button variant="ghost" size="sm" onClick={fecharForm}>
+              Cancelar
+            </Button>
+          ) : (
+            <Button onClick={() => setMostrarForm(true)}>
+              <PlusIcon className="h-4 w-4" />
+              Nova solicitação
+            </Button>
+          )
+        }
+      />
 
+      {sucesso && (
+        <div className="mb-5 rounded-xl border border-success/30 bg-success-light px-4 py-3 text-sm text-success">
+          Solicitação enviada com sucesso.
+        </div>
+      )}
+
+      <div className="mb-5 inline-flex rounded-lg border border-line bg-white p-1">
         <button
-          onClick={() => setMostrarForm((v) => !v)}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          onClick={() => setAba("recebidas")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            aba === "recebidas"
+              ? "bg-brand text-white"
+              : "text-ink-muted hover:bg-slate-50 hover:text-ink"
+          }`}
         >
-          {mostrarForm ? "Cancelar" : "+ Nova solicitação"}
+          Recebidas
+        </button>
+        <button
+          onClick={() => setAba("enviadas")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            aba === "enviadas"
+              ? "bg-brand text-white"
+              : "text-ink-muted hover:bg-slate-50 hover:text-ink"
+          }`}
+        >
+          Enviadas
         </button>
       </div>
 
       {mostrarForm && (
-        <div className="mb-6 space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
-              Nome da Demanda
-            </label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Escreva um nome para a demanda"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
+        <div className="mb-6 space-y-4">
+          <FormSection
+            title="Informações da demanda"
+            description="Defina o que precisa ser feito e para qual contexto."
+          >
+            <Campo label="Nome da demanda" required error={erroTitulo}>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Escreva um nome para a demanda"
+                aria-required="true"
+                aria-invalid={!!erroTitulo}
+                className={campoClasse}
+              />
+            </Campo>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Tipo de demanda
-              </label>
-              <select
-                value={demandType}
-                onChange={(e) => setDemandType(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Selecione</option>
-                {DEMAND_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Pedir pra quem?
-              </label>
-              <select
-                value={requestedTo}
-                onChange={(e) => setRequestedTo(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Selecione</option>
-                {profiles
-                  .filter((p) => p.id !== currentUserId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name || p.username}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Campo label="Tipo de demanda">
+                <select
+                  value={demandType}
+                  onChange={(e) => setDemandType(e.target.value)}
+                  className={campoClasse}
+                >
+                  <option value="">Selecione</option>
+                  {DEMAND_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
                     </option>
                   ))}
-              </select>
+                </select>
+              </Campo>
+              <Campo label="Pedir pra quem?" required error={erroResponsavel}>
+                <select
+                  value={requestedTo}
+                  onChange={(e) => setRequestedTo(e.target.value)}
+                  aria-required="true"
+                  aria-invalid={!!erroResponsavel}
+                  className={campoClasse}
+                >
+                  <option value="">Selecione</option>
+                  {profiles
+                    .filter((p) => p.id !== currentUserId)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name || p.username}
+                      </option>
+                    ))}
+                </select>
+              </Campo>
             </div>
-          </div>
+          </FormSection>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Qual Empresa?
-              </label>
-              <select
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Sem empresa</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Projeto
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Sem projeto</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Status
-              </label>
-              <select
-                value={contextStatus}
-                onChange={(e) => setContextStatus(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Selecione</option>
-                {CONTEXT_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Urgência
-              </label>
-              <select
-                value={urgency}
-                onChange={(e) => setUrgency(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Selecione</option>
-                {URGENCY_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
-              Drive com materiais
-            </label>
-            <input
-              value={driveUrl}
-              onChange={(e) => setDriveUrl(e.target.value)}
-              placeholder="Cole a url do drive"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
-              <span>Escreva sua ideia</span>
-              <span className="text-slate-400">
-                {description.length}/{DESCRICAO_MAX}
-              </span>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, DESCRICAO_MAX))}
-              placeholder="Adicione aqui detalhadamente qual é a ideia que você quer desenvolver"
-              rows={3}
-              maxLength={DESCRICAO_MAX}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          {erro && <p className="text-sm text-red-600">{erro}</p>}
-          <button
-            onClick={criarSolicitacao}
-            disabled={salvando}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          <FormSection
+            title="Contexto"
+            description="Relacione a demanda à empresa e ao projeto."
           >
-            {salvando ? "Enviando..." : "Enviar"}
-          </button>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Campo label="Qual Empresa?">
+                <select
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  className={campoClasse}
+                >
+                  <option value="">Sem empresa</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Projeto">
+                <select
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className={campoClasse}
+                >
+                  <option value="">Sem projeto</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
+          </FormSection>
+
+          <FormSection title="Planejamento">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Campo label="Status">
+                <select
+                  value={contextStatus}
+                  onChange={(e) => setContextStatus(e.target.value)}
+                  className={campoClasse}
+                >
+                  <option value="">Selecione</option>
+                  {CONTEXT_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Urgência">
+                <select
+                  value={urgency}
+                  onChange={(e) => setUrgency(e.target.value)}
+                  className={campoClasse}
+                >
+                  <option value="">Selecione</option>
+                  {URGENCY_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Prazo">
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className={campoClasse}
+                />
+              </Campo>
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Materiais de apoio"
+            description="Adicione materiais que ajudem a equipe a executar a demanda."
+          >
+            <Campo label="Drive com materiais">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <LinkIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+                  <input
+                    value={driveUrl}
+                    onChange={(e) => setDriveUrl(e.target.value)}
+                    placeholder="Cole a URL do Drive"
+                    className={`${campoClasse} pl-9`}
+                  />
+                </div>
+                {linkDriveValido && (
+                  <a
+                    href={driveUrl.trim()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-shrink-0 text-xs font-medium text-brand hover:underline"
+                  >
+                    Abrir link
+                  </a>
+                )}
+              </div>
+            </Campo>
+          </FormSection>
+
+          <FormSection
+            title="Detalhes da demanda"
+            description="Explique com detalhes o que precisa ser desenvolvido."
+          >
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-muted">Descrição</span>
+                <span className="text-xs text-ink-muted">
+                  {description.length}/{DESCRICAO_MAX}
+                </span>
+              </div>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value.slice(0, DESCRICAO_MAX))}
+                placeholder="Adicione aqui detalhadamente qual é a ideia que você quer desenvolver"
+                rows={5}
+                maxLength={DESCRICAO_MAX}
+                className={campoClasse}
+              />
+            </div>
+          </FormSection>
+
+          <div className="flex flex-col items-end gap-1.5">
+            {erroEnvio && <p className="text-sm text-danger">{erroEnvio}</p>}
+            <Button onClick={criarSolicitacao} disabled={salvando}>
+              {salvando ? "Enviando..." : "Enviar solicitação"}
+            </Button>
+            <p className="text-xs text-ink-muted">
+              Você poderá acompanhar esta solicitação na aba Enviadas.
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {lista.map((req) => {
-          const s = statusLabel(req.status);
+          const s = statusInfo(req.status);
           const nomeCliente = req.client_id ? clientsById[req.client_id]?.name : null;
+          const nomeProjeto = req.project_id ? projectsById[req.project_id]?.name : null;
+          const contexto = [nomeCliente, nomeProjeto].filter(Boolean).join(" · ");
           return (
             <div
               key={req.id}
-              className="rounded-xl border border-slate-200 bg-white p-4"
+              className="rounded-2xl border border-line bg-white p-4 transition-colors hover:border-slate-300"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800">
-                    {req.title}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{req.title}</p>
+                  {contexto && (
+                    <p className="mt-1 text-xs text-ink-muted">{contexto}</p>
+                  )}
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {aba === "recebidas"
+                      ? `Enviado por ${req.requested_by_label || nomeDe(req.requested_by)}`
+                      : `Pedido para ${nomeDe(req.requested_to)}`}
                   </p>
                   {req.description && (
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-2 line-clamp-2 text-sm text-ink-muted">
                       {req.description}
                     </p>
                   )}
-                  <p className="mt-2 flex flex-wrap gap-x-3 text-xs text-slate-400">
-                    <span>
-                      {aba === "recebidas"
-                        ? `Pedido por ${req.requested_by_label || nomeDe(req.requested_by)}`
-                        : `Pedido pra ${nomeDe(req.requested_to)}`}
-                    </span>
-                    {req.demand_type && <span>· {req.demand_type}</span>}
-                    {nomeCliente && <span>· {nomeCliente}</span>}
-                    {req.urgency && <span>· Urgência: {req.urgency}</span>}
-                  </p>
+                  {req.status === "accepted" && req.task_id && (
+                    <Link
+                      href={req.project_id ? `/projetos/${req.project_id}` : "/board"}
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+                    >
+                      Ver tarefa →
+                    </Link>
+                  )}
                 </div>
-                <span
-                  className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${s.classe}`}
-                >
-                  {s.texto}
-                </span>
-              </div>
 
-              {req.status === "accepted" && req.task_id && (
-                <Link
-                  href={req.project_id ? `/projetos/${req.project_id}` : "/board"}
-                  className="mt-3 inline-block text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline"
-                >
-                  Ver tarefa →
-                </Link>
-              )}
+                <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {req.urgency && (
+                      <Badge tone={URGENCY_TONE[req.urgency] ?? "neutral"}>
+                        {req.urgency}
+                      </Badge>
+                    )}
+                    <Badge tone={s.tone}>{s.texto}</Badge>
+                  </div>
+                  <span className="text-xs text-ink-muted">
+                    {formatarDataHora(req.created_at)}
+                  </span>
+                </div>
+              </div>
             </div>
           );
         })}
 
         {lista.length === 0 && (
-          <p className="text-sm text-slate-400">
-            {aba === "recebidas"
-              ? "Nenhuma solicitação recebida ainda."
-              : "Você ainda não pediu nenhuma demanda."}
-          </p>
+          <div className="rounded-2xl border border-line bg-white">
+            <EmptyState
+              className="py-14"
+              icon={<InboxIcon className="h-7 w-7" />}
+              title={
+                aba === "recebidas"
+                  ? "Nenhuma solicitação recebida"
+                  : "Nenhuma solicitação enviada"
+              }
+              description={
+                aba === "recebidas"
+                  ? "Quando alguém enviar uma demanda para você, ela aparecerá aqui."
+                  : "Suas solicitações enviadas vão aparecer aqui."
+              }
+            />
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-white p-5">
+      <h2 className="text-sm font-semibold text-ink">{title}</h2>
+      {description && <p className="mt-0.5 text-xs text-ink-muted">{description}</p>}
+      <div className="mt-4 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function Campo({
+  label,
+  required,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string | null;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium text-ink-muted">
+        {label} {required && <span className="text-danger">*</span>}
+      </label>
+      {children}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }
