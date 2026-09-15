@@ -69,6 +69,7 @@ export default async function ProjetoPage({
           currentUserLabel={userLabel}
           projectId={id}
           profiles={profiles ?? []}
+          showHeader={false}
         />
       </section>
 

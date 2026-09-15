@@ -4,18 +4,49 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
+import { Avatar } from "./ui/Avatar";
+import {
+  BellIcon,
+  BookOpenIcon,
+  CalendarIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ClipboardListIcon,
+  FileStackIcon,
+  FolderIcon,
+  MessageCircleIcon,
+  SendIcon,
+} from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/client";
 import type { Client, Project } from "@/lib/types";
 
-const ITEMS = [
-  { href: "/board", label: "Tarefas" },
-  { href: "/calendario", label: "Calendário" },
-  { href: "/wiki", label: "Wiki" },
-  { href: "/projetos", label: "Projetos" },
-  { href: "/arquivos", label: "Arquivos" },
-  { href: "/solicitacoes", label: "Solicitações" },
-  { href: "/chat", label: "Mensagens" },
+const SECOES: {
+  titulo: string | null;
+  itens: { href: string; label: string; icon: (props: { className?: string }) => JSX.Element }[];
+}[] = [
+  {
+    titulo: null,
+    itens: [
+      { href: "/board", label: "Tarefas", icon: ClipboardListIcon },
+      { href: "/calendario", label: "Calendário", icon: CalendarIcon },
+      { href: "/wiki", label: "Wiki", icon: BookOpenIcon },
+    ],
+  },
+  {
+    titulo: "Projetos",
+    itens: [
+      { href: "/projetos", label: "Projetos", icon: FolderIcon },
+      { href: "/arquivos", label: "Arquivos", icon: FileStackIcon },
+    ],
+  },
+  {
+    titulo: "Comunicação",
+    itens: [
+      { href: "/solicitacoes", label: "Solicitações", icon: SendIcon },
+      { href: "/chat", label: "Mensagens", icon: MessageCircleIcon },
+    ],
+  },
 ];
 
 export default function Sidebar({
@@ -26,6 +57,7 @@ export default function Sidebar({
   avatarUrl,
   initialProjects,
   initialClients,
+  onNavigate,
 }: {
   currentUserId: string;
   // Quem tem "ve_tudo" (hoje só a Emily) não filtra nada no menu — vê o
@@ -36,6 +68,9 @@ export default function Sidebar({
   avatarUrl: string | null;
   initialProjects: Project[];
   initialClients: Client[];
+  // Chamado ao clicar em qualquer link — usado pra fechar o menu/drawer no
+  // celular depois de navegar. No desktop (sidebar fixa) não é passado.
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const supabase = createClient();
@@ -129,97 +164,122 @@ export default function Sidebar({
   }, []);
 
   return (
-    <aside className="flex w-56 flex-shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="px-4 py-5">
-        <span className="text-sm font-semibold text-slate-900">
-          Sistema de Organização
+    <aside className="flex w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
+          N
+        </span>
+        <span className="text-sm font-semibold tracking-tight text-white">
+          Now Organiza
         </span>
       </div>
 
-      <nav className="flex-1 space-y-1 px-2">
-        {ITEMS.map((item) => {
-          const active = pathname.startsWith(item.href);
-          const badgeCount = item.href === "/chat" ? totalUnread : 0;
-          const showBadge = badgeCount > 0;
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 scrollbar-thin">
+        {SECOES.map((secao, i) => (
+          <div key={secao.titulo ?? `secao-${i}`}>
+            {secao.titulo && (
+              <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                {secao.titulo}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {secao.itens.map((item) => {
+                const active = pathname.startsWith(item.href);
+                const badgeCount = item.href === "/chat" ? totalUnread : 0;
+                const showBadge = badgeCount > 0;
+                const Icon = item.icon;
 
-          if (item.href === "/projetos") {
-            return (
-              <ExpandableNavItem
-                key={item.href}
-                href="/projetos"
-                label="Projetos"
-                active={active}
-                items={projects}
-                itemHref={(id) => `/projetos/${id}`}
-                emptyLabel="Nenhum projeto ainda."
-                defaultOpen={pathname.startsWith("/projetos")}
-              />
-            );
-          }
+                if (item.href === "/projetos") {
+                  return (
+                    <ExpandableNavItem
+                      key={item.href}
+                      href="/projetos"
+                      label="Projetos"
+                      icon={Icon}
+                      active={active}
+                      items={projects}
+                      itemHref={(id) => `/projetos/${id}`}
+                      emptyLabel="Nenhum projeto ainda."
+                      defaultOpen={pathname.startsWith("/projetos")}
+                      onNavigate={onNavigate}
+                    />
+                  );
+                }
 
-          if (item.href === "/arquivos") {
-            return (
-              <ExpandableNavItem
-                key={item.href}
-                href="/arquivos"
-                label="Arquivos"
-                active={active}
-                items={clients}
-                itemHref={(id) => `/arquivos/cliente/${id}`}
-                emptyLabel="Nenhum cliente ainda."
-                defaultOpen={pathname.startsWith("/arquivos")}
-                extraLinks={[
-                  { href: "/arquivos/meus", label: "🔒 Meus arquivos" },
-                  { href: "/arquivos/compartilhados", label: "👥 Compartilhados" },
-                ]}
-              />
-            );
-          }
+                if (item.href === "/arquivos") {
+                  return (
+                    <ExpandableNavItem
+                      key={item.href}
+                      href="/arquivos"
+                      label="Arquivos"
+                      icon={Icon}
+                      active={active}
+                      items={clients}
+                      itemHref={(id) => `/arquivos/cliente/${id}`}
+                      emptyLabel="Nenhum cliente ainda."
+                      defaultOpen={pathname.startsWith("/arquivos")}
+                      extraLinks={[
+                        { href: "/arquivos/meus", label: "🔒 Meus arquivos" },
+                        { href: "/arquivos/compartilhados", label: "👥 Compartilhados" },
+                      ]}
+                      onNavigate={onNavigate}
+                    />
+                  );
+                }
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium ${
-                active
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <span>{item.label}</span>
-              {showBadge && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white">
-                  {badgeCount > 99 ? "99+" : badgeCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-brand text-white"
+                        : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
+                    <span
+                      className={`h-4 w-1 flex-shrink-0 rounded-full ${
+                        active ? "bg-white" : "bg-transparent"
+                      }`}
+                    />
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {showBadge && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[11px] font-semibold text-white">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {notificationPermission === "default" && (
         <div className="px-3 pb-2">
           <button
             onClick={requestNotificationPermission}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-xs text-slate-500 hover:bg-slate-50"
+            className="flex w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
           >
-            🔔 Ativar notificações de mensagem
+            <BellIcon className="h-3.5 w-3.5 flex-shrink-0" />
+            Ativar notificações de mensagem
           </button>
         </div>
       )}
 
-      <div className="flex items-center gap-2 border-t border-slate-200 p-3">
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-xs font-semibold text-white">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            (userName || userLabel || "?").slice(0, 1).toUpperCase()
+      <div className="flex items-center gap-2.5 border-t border-white/10 p-3">
+        <Avatar name={userName || userLabel} src={avatarUrl} size="md" />
+        <div className="flex-1 overflow-hidden">
+          <p className="truncate text-sm font-medium text-white">
+            {userName || userLabel}
+          </p>
+          {userName && userLabel && (
+            <p className="truncate text-xs text-slate-500">{userLabel}</p>
           )}
-        </span>
-        <span className="flex-1 truncate text-xs text-slate-600">
-          {userName || userLabel}
-        </span>
+        </div>
         <LogoutButton />
       </div>
     </aside>
@@ -231,15 +291,18 @@ export default function Sidebar({
 function ExpandableNavItem({
   href,
   label,
+  icon: Icon,
   active,
   items,
   itemHref,
   emptyLabel,
   defaultOpen,
   extraLinks,
+  onNavigate,
 }: {
   href: string;
   label: string;
+  icon: (props: { className?: string }) => JSX.Element;
   active: boolean;
   items: { id: string; name: string }[];
   itemHref: (id: string) => string;
@@ -248,6 +311,7 @@ function ExpandableNavItem({
   // Links fixos (não vêm de uma lista do banco) mostrados antes da lista,
   // ex: "Meus arquivos" / "Compartilhados" dentro de "Arquivos".
   extraLinks?: { href: string; label: string }[];
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const [aberto, setAberto] = useState(defaultOpen);
@@ -255,37 +319,52 @@ function ExpandableNavItem({
   return (
     <div>
       <div
-        className={`flex items-center justify-between rounded-lg pr-1 text-sm font-medium ${
-          active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+        className={`group flex items-center gap-2.5 rounded-lg pr-1 text-sm font-medium transition-colors ${
+          active ? "bg-brand text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
         }`}
       >
-        <Link href={href} className="flex-1 px-3 py-2">
-          {label}
+        <Link
+          href={href}
+          onClick={onNavigate}
+          className="flex flex-1 items-center gap-2.5 py-2 pl-3"
+        >
+          <span
+            className={`h-4 w-1 flex-shrink-0 rounded-full ${
+              active ? "bg-white" : "bg-transparent"
+            }`}
+          />
+          <Icon className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">{label}</span>
         </Link>
         <button
           type="button"
           onClick={() => setAberto((v) => !v)}
           title={aberto ? "Recolher" : "Expandir"}
-          className={`rounded-md px-2 py-2 text-xs ${
-            active ? "text-white/80 hover:text-white" : "text-slate-400 hover:text-slate-700"
+          className={`rounded-md p-1.5 ${
+            active ? "text-white/80 hover:text-white" : "text-slate-500 hover:text-slate-200"
           }`}
         >
-          {aberto ? "▾" : "▸"}
+          {aberto ? (
+            <ChevronDownIcon className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRightIcon className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
 
       {aberto && (
-        <div className="ml-3 mt-1 space-y-0.5 border-l border-slate-200 pl-2">
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
           {extraLinks?.map((link) => {
             const linkActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`block truncate rounded-md px-2 py-1 text-xs ${
+                onClick={onNavigate}
+                className={`block truncate rounded-md px-2 py-1.5 text-xs ${
                   linkActive
-                    ? "bg-slate-100 font-medium text-slate-900"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    ? "bg-white/10 font-medium text-white"
+                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                 }`}
               >
                 {link.label}
@@ -299,10 +378,11 @@ function ExpandableNavItem({
               <Link
                 key={item.id}
                 href={subHref}
-                className={`block truncate rounded-md px-2 py-1 text-xs ${
+                onClick={onNavigate}
+                className={`block truncate rounded-md px-2 py-1.5 text-xs ${
                   subActive
-                    ? "bg-slate-100 font-medium text-slate-900"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    ? "bg-white/10 font-medium text-white"
+                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                 }`}
               >
                 {item.name}
@@ -310,7 +390,7 @@ function ExpandableNavItem({
             );
           })}
           {items.length === 0 && (
-            <p className="px-2 py-1 text-xs text-slate-400">{emptyLabel}</p>
+            <p className="px-2 py-1.5 text-xs text-slate-500">{emptyLabel}</p>
           )}
         </div>
       )}

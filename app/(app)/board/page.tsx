@@ -43,10 +43,6 @@ export default async function BoardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-semibold">
-        {verTudo ? "Tarefas de todo mundo" : "Minhas tarefas"}
-      </h1>
-
       <TaskBoard
         initialTasks={tasks ?? []}
         currentUserId={user?.id ?? null}
@@ -55,6 +51,8 @@ export default async function BoardPage() {
         soMinhas={!verTudo}
         projects={projects ?? []}
         profiles={profiles ?? []}
+        title={verTudo ? "Tarefas de todo mundo" : "Minhas tarefas"}
+        subtitle="Organize seu dia e acompanhe o que precisa ser feito."
       />
     </main>
   );

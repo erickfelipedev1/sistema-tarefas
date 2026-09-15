@@ -8,13 +8,38 @@ import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
 import { corTarefa } from "@/lib/task-colors";
 import { buildTaskSummaryBlocks, syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
+import { Avatar } from "./ui/Avatar";
+import { Badge } from "./ui/Badge";
+import { Button } from "./ui/Button";
+import { EmptyState } from "./ui/EmptyState";
+import { PageHeader } from "./ui/PageHeader";
+import { SearchInput } from "./ui/SearchInput";
+import { StatTile } from "./ui/StatTile";
+import {
+  AlertTriangleIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClipboardListIcon,
+  FileStackIcon,
+  PlusIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from "./ui/icons";
 
-const COLUNAS: { key: TaskStatus; label: string }[] = [
-  { key: "todo", label: "A Fazer" },
-  { key: "doing", label: "Em Andamento" },
-  { key: "done", label: "Concluído" },
-  { key: "cancelled", label: "Cancelada" },
+const COLUNAS: { key: TaskStatus; label: string; dot: string }[] = [
+  { key: "todo", label: "A Fazer", dot: "bg-brand" },
+  { key: "doing", label: "Em Andamento", dot: "bg-warning" },
+  { key: "done", label: "Concluído", dot: "bg-success" },
+  { key: "cancelled", label: "Cancelada", dot: "bg-slate-400" },
 ];
+
+// Data de hoje no formato "AAAA-MM-DD" (igual ao due_date), respeitando o
+// fuso horário local em vez de UTC.
+function hojeISO() {
+  return new Date().toLocaleDateString("en-CA");
+}
 
 export default function TaskBoard({
   initialTasks,
@@ -25,6 +50,9 @@ export default function TaskBoard({
   soMinhas = false,
   projects = [],
   profiles = [],
+  title,
+  subtitle,
+  showHeader = true,
 }: {
   initialTasks: Task[];
   // Só é usado quando soMinhas=true, pra filtrar o que chega em tempo real.
@@ -41,6 +69,13 @@ export default function TaskBoard({
   soMinhas?: boolean;
   projects?: Project[];
   profiles?: Profile[];
+  // Cabeçalho completo (título, resumo em números, busca e filtro) — usado
+  // na tela "Minhas tarefas". Dentro de um projeto específico o quadro fica
+  // mais enxuto (showHeader=false), já que a página ali tem seu próprio
+  // título.
+  title?: string;
+  subtitle?: string;
+  showHeader?: boolean;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -49,15 +84,22 @@ export default function TaskBoard({
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [tarefaEditando, setTarefaEditando] = useState<Task | null>(null);
+  const [busca, setBusca] = useState("");
+  const [filtroResponsavel, setFiltroResponsavel] = useState("");
 
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
     [projects]
   );
-  const profilesById = useMemo(
-    () => new Map(profiles.map((p) => [p.id, p.name || p.username || "?"])),
+  const profileById = useMemo(
+    () => new Map(profiles.map((p) => [p.id, p])),
     [profiles]
   );
+
+  function nomeDe(id: string) {
+    const p = profileById.get(id);
+    return p?.name || p?.username || "?";
+  }
 
   // Se o quadro é individual (soMinhas), só deixa entrar uma tarefa que eu
   // criei ou que foi atribuída a mim.
@@ -287,129 +329,296 @@ export default function TaskBoard({
     router.push(`/wiki/${data.id}`);
   }
 
+  const hoje = hojeISO();
+
+  // Resumo em números — sempre reflete todas as tarefas do quadro, mesmo
+  // que a busca/filtro abaixo esteja escondendo algumas nas colunas.
+  const resumo = useMemo(() => {
+    const abertas = tasks.filter(
+      (t) => t.status === "todo" || t.status === "doing"
+    ).length;
+    const paraHoje = tasks.filter(
+      (t) =>
+        t.due_date === hoje && t.status !== "done" && t.status !== "cancelled"
+    ).length;
+    const atrasadas = tasks.filter(
+      (t) =>
+        !!t.due_date &&
+        t.due_date < hoje &&
+        t.status !== "done" &&
+        t.status !== "cancelled"
+    ).length;
+    const concluidas = tasks.filter((t) => t.status === "done").length;
+    return { abertas, paraHoje, atrasadas, concluidas };
+  }, [tasks, hoje]);
+
+  // Quem já foi responsável por alguma tarefa aqui — usado pra montar o
+  // filtro, em vez de listar todo mundo do sistema.
+  const responsaveisNoQuadro = useMemo(() => {
+    const ids = new Set(tasks.flatMap((t) => t.assigned_to));
+    return Array.from(ids)
+      .map((id) => profileById.get(id))
+      .filter((p): p is Profile => !!p)
+      .sort((a, b) => (a.name || a.username || "").localeCompare(b.name || b.username || ""));
+  }, [tasks, profileById]);
+
+  const tasksVisiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return tasks.filter((t) => {
+      if (termo && !t.title.toLowerCase().includes(termo)) return false;
+      if (filtroResponsavel && !t.assigned_to.includes(filtroResponsavel)) {
+        return false;
+      }
+      return true;
+    });
+  }, [tasks, busca, filtroResponsavel]);
+
   return (
     <div>
-      <button
-        onClick={abrirCriar}
-        className="mb-6 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-      >
-        + Nova tarefa
-      </button>
+      {showHeader ? (
+        <>
+          <PageHeader
+            title={title ?? "Minhas tarefas"}
+            subtitle={
+              subtitle ?? "Organize seu dia e acompanhe o que precisa ser feito."
+            }
+            actions={
+              <>
+                <SearchInput
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Buscar tarefas..."
+                  className="w-full sm:w-56"
+                />
+                <select
+                  value={filtroResponsavel}
+                  onChange={(e) => setFiltroResponsavel(e.target.value)}
+                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                >
+                  <option value="">Todos os responsáveis</option>
+                  {responsaveisNoQuadro.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || p.username}
+                    </option>
+                  ))}
+                </select>
+                <Button onClick={abrirCriar}>
+                  <PlusIcon className="h-4 w-4" />
+                  Nova tarefa
+                </Button>
+              </>
+            }
+          />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {COLUNAS.map((coluna) => (
-          <div
-            key={coluna.key}
-            onDragOver={(e) => handleColumnDragOver(e, coluna.key)}
-            onDragLeave={() => handleColumnDragLeave(coluna.key)}
-            onDrop={(e) => handleDrop(e, coluna.key)}
-            className={`rounded-2xl bg-white p-4 shadow-sm transition-colors ${
-              dragOverCol === coluna.key
-                ? "ring-2 ring-slate-400 ring-offset-2"
-                : ""
-            }`}
-          >
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {coluna.label} (
-              {tasks.filter((t) => t.status === coluna.key).length})
-            </h2>
-            <div className="space-y-3">
-              {tasks
-                .filter((t) => t.status === coluna.key)
-                .map((task) => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task)}
-                    onDragEnd={handleDragEnd}
-                    className={`cursor-grab rounded-xl border border-l-4 border-slate-200 p-3 active:cursor-grabbing ${
-                      corTarefa(task.color).borda
-                    } ${draggedId === task.id ? "opacity-40" : ""}`}
-                  >
-                    <p className="text-sm font-medium text-slate-800">
-                      {task.title}
-                    </p>
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile
+              icon={<ClipboardListIcon className="h-5 w-5" />}
+              value={resumo.abertas}
+              label="Tarefas abertas"
+              tone="brand"
+            />
+            <StatTile
+              icon={<CalendarIcon className="h-5 w-5" />}
+              value={resumo.paraHoje}
+              label="Para hoje"
+              tone="warning"
+            />
+            <StatTile
+              icon={<AlertTriangleIcon className="h-5 w-5" />}
+              value={resumo.atrasadas}
+              label="Atrasadas"
+              tone="danger"
+            />
+            <StatTile
+              icon={<CheckCircleIcon className="h-5 w-5" />}
+              value={resumo.concluidas}
+              label="Concluídas"
+              tone="success"
+            />
+          </div>
+        </>
+      ) : (
+        <Button size="sm" onClick={abrirCriar} className="mb-4">
+          <PlusIcon className="h-3.5 w-3.5" />
+          Nova tarefa
+        </Button>
+      )}
 
-                    <div className="mt-1 flex flex-wrap items-center gap-1">
-                      {allProjects && task.project_id && (
-                        <Link
-                          href={`/projetos/${task.project_id}`}
-                          className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
-                        >
-                          {projectsById.get(task.project_id) ?? "Projeto"}
-                        </Link>
-                      )}
-                      {task.assigned_to.map((id) => (
-                        <span
-                          key={id}
-                          className="inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-500"
-                        >
-                          👤 {profilesById.get(id) ?? "?"}
-                        </span>
-                      ))}
-                    </div>
+      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin xl:grid xl:grid-cols-4 xl:overflow-visible">
+        {COLUNAS.map((coluna) => {
+          const tarefasDaColuna = tasksVisiveis.filter(
+            (t) => t.status === coluna.key
+          );
+          return (
+            <div
+              key={coluna.key}
+              onDragOver={(e) => handleColumnDragOver(e, coluna.key)}
+              onDragLeave={() => handleColumnDragLeave(coluna.key)}
+              onDrop={(e) => handleDrop(e, coluna.key)}
+              className={`min-w-[280px] flex-shrink-0 rounded-2xl p-2 transition-colors xl:min-w-0 ${
+                dragOverCol === coluna.key ? "bg-brand/5 ring-2 ring-brand/30" : ""
+              }`}
+            >
+              <div className="mb-3 flex items-center gap-2 px-1">
+                <span className={`h-2 w-2 rounded-full ${coluna.dot}`} />
+                <h2 className="text-sm font-semibold text-ink">{coluna.label}</h2>
+                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-ink-muted">
+                  {tarefasDaColuna.length}
+                </span>
+              </div>
 
-                    {(task.due_date || task.created_by_label) && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        {task.due_date && (
-                          <>
-                            📅 {task.due_date.split("-").reverse().join("/")}
-                            {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
-                            {task.created_by_label ? " · " : ""}
-                          </>
-                        )}
-                        {task.created_by_label && `por ${task.created_by_label}`}
-                      </p>
-                    )}
-
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        onClick={() => abrirEditar(task)}
-                        className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
-                      >
-                        ✏️ Abrir
-                      </button>
-                      <button
-                        onClick={() => abrirWiki(task)}
-                        className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
-                      >
-                        {task.page_id ? "📄 Wiki" : "📄 Criar página"}
-                      </button>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <div className="flex gap-1">
+              <div className="space-y-2.5">
+                {tarefasDaColuna.map((task) => {
+                  const atrasada =
+                    !!task.due_date &&
+                    task.due_date < hoje &&
+                    task.status !== "done" &&
+                    task.status !== "cancelled";
+                  return (
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, task)}
+                      onDragEnd={handleDragEnd}
+                      onClick={() => abrirEditar(task)}
+                      className={`group cursor-pointer rounded-xl border border-line border-l-[3px] bg-white p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                        corTarefa(task.color).borda
+                      } ${draggedId === task.id ? "opacity-40" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium leading-snug text-ink">
+                          {task.title}
+                        </p>
                         <button
-                          onClick={() => moveTask(task, -1)}
-                          disabled={coluna.key === COLUNAS[0].key}
-                          className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteTask(task);
+                          }}
+                          title="Excluir tarefa"
+                          className="flex-shrink-0 text-slate-300 opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
                         >
-                          ←
-                        </button>
-                        <button
-                          onClick={() => moveTask(task, 1)}
-                          disabled={coluna.key === COLUNAS[COLUNAS.length - 1].key}
-                          className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30"
-                        >
-                          →
+                          <Trash2Icon className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <button
-                        onClick={() => deleteTask(task)}
-                        title="Excluir tarefa"
-                        className="text-sm text-slate-400 hover:text-red-600"
-                      >
-                        🗑️
-                      </button>
+
+                      {(allProjects && task.project_id) ||
+                      task.assigned_to.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {allProjects && task.project_id && (
+                            <Link
+                              href={`/projetos/${task.project_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Badge tone="neutral">
+                                {projectsById.get(task.project_id) ?? "Projeto"}
+                              </Badge>
+                            </Link>
+                          )}
+                          {task.assigned_to.length > 0 && (
+                            <div className="flex -space-x-1.5">
+                              {task.assigned_to.slice(0, 3).map((id) => (
+                                <Avatar
+                                  key={id}
+                                  name={nomeDe(id)}
+                                  src={profileById.get(id)?.avatar_url}
+                                  size="xs"
+                                  className="ring-2 ring-white"
+                                />
+                              ))}
+                              {task.assigned_to.length > 3 && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-semibold text-ink-muted ring-2 ring-white">
+                                  +{task.assigned_to.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+
+                      {(task.due_date || task.created_by_label) && (
+                        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                          {task.due_date && (
+                            <span
+                              className={`flex items-center gap-1 ${
+                                atrasada ? "font-medium text-danger" : ""
+                              }`}
+                            >
+                              <CalendarIcon className="h-3 w-3" />
+                              {task.due_date.split("-").reverse().join("/")}
+                              {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
+                            </span>
+                          )}
+                          {task.created_by_label && (
+                            <span className="truncate">
+                              por {task.created_by_label}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveTask(task, -1);
+                            }}
+                            disabled={coluna.key === COLUNAS[0].key}
+                            title="Mover para a coluna anterior"
+                            className="rounded-md p-1 text-ink-muted hover:bg-slate-100 hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+                          >
+                            <ChevronLeftIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveTask(task, 1);
+                            }}
+                            disabled={coluna.key === COLUNAS[COLUNAS.length - 1].key}
+                            title="Mover para a próxima coluna"
+                            className="rounded-md p-1 text-ink-muted hover:bg-slate-100 hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+                          >
+                            <ChevronRightIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirWiki(task);
+                          }}
+                          title={task.page_id ? "Abrir na Wiki" : "Criar página na Wiki"}
+                          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
+                        >
+                          <FileStackIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              {tasks.filter((t) => t.status === coluna.key).length === 0 && (
-                <p className="text-xs text-slate-400">Nenhuma tarefa aqui.</p>
-              )}
+                  );
+                })}
+
+                {tarefasDaColuna.length === 0 && (
+                  <EmptyState
+                    icon={<SparklesIcon className="h-6 w-6" />}
+                    title="Está tudo limpo por aqui ✨"
+                    description={
+                      busca || filtroResponsavel
+                        ? "Nenhuma tarefa bate com o filtro atual."
+                        : "Você não tem tarefas nesta etapa."
+                    }
+                    action={
+                      coluna.key === "todo" && !busca && !filtroResponsavel ? (
+                        <Button size="sm" variant="secondary" onClick={abrirCriar}>
+                          <PlusIcon className="h-3.5 w-3.5" />
+                          Criar tarefa
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {modalAberto && (

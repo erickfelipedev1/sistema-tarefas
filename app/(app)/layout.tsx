@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
 import NotificationsProvider from "@/lib/notifications";
 import { podeVerTudo } from "@/lib/permissions";
 
@@ -69,18 +69,17 @@ export default async function AppLayout({
 
   return (
     <NotificationsProvider currentUserId={user.id}>
-      <div className="flex min-h-screen">
-        <Sidebar
-          currentUserId={user.id}
-          verTudo={verTudo}
-          userLabel={userLabel}
-          userName={profile?.name ?? null}
-          avatarUrl={profile?.avatar_url ?? null}
-          initialProjects={projects ?? []}
-          initialClients={clients ?? []}
-        />
-        <div className="min-h-screen flex-1">{children}</div>
-      </div>
+      <AppShell
+        currentUserId={user.id}
+        verTudo={verTudo}
+        userLabel={userLabel}
+        userName={profile?.name ?? null}
+        avatarUrl={profile?.avatar_url ?? null}
+        initialProjects={projects ?? []}
+        initialClients={clients ?? []}
+      >
+        {children}
+      </AppShell>
     </NotificationsProvider>
   );
 }
