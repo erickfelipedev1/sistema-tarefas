@@ -52,7 +52,7 @@ export default function AppShell({
         <span className="text-sm font-semibold text-ink">Now Organiza</span>
       </div>
 
-      <div className="hidden lg:block">
+      <div className="hidden lg:flex">
         <Sidebar {...sidebarProps} />
       </div>
 

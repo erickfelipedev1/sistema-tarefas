@@ -164,7 +164,7 @@ export default function Sidebar({
   }, []);
 
   return (
-    <aside className="flex w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
+    <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
       <div className="flex items-center gap-2.5 px-5 py-5">
         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
           N
