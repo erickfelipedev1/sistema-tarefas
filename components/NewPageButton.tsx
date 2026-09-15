@@ -3,11 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "./ui/Button";
+import { PlusIcon } from "./ui/icons";
 
 export default function NewPageButton({
   projectId = null,
+  label = "Nova página",
 }: {
   projectId?: string | null;
+  // Permite reaproveitar o mesmo botão/lógica com um texto diferente — por
+  // exemplo "Criar primeira página" no estado vazio da Wiki.
+  label?: string;
 } = {}) {
   const router = useRouter();
   const supabase = createClient();
@@ -43,12 +49,9 @@ export default function NewPageButton({
   }
 
   return (
-    <button
-      onClick={handleCreate}
-      disabled={creating}
-      className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-    >
-      {creating ? "Criando..." : "+ Nova página"}
-    </button>
+    <Button onClick={handleCreate} disabled={creating}>
+      <PlusIcon className="h-4 w-4" />
+      {creating ? "Criando..." : label}
+    </Button>
   );
 }

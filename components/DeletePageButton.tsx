@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Trash2Icon } from "./ui/icons";
 
 export default function DeletePageButton({ pageId }: { pageId: string }) {
   const router = useRouter();
@@ -26,9 +27,14 @@ export default function DeletePageButton({ pageId }: { pageId: string }) {
       onClick={handleDelete}
       disabled={deleting}
       title="Excluir página"
-      className="text-sm text-slate-400 hover:text-red-600 disabled:opacity-50"
+      aria-label="Excluir página"
+      className="rounded-md p-1 text-slate-300 transition-colors hover:bg-danger-light hover:text-danger disabled:opacity-50"
     >
-      {deleting ? "…" : "🗑️"}
+      {deleting ? (
+        <span className="text-xs">…</span>
+      ) : (
+        <Trash2Icon className="h-3.5 w-3.5" />
+      )}
     </button>
   );
 }
