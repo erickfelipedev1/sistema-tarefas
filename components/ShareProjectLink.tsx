@@ -55,23 +55,23 @@ export default function ShareProjectLink({
   }
 
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
-      <span className="text-sm text-slate-500">
+    <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white px-4 py-3">
+      <span className="text-sm text-ink-muted">
         📊 Link de progresso pro cliente:
       </span>
-      <code className="min-w-[200px] flex-1 truncate rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-600">
+      <code className="min-w-[200px] flex-1 truncate rounded-md bg-canvas px-2 py-1 text-xs text-ink-muted">
         {link}
       </code>
       <button
         onClick={copiar}
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-slate-50"
       >
         {copiado ? "Copiado!" : "Copiar link"}
       </button>
       <button
         onClick={gerarNovoLink}
         disabled={gerando}
-        className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50"
+        className="text-xs text-ink-muted hover:text-danger disabled:opacity-50"
       >
         {gerando ? "Gerando..." : "Gerar novo link"}
       </button>

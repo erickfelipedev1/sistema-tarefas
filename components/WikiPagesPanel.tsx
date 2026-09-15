@@ -131,7 +131,10 @@ function PaginaCard({ pagina }: { pagina: PaginaResumo }) {
   );
 }
 
-function PaginaRow({ pagina }: { pagina: PaginaResumo }) {
+// Exportado pra ser reaproveitado também na aba "Wiki" de dentro de um
+// projeto (app/(app)/projetos/[id]/page.tsx), em vez de duplicar a mesma
+// linha de página.
+export function PaginaRow({ pagina }: { pagina: PaginaResumo }) {
   return (
     <div className="group relative flex items-center hover:bg-slate-50">
       <Link

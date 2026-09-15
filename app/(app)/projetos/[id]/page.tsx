@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TaskBoard from "@/components/TaskBoard";
 import NewPageButton from "@/components/NewPageButton";
-import DeletePageButton from "@/components/DeletePageButton";
 import ShareProjectLink from "@/components/ShareProjectLink";
+import ProjectTabs from "@/components/ProjectTabs";
+import { PaginaRow } from "@/components/WikiPagesPanel";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
 
 export default async function ProjetoPage({
   params,
@@ -49,65 +52,61 @@ export default async function ProjetoPage({
     .order("updated_at", { ascending: false });
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
       <Link
         href="/projetos"
-        className="text-sm text-slate-500 hover:text-slate-700"
+        className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
-        ← Voltar para Projetos
+        <ChevronLeftIcon className="h-3.5 w-3.5" />
+        Projetos
       </Link>
-      <h1 className="mb-4 mt-2 text-2xl font-semibold">{project.name}</h1>
+
+      <div className="mb-5 mt-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+          {project.name}
+        </h1>
+        <p className="mt-0.5 text-sm text-ink-muted">
+          Quadro de tarefas e Wiki próprios
+          {project.created_by_label &&
+            ` · Responsável: ${project.created_by_label}`}
+        </p>
+      </div>
 
       <ShareProjectLink projectId={id} shareToken={project.share_token} />
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-700">
-          Quadro de tarefas
-        </h2>
-        <TaskBoard
-          initialTasks={tasks ?? []}
-          currentUserLabel={userLabel}
-          projectId={id}
-          profiles={profiles ?? []}
-          showHeader={false}
-        />
-      </section>
-
-      <section className="mt-10">
-        <header className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-700">Wiki</h2>
-          <NewPageButton projectId={id} />
-        </header>
-
-        <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
-          {(pages ?? []).map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
-            >
-              <Link
-                href={`/wiki/${p.id}`}
-                className="flex-1 text-sm font-medium text-slate-800"
-              >
-                {p.title || "Sem título"}
-              </Link>
-              <div className="flex items-center gap-3">
-                {p.created_by_label && (
-                  <span className="text-xs text-slate-400">
-                    por {p.created_by_label}
-                  </span>
-                )}
-                <DeletePageButton pageId={p.id} />
+      <ProjectTabs
+        tarefas={
+          <TaskBoard
+            initialTasks={tasks ?? []}
+            currentUserLabel={userLabel}
+            projectId={id}
+            profiles={profiles ?? []}
+            showHeader={false}
+          />
+        }
+        wiki={
+          <div>
+            <div className="mb-3 flex items-center justify-end">
+              <NewPageButton projectId={id} />
+            </div>
+            {(pages ?? []).length === 0 ? (
+              <div className="rounded-2xl border border-line bg-white">
+                <EmptyState
+                  icon={<BookOpenIcon className="h-6 w-6" />}
+                  title="Nenhuma página ainda neste projeto"
+                  description="Crie a primeira página da Wiki deste projeto."
+                />
               </div>
-            </li>
-          ))}
-          {(pages ?? []).length === 0 && (
-            <li className="px-4 py-6 text-center text-sm text-slate-400">
-              Nenhuma página ainda neste projeto.
-            </li>
-          )}
-        </ul>
-      </section>
+            ) : (
+              <div className="divide-y divide-line rounded-2xl border border-line bg-white">
+                {(pages ?? []).map((p) => (
+                  <PaginaRow key={p.id} pagina={p} />
+                ))}
+              </div>
+            )}
+          </div>
+        }
+      />
     </main>
   );
 }

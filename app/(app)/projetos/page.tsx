@@ -54,16 +54,15 @@ export default async function ProjetosPage() {
     .select("id, username, name, avatar_url");
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-semibold">
-        {verTudo ? "Todos os projetos" : "Meus projetos"}
-      </h1>
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
       <ProjectsList
         initialProjects={projects ?? []}
         currentUserId={user?.id ?? null}
         currentUserLabel={currentUserLabel}
         verTudo={verTudo}
         profiles={profiles ?? []}
+        title={verTudo ? "Todos os projetos" : "Meus projetos"}
+        subtitle="Organize seus projetos, equipes e entregas em um só lugar."
       />
     </main>
   );
