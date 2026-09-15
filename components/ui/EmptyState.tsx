@@ -15,11 +15,13 @@ export function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line px-4 py-8 text-center ${className}`}
+      className={`flex flex-col items-center justify-center gap-1 px-3 py-5 text-center ${className}`}
     >
-      {icon && <div className="mb-1 text-ink-muted">{icon}</div>}
-      <p className="text-sm font-medium text-ink">{title}</p>
-      {description && <p className="text-xs text-ink-muted">{description}</p>}
+      {icon && <div className="mb-0.5 text-slate-300">{icon}</div>}
+      <p className="text-xs font-medium text-ink-muted">{title}</p>
+      {description && (
+        <p className="text-[11px] text-slate-400">{description}</p>
+      )}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );

@@ -410,27 +410,27 @@ export default function TaskBoard({
             }
           />
 
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile
-              icon={<ClipboardListIcon className="h-5 w-5" />}
+              icon={<ClipboardListIcon className="h-4 w-4" />}
               value={resumo.abertas}
               label="Tarefas abertas"
               tone="brand"
             />
             <StatTile
-              icon={<CalendarIcon className="h-5 w-5" />}
+              icon={<CalendarIcon className="h-4 w-4" />}
               value={resumo.paraHoje}
               label="Para hoje"
               tone="warning"
             />
             <StatTile
-              icon={<AlertTriangleIcon className="h-5 w-5" />}
+              icon={<AlertTriangleIcon className="h-4 w-4" />}
               value={resumo.atrasadas}
               label="Atrasadas"
               tone="danger"
             />
             <StatTile
-              icon={<CheckCircleIcon className="h-5 w-5" />}
+              icon={<CheckCircleIcon className="h-4 w-4" />}
               value={resumo.concluidas}
               label="Concluídas"
               tone="success"
@@ -444,7 +444,7 @@ export default function TaskBoard({
         </Button>
       )}
 
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin xl:grid xl:grid-cols-4 xl:overflow-visible">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin xl:grid xl:grid-cols-4 xl:overflow-visible">
         {COLUNAS.map((coluna) => {
           const tarefasDaColuna = tasksVisiveis.filter(
             (t) => t.status === coluna.key
@@ -455,7 +455,7 @@ export default function TaskBoard({
               onDragOver={(e) => handleColumnDragOver(e, coluna.key)}
               onDragLeave={() => handleColumnDragLeave(coluna.key)}
               onDrop={(e) => handleDrop(e, coluna.key)}
-              className={`min-w-[280px] flex-shrink-0 rounded-2xl p-2 transition-colors xl:min-w-0 ${
+              className={`min-w-[270px] flex-shrink-0 rounded-2xl p-1.5 transition-colors xl:min-w-0 ${
                 dragOverCol === coluna.key ? "bg-brand/5 ring-2 ring-brand/30" : ""
               }`}
             >
@@ -598,20 +598,16 @@ export default function TaskBoard({
 
                 {tarefasDaColuna.length === 0 && (
                   <EmptyState
-                    icon={<SparklesIcon className="h-6 w-6" />}
-                    title="Está tudo limpo por aqui ✨"
+                    icon={<SparklesIcon className="h-4 w-4" />}
+                    title={
+                      busca || filtroResponsavel
+                        ? "Nada por aqui"
+                        : "Tudo limpo por aqui"
+                    }
                     description={
                       busca || filtroResponsavel
                         ? "Nenhuma tarefa bate com o filtro atual."
-                        : "Você não tem tarefas nesta etapa."
-                    }
-                    action={
-                      coluna.key === "todo" && !busca && !filtroResponsavel ? (
-                        <Button size="sm" variant="secondary" onClick={abrirCriar}>
-                          <PlusIcon className="h-3.5 w-3.5" />
-                          Criar tarefa
-                        </Button>
-                      ) : undefined
+                        : undefined
                     }
                   />
                 )}
@@ -620,6 +616,20 @@ export default function TaskBoard({
           );
         })}
       </div>
+
+      {showHeader && tasks.length === 0 && (
+        <div className="mt-5 flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-white px-6 py-7 text-center">
+          <SparklesIcon className="h-5 w-5 text-brand" />
+          <p className="text-sm font-medium text-ink">Seu dia está livre ✨</p>
+          <p className="text-xs text-ink-muted">
+            Crie uma tarefa para começar a organizar seu trabalho.
+          </p>
+          <Button size="sm" variant="secondary" onClick={abrirCriar} className="mt-1.5">
+            <PlusIcon className="h-3.5 w-3.5" />
+            Criar tarefa
+          </Button>
+        </div>
+      )}
 
       {modalAberto && (
         <TaskModal

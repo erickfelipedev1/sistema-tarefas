@@ -174,15 +174,15 @@ export default function Sidebar({
         </span>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4 scrollbar-thin">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4 scrollbar-thin">
         {SECOES.map((secao, i) => (
           <div key={secao.titulo ?? `secao-${i}`}>
             {secao.titulo && (
-              <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 {secao.titulo}
               </p>
             )}
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {secao.itens.map((item) => {
                 const active = pathname.startsWith(item.href);
                 const badgeCount = item.href === "/chat" ? totalUnread : 0;
@@ -232,17 +232,12 @@ export default function Sidebar({
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       active
                         ? "bg-brand text-white"
-                        : "text-slate-300 hover:bg-white/5 hover:text-white"
+                        : "text-slate-400 hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    <span
-                      className={`h-4 w-1 flex-shrink-0 rounded-full ${
-                        active ? "bg-white" : "bg-transparent"
-                      }`}
-                    />
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="flex-1 truncate">{item.label}</span>
                     {showBadge && (
@@ -320,19 +315,14 @@ function ExpandableNavItem({
     <div>
       <div
         className={`group flex items-center gap-2.5 rounded-lg pr-1 text-sm font-medium transition-colors ${
-          active ? "bg-brand text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
+          active ? "bg-brand text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
         }`}
       >
         <Link
           href={href}
           onClick={onNavigate}
-          className="flex flex-1 items-center gap-2.5 py-2 pl-3"
+          className="flex flex-1 items-center gap-2.5 py-2.5 pl-3"
         >
-          <span
-            className={`h-4 w-1 flex-shrink-0 rounded-full ${
-              active ? "bg-white" : "bg-transparent"
-            }`}
-          />
           <Icon className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">{label}</span>
         </Link>

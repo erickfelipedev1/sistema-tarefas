@@ -21,15 +21,15 @@ export function StatTile({
   tone?: Tone;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3">
+    <div className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3.5">
       <span
-        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${toneStyles[tone]}`}
+        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${toneStyles[tone]}`}
       >
         {icon}
       </span>
       <div>
-        <p className="text-lg font-semibold leading-none text-ink">{value}</p>
-        <p className="mt-1 text-xs text-ink-muted">{label}</p>
+        <p className="text-2xl font-semibold leading-none text-ink">{value}</p>
+        <p className="mt-1.5 text-xs text-ink-muted">{label}</p>
       </div>
     </div>
   );

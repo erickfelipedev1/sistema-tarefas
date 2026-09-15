@@ -42,7 +42,7 @@ export default async function BoardPage() {
     "";
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
       <TaskBoard
         initialTasks={tasks ?? []}
         currentUserId={user?.id ?? null}
