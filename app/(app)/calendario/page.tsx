@@ -26,21 +26,35 @@ export default async function CalendarioPage() {
         .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
         .order("due_date", { ascending: true });
 
+  // Mesmos dados que o quadro de Tarefas usa pro modal de criar/editar
+  // tarefa — reaproveitado aqui pra abrir o mesmo modal a partir do
+  // calendário, em vez de um fluxo de criação separado.
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("*")
+    .order("name", { ascending: true });
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, username, name, avatar_url")
+    .order("name", { ascending: true });
+
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??
     user?.email ??
     "";
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-semibold">
-        {verTudo ? "Calendário de todo mundo" : "Meu calendário"}
-      </h1>
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
       <CalendarView
         initialTasks={tasks ?? []}
         currentUserId={user?.id ?? null}
         currentUserLabel={userLabel}
         verTudo={verTudo}
+        projects={projects ?? []}
+        profiles={profiles ?? []}
+        title={verTudo ? "Calendário de todo mundo" : "Meu calendário"}
+        subtitle="Veja e organize seus compromissos e tarefas."
       />
     </main>
   );

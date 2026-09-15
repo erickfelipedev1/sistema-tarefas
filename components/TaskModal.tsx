@@ -42,6 +42,7 @@ export default function TaskModal({
   profiles,
   currentUserLabel,
   getNextPosition,
+  initialDueDate,
   onClose,
   onCreated,
   onUpdated,
@@ -53,6 +54,9 @@ export default function TaskModal({
   profiles: Profile[];
   currentUserLabel: string;
   getNextPosition: (status: TaskStatus) => number;
+  // Pré-preenche o prazo ao criar (ex: clicou num dia específico do
+  // calendário). Ignorado quando já existe uma tarefa (edição).
+  initialDueDate?: string | null;
   onClose: () => void;
   onCreated: (task: Task) => void;
   onUpdated: (task: Task) => void;
@@ -65,7 +69,7 @@ export default function TaskModal({
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "todo");
-  const [dueDate, setDueDate] = useState(task?.due_date ?? "");
+  const [dueDate, setDueDate] = useState(task?.due_date ?? initialDueDate ?? "");
   const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) ?? "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule>(
     task?.repeat_rule ?? "none"
