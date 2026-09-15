@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import DriveBrowser from "@/components/DriveBrowser";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 
 export default async function ArquivosClientePage({
   params,
@@ -31,14 +32,17 @@ export default async function ArquivosClientePage({
     "";
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
+    <main className="mx-auto max-w-[1400px] px-6 py-8">
       <Link
-        href="/clientes"
-        className="text-sm text-slate-500 hover:text-slate-700"
+        href="/arquivos"
+        className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
-        ← Voltar para Clientes
+        <ChevronLeftIcon className="h-3.5 w-3.5" />
+        Arquivos
       </Link>
-      <h1 className="mb-6 mt-2 text-2xl font-semibold">{client.name}</h1>
+      <h1 className="mb-6 mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+        {client.name}
+      </h1>
 
       <DriveBrowser
         clientId={id}

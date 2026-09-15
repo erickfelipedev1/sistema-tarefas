@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { DriveFile, DriveFolder } from "@/lib/types";
-
-function formatarTamanho(bytes: number | null) {
-  if (!bytes) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { formatarTamanho } from "@/lib/format";
+import { tipoArquivo } from "@/lib/files";
+import { Button } from "./ui/Button";
+import { EmptyState } from "./ui/EmptyState";
+import { FolderIcon, PlusIcon, Trash2Icon } from "./ui/icons";
 
 export default function DriveBrowser({
   clientId,
@@ -295,22 +293,20 @@ export default function DriveBrowser({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-1 text-sm text-slate-500">
+      <div className="mb-4 flex flex-wrap items-center gap-1 text-sm text-ink-muted">
         <button
           onClick={irParaRaiz}
-          className={`hover:underline ${folderId === null ? "font-semibold text-slate-900" : ""}`}
+          className={`hover:text-ink ${folderId === null ? "font-semibold text-ink" : ""}`}
         >
-          🏠 Raiz
+          Raiz
         </button>
         {caminho.map((c, index) => (
           <span key={c.id} className="flex items-center gap-1">
             <span className="text-slate-300">/</span>
             <button
               onClick={() => irParaNivel(index)}
-              className={`hover:underline ${
-                index === caminho.length - 1
-                  ? "font-semibold text-slate-900"
-                  : ""
+              className={`hover:text-ink ${
+                index === caminho.length - 1 ? "font-semibold text-ink" : ""
               }`}
             >
               {c.name}
@@ -319,15 +315,18 @@ export default function DriveBrowser({
         ))}
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button
-          onClick={novaPasta}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+      <div className="mb-5 flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={novaPasta}>
+          <FolderIcon className="h-3.5 w-3.5" />
+          Nova pasta
+        </Button>
+        <label
+          className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-brand px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-brand-hover active:scale-[0.98] ${
+            enviando ? "pointer-events-none opacity-50" : ""
+          }`}
         >
-          + Nova pasta
-        </button>
-        <label className="cursor-pointer rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-          {enviando ? "Enviando..." : "+ Enviar arquivo"}
+          <PlusIcon className="h-3.5 w-3.5" />
+          {enviando ? "Enviando..." : "Enviar arquivo"}
           <input
             type="file"
             onChange={enviarArquivo}
@@ -337,52 +336,60 @@ export default function DriveBrowser({
         </label>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {folders.map((pasta) => (
           <div
             key={pasta.id}
-            className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 hover:border-slate-300"
+            className="group flex items-center justify-between rounded-xl border border-line bg-white px-3 py-2.5 hover:border-slate-300"
           >
             <button
               onClick={() => entrarNaPasta(pasta)}
-              className="flex flex-1 items-center gap-2 text-left text-sm font-medium text-slate-700"
+              className="flex flex-1 items-center gap-2.5 text-left text-sm font-medium text-ink"
             >
-              📁 {pasta.name}
+              <FolderIcon className="h-4 w-4 flex-shrink-0 text-brand" />
+              {pasta.name}
             </button>
             <button
               onClick={() => excluirPasta(pasta)}
-              className="text-xs text-slate-300 hover:text-red-600"
+              title="Excluir pasta"
+              className="rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-danger-light hover:text-danger group-hover:opacity-100"
             >
-              ✕
+              <Trash2Icon className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
 
-        {files.map((arquivo) => (
-          <div
-            key={arquivo.id}
-            className="group flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 hover:border-slate-300"
-          >
-            <button
-              onClick={() => abrirArquivo(arquivo)}
-              className="flex-1 truncate text-left text-sm text-slate-700 hover:underline"
+        {files.map((arquivo) => {
+          const tipo = tipoArquivo(arquivo.file_name);
+          const Icone = tipo.Icon;
+          return (
+            <div
+              key={arquivo.id}
+              className="group flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2.5 hover:border-slate-300"
             >
-              📄 {arquivo.file_name}
-            </button>
-            <span className="flex-shrink-0 text-xs text-slate-400">
-              {formatarTamanho(arquivo.file_size)}
-            </span>
-            <button
-              onClick={() => excluirArquivo(arquivo)}
-              className="flex-shrink-0 text-xs text-slate-300 hover:text-red-600"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
+              <button
+                onClick={() => abrirArquivo(arquivo)}
+                className="flex flex-1 items-center gap-2.5 truncate text-left text-sm text-ink"
+              >
+                <Icone className="h-4 w-4 flex-shrink-0 text-ink-muted" />
+                <span className="truncate">{arquivo.file_name}</span>
+              </button>
+              <span className="flex-shrink-0 text-xs text-ink-muted">
+                {formatarTamanho(arquivo.file_size)}
+              </span>
+              <button
+                onClick={() => excluirArquivo(arquivo)}
+                title="Excluir arquivo"
+                className="flex-shrink-0 rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-danger-light hover:text-danger group-hover:opacity-100"
+              >
+                <Trash2Icon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        })}
 
         {!carregando && folders.length === 0 && files.length === 0 && (
-          <p className="text-xs text-slate-400">Nenhum arquivo ou pasta aqui ainda.</p>
+          <EmptyState title="Nenhum arquivo ou pasta aqui ainda." />
         )}
       </div>
     </div>

@@ -18,3 +18,42 @@ export function formatarRelativo(iso: string): string {
 
   return data.toLocaleDateString("pt-BR");
 }
+
+// Formata o tamanho de um arquivo (bytes -> B/KB/MB/GB, com vírgula decimal
+// como no Brasil) — usado nos cards e na lista de Arquivos.
+export function formatarTamanho(bytes: number | null | undefined): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1).replace(".", ",")} KB`;
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1).replace(".", ",")} GB`;
+}
+
+const MESES = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+
+// Formata uma data ISO como "Hoje, 14:32" / "Ontem, 11:20" / "12 set, 2025"
+// — usado na coluna "Atualizado" da lista de Arquivos.
+export function formatarDataHora(iso: string): string {
+  const data = new Date(iso);
+  const agora = new Date();
+  const hora = data.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (data.toDateString() === agora.toDateString()) return `Hoje, ${hora}`;
+
+  const ontem = new Date(agora);
+  ontem.setDate(ontem.getDate() - 1);
+  if (data.toDateString() === ontem.toDateString()) return `Ontem, ${hora}`;
+
+  const dia = data.getDate().toString().padStart(2, "0");
+  return `${dia} ${MESES[data.getMonth()]}, ${data.getFullYear()}`;
+}

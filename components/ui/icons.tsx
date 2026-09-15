@@ -65,6 +65,37 @@ export const FileTextIcon = createIcon(
   </>
 );
 
+export const FileBadgeIcon = createIcon(
+  "FileBadgeIcon",
+  <>
+    <path d="M7 3h7l4 4v13a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4.5A1.5 1.5 0 0 1 7 3Z" />
+    <path d="M14 3v4h4" />
+    <rect x="8" y="12.5" width="8" height="4.5" rx="1" />
+  </>
+);
+
+export const FileGridIcon = createIcon(
+  "FileGridIcon",
+  <>
+    <path d="M7 3h7l4 4v13a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4.5A1.5 1.5 0 0 1 7 3Z" />
+    <path d="M14 3v4h4" />
+    <path d="M8.5 12h7M8.5 15.5h7M11.5 12v6" />
+  </>
+);
+
+export const FileSlideIcon = createIcon(
+  "FileSlideIcon",
+  <>
+    <path d="M7 3h7l4 4v13a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V4.5A1.5 1.5 0 0 1 7 3Z" />
+    <path d="M14 3v4h4" />
+    <path
+      d="M9.5 12.3v4.4l4-2.2-4-2.2Z"
+      fill="currentColor"
+      stroke="none"
+    />
+  </>
+);
+
 export const FileStackIcon = createIcon(
   "FileStackIcon",
   <>
