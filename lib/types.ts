@@ -101,46 +101,30 @@ export interface ProjectProgress {
   }[];
 }
 
-// As 5 etapas fixas do onboarding do cliente (ver migration
-// 0027_client_onboarding.sql) — preenchidas por ele mesmo na página
-// pública /progresso/<token>, antes do projeto "começar" de verdade.
-export type OnboardingStepKey =
-  | "company_info"
-  | "objectives"
-  | "scope"
-  | "participants"
-  | "approval";
-
-export type OnboardingStepStatus = "pending" | "in_progress" | "completed";
-
-export interface OnboardingStep {
-  step_key: OnboardingStepKey;
-  status: OnboardingStepStatus;
-  // Formato livre — depende da etapa (ver lib/onboarding.ts para o shape
-  // esperado de cada uma).
-  payload: Record<string, unknown>;
-  completed_at: string | null;
+// Versões enxutas de DriveFolder/DriveFile devolvidas pela função
+// get_project_documents(token) — só os campos que fazem sentido mostrar
+// pro cliente (sem owner_id, project_id etc). "publicUrl" é calculada no
+// servidor (app/progresso/[token]/page.tsx) antes de chegar no componente.
+export interface PublicDriveFolder {
+  id: string;
+  name: string;
 }
 
-// Resposta da função get_project_onboarding(token) — estado completo do
-// onboarding + os mesmos dados de progresso de tarefas (usados só depois
-// que o onboarding é concluído, como acompanhamento do projeto em si).
-export interface ProjectOnboarding {
-  project_id: string;
-  project_name: string;
-  steps: OnboardingStep[];
-  tasks: {
-    id: string;
-    title: string;
-    status: TaskStatus;
-    due_date: string | null;
-  }[];
-  progress: {
-    total: number;
-    concluidas: number;
-    andamento: number;
-    abertas: number;
-  };
+export interface PublicDriveFile {
+  id: string;
+  folder_id: string | null;
+  file_name: string;
+  file_path: string;
+  file_size: number | null;
+  created_at: string;
+}
+
+// Resposta da função get_project_documents(token) — os documentos
+// compartilhados (não-privados) do projeto, mostrados na página pública
+// /progresso/<token>.
+export interface ProjectDocuments {
+  folders: PublicDriveFolder[];
+  files: PublicDriveFile[];
 }
 
 export interface DriveFolder {

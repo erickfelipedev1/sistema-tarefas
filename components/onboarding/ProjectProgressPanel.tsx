@@ -1,6 +1,6 @@
 import { StatTile } from "../ui/StatTile";
 import { CheckCircleIcon, ClipboardListIcon, ClockIcon } from "../ui/icons";
-import type { ProjectOnboarding } from "@/lib/types";
+import type { ProjectProgress } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
   todo: "Aberta",
@@ -22,48 +22,41 @@ function formatarData(dueDate: string | null) {
   return `${dia}/${mes}/${ano}`;
 }
 
-// Acompanhamento do projeto em si — mostrado só depois que o onboarding
-// termina. É a mesma informação que a página pública já mostrava antes
-// (contagem de tarefas por status + lista), só reposicionada: durante o
-// onboarding ela não aparece, pra não parecer um dashboard vazio.
-export function ProjectProgressPanel({
-  progress,
-  tasks,
-}: {
-  progress: ProjectOnboarding["progress"];
-  tasks: ProjectOnboarding["tasks"];
-}) {
+// Painel de acompanhamento do projeto — 100% leitura, sem nenhuma ação
+// de escrita. Contagem de tarefas por status + a lista delas, direto do
+// que a equipe já tem cadastrado.
+export function ProjectProgressPanel({ data }: { data: ProjectProgress }) {
   return (
-    <div className="mt-8">
-      <p className="text-sm font-semibold text-ink">Acompanhamento do projeto</p>
+    <div>
+      <p className="text-sm font-semibold text-ink">Andamento do projeto</p>
       <p className="mt-0.5 text-sm text-ink-muted">
-        Assim que sua equipe for avançando, o andamento aparece aqui.
+        Acompanhe aqui o progresso das atividades.
       </p>
 
       <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
         <StatTile
           icon={<ClipboardListIcon className="h-4 w-4" />}
-          value={progress.abertas}
+          value={data.abertas}
           label="Abertas"
           tone="brand"
         />
         <StatTile
           icon={<ClockIcon className="h-4 w-4" />}
-          value={progress.andamento}
+          value={data.andamento}
           label="Em andamento"
           tone="warning"
         />
         <StatTile
           icon={<CheckCircleIcon className="h-4 w-4" />}
-          value={progress.concluidas}
+          value={data.concluidas}
           label="Concluídas"
           tone="success"
         />
       </div>
 
-      {tasks.length > 0 && (
+      {data.tasks.length > 0 && (
         <div className="mt-4 space-y-2">
-          {tasks.map((task) => (
+          {data.tasks.map((task) => (
             <div
               key={task.id}
               className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
