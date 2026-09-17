@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Client, Profile, Project, Task, TaskRequest } from "@/lib/types";
+import type { Profile, Project, Task, TaskRequest } from "@/lib/types";
 import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
 import { formatarDataHora } from "@/lib/format";
 import { Badge } from "./ui/Badge";
@@ -48,14 +48,12 @@ export default function TaskRequests({
   initialRequests,
   profiles,
   projects,
-  clients,
 }: {
   currentUserId: string;
   currentUserLabel: string;
   initialRequests: TaskRequest[];
   profiles: Profile[];
   projects: Project[];
-  clients: Client[];
 }) {
   const supabase = createClient();
   const [requests, setRequests] = useState<TaskRequest[]>(initialRequests);
@@ -66,7 +64,6 @@ export default function TaskRequests({
   const [title, setTitle] = useState("");
   const [demandType, setDemandType] = useState("");
   const [requestedTo, setRequestedTo] = useState("");
-  const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [contextStatus, setContextStatus] = useState("");
   const [urgency, setUrgency] = useState("");
@@ -85,14 +82,6 @@ export default function TaskRequests({
     });
     return mapa;
   }, [profiles]);
-
-  const clientsById = useMemo(() => {
-    const mapa: Record<string, Client> = {};
-    clients.forEach((c) => {
-      mapa[c.id] = c;
-    });
-    return mapa;
-  }, [clients]);
 
   const projectsById = useMemo(() => {
     const mapa: Record<string, Project> = {};
@@ -157,7 +146,6 @@ export default function TaskRequests({
     title.trim() !== "" ||
     demandType !== "" ||
     requestedTo !== "" ||
-    clientId !== "" ||
     projectId !== "" ||
     contextStatus !== "" ||
     urgency !== "" ||
@@ -179,7 +167,6 @@ export default function TaskRequests({
     setTitle("");
     setDemandType("");
     setRequestedTo("");
-    setClientId("");
     setProjectId("");
     setContextStatus("");
     setUrgency("");
@@ -215,10 +202,8 @@ export default function TaskRequests({
     setSalvando(true);
     setErroEnvio(null);
 
-    const nomeCliente = clientId ? clientsById[clientId]?.name : null;
     const detalhes: string[] = [];
     if (demandType) detalhes.push(`Tipo de demanda: ${demandType}`);
-    if (nomeCliente) detalhes.push(`Empresa: ${nomeCliente}`);
     if (contextStatus) detalhes.push(`Status: ${contextStatus}`);
     if (urgency) detalhes.push(`Urgência: ${urgency}`);
     if (driveUrl.trim()) detalhes.push(`Drive: ${driveUrl.trim()}`);
@@ -290,7 +275,6 @@ export default function TaskRequests({
         title: title.trim(),
         description: description.trim() || null,
         project_id: projectId || null,
-        client_id: clientId || null,
         demand_type: demandType || null,
         context_status: contextStatus || null,
         urgency: urgency || null,
@@ -433,38 +417,22 @@ export default function TaskRequests({
 
           <FormSection
             title="Contexto"
-            description="Relacione a demanda à empresa e ao projeto."
+            description="Relacione a demanda a um projeto (cada projeto é um cliente)."
           >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Campo label="Qual Empresa?">
-                <select
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  className={campoClasse}
-                >
-                  <option value="">Sem empresa</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </Campo>
-              <Campo label="Projeto">
-                <select
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  className={campoClasse}
-                >
-                  <option value="">Sem projeto</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </Campo>
-            </div>
+            <Campo label="Projeto">
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className={campoClasse}
+              >
+                <option value="">Sem projeto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Campo>
           </FormSection>
 
           <FormSection title="Planejamento">
@@ -574,9 +542,7 @@ export default function TaskRequests({
       <div className="space-y-2.5">
         {lista.map((req) => {
           const s = statusInfo(req.status);
-          const nomeCliente = req.client_id ? clientsById[req.client_id]?.name : null;
-          const nomeProjeto = req.project_id ? projectsById[req.project_id]?.name : null;
-          const contexto = [nomeCliente, nomeProjeto].filter(Boolean).join(" · ");
+          const contexto = req.project_id ? projectsById[req.project_id]?.name : null;
           return (
             <div
               key={req.id}

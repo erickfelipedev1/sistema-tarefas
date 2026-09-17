@@ -62,11 +62,6 @@ export default async function AppLayout({
       .order("name", { ascending: true }));
   }
 
-  const { data: clients } = await supabase
-    .from("clients")
-    .select("*")
-    .order("name", { ascending: true });
-
   return (
     <NotificationsProvider currentUserId={user.id}>
       <AppShell
@@ -76,7 +71,6 @@ export default async function AppLayout({
         userName={profile?.name ?? null}
         avatarUrl={profile?.avatar_url ?? null}
         initialProjects={projects ?? []}
-        initialClients={clients ?? []}
       >
         {children}
       </AppShell>

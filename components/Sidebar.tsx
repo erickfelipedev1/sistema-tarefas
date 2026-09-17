@@ -19,7 +19,7 @@ import {
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/client";
-import type { Client, Project } from "@/lib/types";
+import type { Project } from "@/lib/types";
 
 const SECOES: {
   titulo: string | null;
@@ -56,7 +56,6 @@ export default function Sidebar({
   userName,
   avatarUrl,
   initialProjects,
-  initialClients,
   onNavigate,
 }: {
   currentUserId: string;
@@ -67,7 +66,6 @@ export default function Sidebar({
   userName: string | null;
   avatarUrl: string | null;
   initialProjects: Project[];
-  initialClients: Client[];
   // Chamado ao clicar em qualquer link — usado pra fechar o menu/drawer no
   // celular depois de navegar. No desktop (sidebar fixa) não é passado.
   onNavigate?: () => void;
@@ -78,7 +76,6 @@ export default function Sidebar({
     useNotifications();
 
   const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [clients, setClients] = useState<Client[]>(initialClients);
 
   // Mantém a lista de projetos do menu sincronizada em tempo real (por
   // exemplo, quando um projeto novo é criado na tela de Projetos).
@@ -125,44 +122,6 @@ export default function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, verTudo]);
 
-  // O mesmo, só que pra lista de clientes (Drive de arquivos).
-  useEffect(() => {
-    const channel = supabase
-      .channel("sidebar-clients-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "clients" },
-        (payload) => {
-          setClients((current) => {
-            if (payload.eventType === "INSERT") {
-              const novo = payload.new as Client;
-              if (current.some((c) => c.id === novo.id)) return current;
-              return [...current, novo].sort((a, b) =>
-                a.name.localeCompare(b.name)
-              );
-            }
-            if (payload.eventType === "DELETE") {
-              const removidoId = (payload.old as Client).id;
-              return current.filter((c) => c.id !== removidoId);
-            }
-            if (payload.eventType === "UPDATE") {
-              const atualizado = payload.new as Client;
-              return current
-                .map((c) => (c.id === atualizado.id ? atualizado : c))
-                .sort((a, b) => a.name.localeCompare(b.name));
-            }
-            return current;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
       <div className="flex items-center gap-2.5 px-5 py-5">
@@ -207,6 +166,9 @@ export default function Sidebar({
                 }
 
                 if (item.href === "/arquivos") {
+                  // Os arquivos de cada cliente agora vivem dentro do
+                  // projeto dele (aba "Arquivos" em /projetos/[id]) — aqui
+                  // sobram só os dois atalhos fixos, sem lista de clientes.
                   return (
                     <ExpandableNavItem
                       key={item.href}
@@ -214,9 +176,8 @@ export default function Sidebar({
                       label="Arquivos"
                       icon={Icon}
                       active={active}
-                      items={clients}
-                      itemHref={(id) => `/arquivos/cliente/${id}`}
-                      emptyLabel="Nenhum cliente ainda."
+                      items={[]}
+                      itemHref={() => "/arquivos"}
                       defaultOpen={pathname.startsWith("/arquivos")}
                       extraLinks={[
                         { href: "/arquivos/meus", label: "🔒 Meus arquivos" },
@@ -301,7 +262,10 @@ function ExpandableNavItem({
   active: boolean;
   items: { id: string; name: string }[];
   itemHref: (id: string) => string;
-  emptyLabel: string;
+  // Só usado quando "items" pode vir vazio de verdade (ex: "Projetos") —
+  // quando a lista nem existe mais (ex: "Arquivos"), fica de fora e nada é
+  // mostrado no lugar.
+  emptyLabel?: string;
   defaultOpen: boolean;
   // Links fixos (não vêm de uma lista do banco) mostrados antes da lista,
   // ex: "Meus arquivos" / "Compartilhados" dentro de "Arquivos".
@@ -379,7 +343,7 @@ function ExpandableNavItem({
               </Link>
             );
           })}
-          {items.length === 0 && (
+          {items.length === 0 && emptyLabel && (
             <p className="px-2 py-1.5 text-xs text-slate-500">{emptyLabel}</p>
           )}
         </div>

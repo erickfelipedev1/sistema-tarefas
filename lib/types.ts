@@ -97,16 +97,13 @@ export interface ProjectProgress {
   }[];
 }
 
-export interface Client {
-  id: string;
-  name: string;
-  created_at: string;
-}
-
 export interface DriveFolder {
   id: string;
   name: string;
-  client_id: string | null;
+  // Cliente e Projeto são a mesma coisa agora: os arquivos de um cliente
+  // vivem dentro do projeto dele (aba "Arquivos" de /projetos/[id]). Nulo =
+  // Drive "Geral" (Meus arquivos / Compartilhados).
+  project_id: string | null;
   parent_folder_id: string | null;
   // Nulo = compartilhado (todo mundo vê). Preenchido = privado, só o dono vê.
   owner_id: string | null;
@@ -117,7 +114,10 @@ export interface DriveFolder {
 export interface DriveFile {
   id: string;
   folder_id: string | null;
-  client_id: string | null;
+  // Cliente e Projeto são a mesma coisa agora: os arquivos de um cliente
+  // vivem dentro do projeto dele (aba "Arquivos" de /projetos/[id]). Nulo =
+  // Drive "Geral" (Meus arquivos / Compartilhados).
+  project_id: string | null;
   // Nulo = compartilhado (todo mundo vê). Preenchido = privado, só o dono vê.
   owner_id: string | null;
   file_name: string;
@@ -152,8 +152,9 @@ export interface TaskRequest {
   task_id: string | null;
   created_at: string;
   resolved_at: string | null;
-  // Campos extras do formulário (estilo "Solicitação Marketing").
-  client_id: string | null;
+  // Campos extras do formulário (estilo "Solicitação Marketing"). client_id
+  // continua existindo no banco (histórico de antes do Cliente virar
+  // Projeto), mas o formulário atual só usa project_id.
   demand_type: string | null;
   phone: string | null;
   context_status: string | null;

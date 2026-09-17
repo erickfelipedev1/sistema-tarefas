@@ -10,16 +10,16 @@ import { EmptyState } from "./ui/EmptyState";
 import { FolderIcon, PlusIcon, Trash2Icon } from "./ui/icons";
 
 export default function DriveBrowser({
-  clientId,
+  projectId,
   currentUserId,
   currentUserLabel,
   owned = false,
 }: {
-  clientId: string | null;
+  projectId: string | null;
   currentUserId: string;
   currentUserLabel: string;
   // true = "Meus arquivos" (privado, só o dono vê). false = "Compartilhados"
-  // ou o drive de um cliente (todo mundo vê, como já era).
+  // ou o drive de um projeto (todo mundo vê, como já era).
   owned?: boolean;
 }) {
   const supabase = createClient();
@@ -30,7 +30,7 @@ export default function DriveBrowser({
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
 
-  // Bucket separado pros arquivos privados (o de "Compartilhados"/clientes
+  // Bucket separado pros arquivos privados (o de "Compartilhados"/projetos
   // continua no bucket público de sempre).
   const bucket = owned ? "drive-files-private" : "drive-files";
   const donoEsperado = owned ? currentUserId : null;
@@ -48,30 +48,30 @@ export default function DriveBrowser({
     (async () => {
       // Pastas: sempre filtradas pela pasta-mãe atual (raiz = null) e pelo
       // dono (privado x compartilhado). Na raiz, também precisam bater
-      // com o cliente (ou "Geral").
+      // com o projeto (ou "Geral").
       let queryPastas = supabase.from("drive_folders").select("*");
       queryPastas = folderId
         ? queryPastas.eq("parent_folder_id", folderId)
         : queryPastas.is("parent_folder_id", null);
       if (!folderId) {
-        queryPastas = clientId
-          ? queryPastas.eq("client_id", clientId)
-          : queryPastas.is("client_id", null);
+        queryPastas = projectId
+          ? queryPastas.eq("project_id", projectId)
+          : queryPastas.is("project_id", null);
       }
       queryPastas = donoEsperado
         ? queryPastas.eq("owner_id", donoEsperado)
         : queryPastas.is("owner_id", null);
 
       // Arquivos: dentro de uma pasta, o folder_id já basta. Na raiz,
-      // também precisam bater com o cliente (ou "Geral").
+      // também precisam bater com o projeto (ou "Geral").
       let queryArquivos = supabase.from("drive_files").select("*");
       queryArquivos = folderId
         ? queryArquivos.eq("folder_id", folderId)
         : queryArquivos.is("folder_id", null);
       if (!folderId) {
-        queryArquivos = clientId
-          ? queryArquivos.eq("client_id", clientId)
-          : queryArquivos.is("client_id", null);
+        queryArquivos = projectId
+          ? queryArquivos.eq("project_id", projectId)
+          : queryArquivos.is("project_id", null);
       }
       queryArquivos = donoEsperado
         ? queryArquivos.eq("owner_id", donoEsperado)
@@ -97,11 +97,11 @@ export default function DriveBrowser({
       ativo = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, folderId, owned]);
+  }, [projectId, folderId, owned]);
 
   useEffect(() => {
     const canalPastas = supabase
-      .channel(`drive-folders-${clientId ?? "geral"}-${owned ? "meus" : "compartilhados"}`)
+      .channel(`drive-folders-${projectId ?? "geral"}-${owned ? "meus" : "compartilhados"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "drive_folders" },
@@ -110,7 +110,7 @@ export default function DriveBrowser({
             if (payload.eventType === "INSERT") {
               const novo = payload.new as DriveFolder;
               if (
-                (novo.client_id ?? null) !== clientId ||
+                (novo.project_id ?? null) !== projectId ||
                 (novo.parent_folder_id ?? null) !== folderIdRef.current ||
                 (novo.owner_id ?? null) !== donoEsperado
               )
@@ -129,7 +129,7 @@ export default function DriveBrowser({
       .subscribe();
 
     const canalArquivos = supabase
-      .channel(`drive-files-${clientId ?? "geral"}-${owned ? "meus" : "compartilhados"}`)
+      .channel(`drive-files-${projectId ?? "geral"}-${owned ? "meus" : "compartilhados"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "drive_files" },
@@ -138,7 +138,7 @@ export default function DriveBrowser({
             if (payload.eventType === "INSERT") {
               const novo = payload.new as DriveFile;
               if (
-                (novo.client_id ?? null) !== clientId ||
+                (novo.project_id ?? null) !== projectId ||
                 (novo.folder_id ?? null) !== folderIdRef.current ||
                 (novo.owner_id ?? null) !== donoEsperado
               )
@@ -163,7 +163,7 @@ export default function DriveBrowser({
       supabase.removeChannel(canalArquivos);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, owned]);
+  }, [projectId, owned]);
 
   function entrarNaPasta(pasta: DriveFolder) {
     setCaminho((c) => [...c, { id: pasta.id, name: pasta.name }]);
@@ -189,7 +189,7 @@ export default function DriveBrowser({
       .from("drive_folders")
       .insert({
         name: nome.trim(),
-        client_id: clientId,
+        project_id: projectId,
         parent_folder_id: folderId,
         owner_id: donoEsperado,
         created_by_label: currentUserLabel,
@@ -224,7 +224,7 @@ export default function DriveBrowser({
     if (!arquivo) return;
     setEnviando(true);
 
-    const prefixo = owned ? currentUserId : clientId ?? "geral";
+    const prefixo = owned ? currentUserId : projectId ?? "geral";
     const caminhoArquivo = `${prefixo}/${folderId ?? "raiz"}/${Date.now()}-${arquivo.name}`;
     const { error: erroUpload } = await supabase.storage
       .from(bucket)
@@ -243,7 +243,7 @@ export default function DriveBrowser({
       .from("drive_files")
       .insert({
         folder_id: folderId,
-        client_id: clientId,
+        project_id: projectId,
         owner_id: donoEsperado,
         file_name: arquivo.name,
         file_path: caminhoArquivo,
@@ -272,7 +272,7 @@ export default function DriveBrowser({
     await supabase.from("drive_files").delete().eq("id", arquivo.id);
   }
 
-  // Arquivos compartilhados/de cliente ficam num bucket público (link
+  // Arquivos compartilhados/de projeto ficam num bucket público (link
   // direto). Os privados ficam num bucket fechado — precisa gerar um
   // link temporário (assinado) na hora de abrir.
   async function abrirArquivo(arquivo: DriveFile) {

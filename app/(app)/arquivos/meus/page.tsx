@@ -39,7 +39,7 @@ export default async function ArquivosMeusPage() {
       </header>
 
       <DriveBrowser
-        clientId={null}
+        projectId={null}
         currentUserId={user.id}
         currentUserLabel={userLabel}
         owned

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import { MenuIcon, XIcon } from "./ui/icons";
-import type { Client, Project } from "@/lib/types";
+import type { Project } from "@/lib/types";
 
 // Envolve a Sidebar numa casca responsiva: no desktop ela fica fixa como
 // sempre foi; em telas menores vira um menu/drawer que abre por cima do
@@ -16,7 +16,6 @@ export default function AppShell({
   userName,
   avatarUrl,
   initialProjects,
-  initialClients,
 }: {
   children: React.ReactNode;
   currentUserId: string;
@@ -25,7 +24,6 @@ export default function AppShell({
   userName: string | null;
   avatarUrl: string | null;
   initialProjects: Project[];
-  initialClients: Client[];
 }) {
   const [aberto, setAberto] = useState(false);
 
@@ -36,7 +34,6 @@ export default function AppShell({
     userName,
     avatarUrl,
     initialProjects,
-    initialClients,
   };
 
   return (

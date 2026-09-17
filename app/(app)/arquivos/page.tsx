@@ -16,9 +16,12 @@ export default async function ArquivosPage() {
   // Números dos dois cards ("Meus arquivos" x "Compartilhados") — busca só
   // as colunas leves (sem o caminho do arquivo) pra somar contagem e
   // tamanho. A RLS já filtra pra só vir o que essa pessoa pode ver.
+  // Arquivos ligados a um projeto ficam de fora: eles vivem só na aba
+  // "Arquivos" do projeto, não aparecem no Drive "Geral".
   const { data: statsFiles } = await supabase
     .from("drive_files")
-    .select("file_size, owner_id, client_id");
+    .select("file_size, owner_id")
+    .is("project_id", null);
 
   let statMeus = { count: 0, bytes: 0 };
   let statCompartilhados = { count: 0, bytes: 0 };
@@ -28,7 +31,7 @@ export default async function ArquivosPage() {
         count: statMeus.count + 1,
         bytes: statMeus.bytes + (f.file_size ?? 0),
       };
-    } else if (!f.owner_id && !f.client_id) {
+    } else if (!f.owner_id) {
       statCompartilhados = {
         count: statCompartilhados.count + 1,
         bytes: statCompartilhados.bytes + (f.file_size ?? 0),
@@ -36,33 +39,17 @@ export default async function ArquivosPage() {
     }
   }
 
-  // Lista combinada de arquivos recentes (Meus arquivos + Compartilhados +
-  // todos os clientes), já com o nome do cliente junto — é o que alimenta
-  // "Recentemente acessados" e os filtros.
+  // Lista combinada de arquivos recentes do Drive "Geral" (Meus arquivos +
+  // Compartilhados) — é o que alimenta "Recentemente acessados" e os
+  // filtros. Arquivos de projeto não entram aqui.
   const { data: arquivosRaw } = await supabase
     .from("drive_files")
-    .select(
-      "id, file_name, file_path, file_size, owner_id, client_id, uploaded_by_label, created_at, client:clients(name)"
-    )
+    .select("id, file_name, file_path, file_size, owner_id, uploaded_by_label, created_at")
+    .is("project_id", null)
     .order("created_at", { ascending: false })
     .limit(300);
 
-  const recentes: ArquivoComContexto[] = (arquivosRaw ?? []).map((f) => ({
-    id: f.id,
-    file_name: f.file_name,
-    file_path: f.file_path,
-    file_size: f.file_size,
-    owner_id: f.owner_id,
-    client_id: f.client_id,
-    client_name: (f.client as unknown as { name: string } | null)?.name ?? null,
-    uploaded_by_label: f.uploaded_by_label,
-    created_at: f.created_at,
-  }));
-
-  const { data: clients } = await supabase
-    .from("clients")
-    .select("*")
-    .order("name", { ascending: true });
+  const recentes: ArquivoComContexto[] = arquivosRaw ?? [];
 
   return (
     <main className="mx-auto max-w-[1400px] px-6 py-8">
@@ -73,7 +60,6 @@ export default async function ArquivosPage() {
         cardCompartilhados={statCompartilhados}
         totalArquivos={(statsFiles ?? []).length}
         initialRecentes={recentes}
-        clients={clients ?? []}
       />
     </main>
   );

@@ -2,24 +2,27 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { BookOpenIcon, ClipboardListIcon } from "./ui/icons";
+import { BookOpenIcon, ClipboardListIcon, FileStackIcon } from "./ui/icons";
 
 const ABAS = [
   { key: "tarefas", label: "Tarefas", icon: ClipboardListIcon },
   { key: "wiki", label: "Wiki", icon: BookOpenIcon },
+  { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
 ] as const;
 
 type AbaKey = (typeof ABAS)[number]["key"];
 
-// As duas abas ficam sempre montadas (só escondidas com CSS) pra não perder
-// o estado nem reconectar o realtime do quadro de tarefas toda vez que
-// alguém troca de aba.
+// As três abas ficam sempre montadas (só escondidas com CSS) pra não perder
+// o estado nem reconectar o realtime do quadro de tarefas/drive toda vez
+// que alguém troca de aba.
 export default function ProjectTabs({
   tarefas,
   wiki,
+  arquivos,
 }: {
   tarefas: ReactNode;
   wiki: ReactNode;
+  arquivos: ReactNode;
 }) {
   const [aba, setAba] = useState<AbaKey>("tarefas");
 
@@ -48,6 +51,7 @@ export default function ProjectTabs({
 
       <div className={aba === "tarefas" ? "" : "hidden"}>{tarefas}</div>
       <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
+      <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
     </div>
   );
 }

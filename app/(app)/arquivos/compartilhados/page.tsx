@@ -39,7 +39,7 @@ export default async function ArquivosCompartilhadosPage() {
       </header>
 
       <DriveBrowser
-        clientId={null}
+        projectId={null}
         currentUserId={user.id}
         currentUserLabel={userLabel}
       />

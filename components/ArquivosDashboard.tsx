@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Client } from "@/lib/types";
 import { formatarDataHora, formatarTamanho } from "@/lib/format";
 import {
   bucketDoArquivo,
@@ -34,7 +33,6 @@ export default function ArquivosDashboard({
   cardCompartilhados,
   totalArquivos,
   initialRecentes,
-  clients,
 }: {
   currentUserId: string;
   currentUserLabel: string;
@@ -42,7 +40,6 @@ export default function ArquivosDashboard({
   cardCompartilhados: ContagemCard;
   totalArquivos: number;
   initialRecentes: ArquivoComContexto[];
-  clients: Client[];
 }) {
   const supabase = createClient();
   const [recentes, setRecentes] = useState<ArquivoComContexto[]>(initialRecentes);
@@ -58,13 +55,7 @@ export default function ArquivosDashboard({
     recentesRef.current = recentes;
   }, [recentes]);
 
-  const clientNameById = useMemo(
-    () => new Map(clients.map((c) => [c.id, c.name])),
-    [clients]
-  );
-
   const [busca, setBusca] = useState("");
-  const [filtroCliente, setFiltroCliente] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroLocal, setFiltroLocal] = useState("");
   const [filtroData, setFiltroData] = useState("");
@@ -80,7 +71,6 @@ export default function ArquivosDashboard({
     const termo = busca.trim().toLowerCase();
     return recentes.filter((a) => {
       if (termo && !a.file_name.toLowerCase().includes(termo)) return false;
-      if (filtroCliente && a.client_id !== filtroCliente) return false;
       if (filtroTipo && tipoArquivo(a.file_name).label !== filtroTipo) return false;
       if (filtroLocal) {
         const chave = a.owner_id === currentUserId ? "meus" : "compartilhados";
@@ -89,18 +79,16 @@ export default function ArquivosDashboard({
       if (filtroData && a.created_at.slice(0, 10) !== filtroData) return false;
       return true;
     });
-  }, [recentes, busca, filtroCliente, filtroTipo, filtroLocal, filtroData, currentUserId]);
+  }, [recentes, busca, filtroTipo, filtroLocal, filtroData, currentUserId]);
 
   const temFiltroAtivo =
     busca.trim() !== "" ||
-    filtroCliente !== "" ||
     filtroTipo !== "" ||
     filtroLocal !== "" ||
     filtroData !== "";
 
   function limparFiltros() {
     setBusca("");
-    setFiltroCliente("");
     setFiltroTipo("");
     setFiltroLocal("");
     setFiltroData("");
@@ -110,10 +98,12 @@ export default function ArquivosDashboard({
     ? arquivosFiltrados
     : arquivosFiltrados.slice(0, 5);
 
-  // Só "Meus arquivos" e o "Compartilhados" geral (sem cliente) têm card
-  // com número — um arquivo de cliente não mexe em nenhum dos dois.
+  // "Meus arquivos" e "Compartilhados" são os dois únicos cards com número
+  // aqui — arquivos de projeto não entram nessa lista (ficam só na aba
+  // "Arquivos" do projeto), então todo arquivo que chega até aqui é sempre
+  // de um dos dois.
   function ajustarContadores(
-    arquivo: Pick<ArquivoComContexto, "owner_id" | "client_id">,
+    arquivo: Pick<ArquivoComContexto, "owner_id">,
     deltaCount: number,
     deltaBytes: number
   ) {
@@ -122,7 +112,7 @@ export default function ArquivosDashboard({
         count: c.count + deltaCount,
         bytes: Math.max(0, c.bytes + deltaBytes),
       }));
-    } else if (!arquivo.owner_id && !arquivo.client_id) {
+    } else if (!arquivo.owner_id) {
       setStatCompartilhados((c) => ({
         count: c.count + deltaCount,
         bytes: Math.max(0, c.bytes + deltaBytes),
@@ -141,30 +131,28 @@ export default function ArquivosDashboard({
         { event: "*", schema: "public", table: "drive_files" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            const novo = payload.new as Omit<ArquivoComContexto, "client_name">;
-            const jaExiste = recentesRef.current.some((a) => a.id === novo.id);
-            const comContexto: ArquivoComContexto = {
-              ...novo,
-              client_name: novo.client_id
-                ? clientNameById.get(novo.client_id) ?? null
-                : null,
+            // A tabela tem arquivos de projeto também — esses não entram
+            // nessa lista central (moram só na aba "Arquivos" do projeto).
+            const novo = payload.new as ArquivoComContexto & {
+              project_id: string | null;
             };
+            if (novo.project_id) return;
+
+            const jaExiste = recentesRef.current.some((a) => a.id === novo.id);
             // Se já está na lista, foi essa mesma aba que acabou de fazer o
             // upload (atualização otimista) — não conta de novo.
             if (!jaExiste) {
               setTotais((t) => t + 1);
-              ajustarContadores(comContexto, 1, novo.file_size ?? 0);
+              ajustarContadores(novo, 1, novo.file_size ?? 0);
             }
             setRecentes((current) =>
-              current.some((a) => a.id === novo.id)
-                ? current
-                : [comContexto, ...current]
+              current.some((a) => a.id === novo.id) ? current : [novo, ...current]
             );
             return;
           }
 
           if (payload.eventType === "UPDATE") {
-            const atualizado = payload.new as Omit<ArquivoComContexto, "client_name">;
+            const atualizado = payload.new as ArquivoComContexto;
             setRecentes((current) =>
               current.map((a) =>
                 a.id === atualizado.id
@@ -224,7 +212,6 @@ export default function ArquivosDashboard({
       .from("drive_files")
       .insert({
         folder_id: null,
-        client_id: null,
         owner_id: donoEsperado,
         file_name: arquivo.name,
         file_path: caminhoArquivo,
@@ -238,7 +225,7 @@ export default function ArquivosDashboard({
     e.target.value = "";
 
     if (!error && data) {
-      const novo: ArquivoComContexto = { ...data, client_name: null };
+      const novo: ArquivoComContexto = data;
       setRecentes((c) => [novo, ...c]);
       setTotais((t) => t + 1);
       ajustarContadores(novo, 1, arquivo.size ?? 0);
@@ -324,8 +311,8 @@ export default function ArquivosDashboard({
     }
   }
 
-  // Nenhum arquivo em lugar nenhum (Meus arquivos, Compartilhados ou
-  // qualquer cliente): estado vazio central, sem cards/filtros pela metade.
+  // Nenhum arquivo em Meus arquivos nem Compartilhados: estado vazio
+  // central, sem cards/filtros pela metade.
   if (totais === 0) {
     return (
       <div>
@@ -433,18 +420,6 @@ export default function ArquivosDashboard({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select
-          value={filtroCliente}
-          onChange={(e) => setFiltroCliente(e.target.value)}
-          className="h-9 rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
-        >
-          <option value="">Todos os clientes</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
           className="h-9 rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
@@ -495,9 +470,8 @@ export default function ArquivosDashboard({
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-          <div className="hidden border-b border-line px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_140px_100px_140px_140px] sm:gap-3 sm:pr-8">
+          <div className="hidden border-b border-line px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_100px_140px_140px] sm:gap-3 sm:pr-8">
             <span>Nome</span>
-            <span>Cliente</span>
             <span>Tipo</span>
             <span>Atualizado</span>
             <span>Local</span>
@@ -645,7 +619,6 @@ function FileRow({
           </button>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pl-[42px] text-xs text-ink-muted">
-          {arquivo.client_name && <span>{arquivo.client_name}</span>}
           <span>{tipo.label}</span>
           <span>{quando}</span>
           <Link href={local.href} className="hover:text-ink">
@@ -655,7 +628,7 @@ function FileRow({
       </div>
 
       {/* Desktop: colunas */}
-      <div className="hidden sm:grid sm:grid-cols-[1fr_140px_100px_140px_140px] sm:items-center sm:gap-3 sm:pr-8">
+      <div className="hidden sm:grid sm:grid-cols-[1fr_100px_140px_140px] sm:items-center sm:gap-3 sm:pr-8">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${toneChip[tipo.tone]}`}>
             <Icone className="h-4 w-4" />
@@ -667,9 +640,6 @@ function FileRow({
             {arquivo.file_name}
           </button>
         </div>
-        <span className="truncate text-sm text-ink-muted">
-          {arquivo.client_name ?? "—"}
-        </span>
         <span className="text-sm text-ink-muted">{tipo.label}</span>
         <span className="text-sm text-ink-muted">{quando}</span>
         <Link

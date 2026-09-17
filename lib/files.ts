@@ -38,36 +38,28 @@ export function tipoArquivo(fileName: string): TipoArquivo {
   );
 }
 
-// Um arquivo com o contexto já resolvido (nome do cliente, se houver) — é o
-// formato usado pela lista "Recentemente acessados" do dashboard de
-// Arquivos, montado a partir de um select com join em "clients".
+// Um arquivo do Drive "Geral" — é o formato usado pela lista "Recentemente
+// acessados" do dashboard de Arquivos. Arquivos ligados a um projeto não
+// passam por aqui: eles vivem só na aba "Arquivos" do projeto (ver
+// DriveBrowser), então esse tipo nem carrega project_id.
 export interface ArquivoComContexto {
   id: string;
   file_name: string;
   file_path: string;
   file_size: number | null;
   owner_id: string | null;
-  client_id: string | null;
-  client_name: string | null;
   uploaded_by_label: string | null;
   created_at: string;
 }
 
-// "Local" do arquivo — igual ao que já existe na navegação (Meus arquivos /
-// Compartilhados / pasta de um cliente), só calculado aqui pra exibir na
-// lista combinada.
+// "Local" do arquivo dentro do Drive "Geral" — Meus arquivos ou
+// Compartilhados (arquivos de projeto não aparecem nessa lista central).
 export function localDoArquivo(
-  arquivo: Pick<ArquivoComContexto, "owner_id" | "client_id" | "client_name">,
+  arquivo: Pick<ArquivoComContexto, "owner_id">,
   currentUserId: string
 ): { label: string; href: string } {
   if (arquivo.owner_id === currentUserId) {
     return { label: "Meus arquivos", href: "/arquivos/meus" };
-  }
-  if (arquivo.client_id) {
-    return {
-      label: arquivo.client_name ?? "Cliente",
-      href: `/arquivos/cliente/${arquivo.client_id}`,
-    };
   }
   return { label: "Compartilhados", href: "/arquivos/compartilhados" };
 }

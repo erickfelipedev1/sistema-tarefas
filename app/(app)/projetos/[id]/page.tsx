@@ -5,6 +5,7 @@ import TaskBoard from "@/components/TaskBoard";
 import NewPageButton from "@/components/NewPageButton";
 import ShareProjectLink from "@/components/ShareProjectLink";
 import ProjectTabs from "@/components/ProjectTabs";
+import DriveBrowser from "@/components/DriveBrowser";
 import { PaginaRow } from "@/components/WikiPagesPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
@@ -105,6 +106,13 @@ export default async function ProjetoPage({
               </div>
             )}
           </div>
+        }
+        arquivos={
+          <DriveBrowser
+            projectId={id}
+            currentUserId={user?.id ?? ""}
+            currentUserLabel={userLabel}
+          />
         }
       />
     </main>
