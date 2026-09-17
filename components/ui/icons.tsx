@@ -304,3 +304,32 @@ export const LockIcon = createIcon(
     <path d="M8 11V7a4 4 0 1 1 8 0v4" />
   </>
 );
+
+export const BuildingIcon = createIcon(
+  "BuildingIcon",
+  <>
+    <rect x="4" y="3.5" width="11" height="17" rx="1" />
+    <path d="M8 8h3M8 11.5h3M8 15h3" />
+    <path d="M15 9.5h4.5a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H15" />
+    <path d="M17.3 13h.01M17.3 16h.01" />
+  </>
+);
+
+export const TargetIcon = createIcon(
+  "TargetIcon",
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="4.8" />
+    <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+  </>
+);
+
+export const UsersIcon = createIcon(
+  "UsersIcon",
+  <>
+    <circle cx="9" cy="8.3" r="3" />
+    <path d="M3 19c1-3.2 3.4-4.9 6-4.9s5 1.7 6 4.9" />
+    <path d="M15.5 5.2a3 3 0 0 1 0 5.9" />
+    <path d="M18 14.4c2 .6 3.4 2.1 4 4.6" />
+  </>
+);

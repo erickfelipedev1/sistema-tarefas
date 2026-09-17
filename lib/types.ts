@@ -101,6 +101,48 @@ export interface ProjectProgress {
   }[];
 }
 
+// As 5 etapas fixas do onboarding do cliente (ver migration
+// 0027_client_onboarding.sql) — preenchidas por ele mesmo na página
+// pública /progresso/<token>, antes do projeto "começar" de verdade.
+export type OnboardingStepKey =
+  | "company_info"
+  | "objectives"
+  | "scope"
+  | "participants"
+  | "approval";
+
+export type OnboardingStepStatus = "pending" | "in_progress" | "completed";
+
+export interface OnboardingStep {
+  step_key: OnboardingStepKey;
+  status: OnboardingStepStatus;
+  // Formato livre — depende da etapa (ver lib/onboarding.ts para o shape
+  // esperado de cada uma).
+  payload: Record<string, unknown>;
+  completed_at: string | null;
+}
+
+// Resposta da função get_project_onboarding(token) — estado completo do
+// onboarding + os mesmos dados de progresso de tarefas (usados só depois
+// que o onboarding é concluído, como acompanhamento do projeto em si).
+export interface ProjectOnboarding {
+  project_id: string;
+  project_name: string;
+  steps: OnboardingStep[];
+  tasks: {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    due_date: string | null;
+  }[];
+  progress: {
+    total: number;
+    concluidas: number;
+    andamento: number;
+    abertas: number;
+  };
+}
+
 export interface DriveFolder {
   id: string;
   name: string;
