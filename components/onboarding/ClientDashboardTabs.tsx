@@ -2,35 +2,33 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { BookOpenIcon, ClipboardListIcon, FileStackIcon, ReceiptIcon } from "./ui/icons";
+import { ClipboardListIcon, FileStackIcon, ReceiptIcon } from "../ui/icons";
 
 const ABAS = [
-  { key: "tarefas", label: "Tarefas", icon: ClipboardListIcon },
-  { key: "wiki", label: "Wiki", icon: BookOpenIcon },
-  { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
+  { key: "andamento", label: "Andamento", icon: ClipboardListIcon },
+  { key: "documentos", label: "Documentos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
 ] as const;
 
 type AbaKey = (typeof ABAS)[number]["key"];
 
-// As quatro abas ficam sempre montadas (só escondidas com CSS) pra não
-// perder o estado nem reconectar o realtime do quadro de tarefas/drive/
-// faturas toda vez que alguém troca de aba.
-export default function ProjectTabs({
-  tarefas,
-  wiki,
-  arquivos,
+// Só troca a aba visível (useState local) — todo o dado já vem pronto do
+// servidor (app/progresso/[token]/page.tsx) e é passado como children, sem
+// nenhuma busca extra aqui. Mesmo padrão de ProjectTabs.tsx: as três abas
+// ficam sempre montadas, só escondidas com CSS.
+export function ClientDashboardTabs({
+  andamento,
+  documentos,
   faturas,
 }: {
-  tarefas: ReactNode;
-  wiki: ReactNode;
-  arquivos: ReactNode;
+  andamento: ReactNode;
+  documentos: ReactNode;
   faturas: ReactNode;
 }) {
-  const [aba, setAba] = useState<AbaKey>("tarefas");
+  const [aba, setAba] = useState<AbaKey>("andamento");
 
   return (
-    <div>
+    <div className="mt-8">
       <div className="mb-5 flex items-center gap-1 border-b border-line">
         {ABAS.map((item) => {
           const Icon = item.icon;
@@ -52,9 +50,8 @@ export default function ProjectTabs({
         })}
       </div>
 
-      <div className={aba === "tarefas" ? "" : "hidden"}>{tarefas}</div>
-      <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
-      <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
+      <div className={aba === "andamento" ? "" : "hidden"}>{andamento}</div>
+      <div className={aba === "documentos" ? "" : "hidden"}>{documentos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
     </div>
   );

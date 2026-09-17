@@ -8,7 +8,7 @@ export function OnboardingHeader({ projectName }: { projectName: string }) {
         {projectName}
       </p>
       <p className="mt-1.5 text-sm text-ink-muted">
-        Acompanhe o andamento do seu projeto e acesse os documentos
+        Acompanhe o andamento do seu projeto, documentos e faturas
         compartilhados pela equipe.
       </p>
     </div>

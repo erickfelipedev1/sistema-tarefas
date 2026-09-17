@@ -127,6 +127,36 @@ export interface ProjectDocuments {
   files: PublicDriveFile[];
 }
 
+// "cancelled" existe só pra fatura emitida por engano — o "vencida" que
+// aparece pro cliente é calculado (pending + due_date passado), não é um
+// status gravado (ver lib/invoices.ts).
+export type InvoiceStatus = "pending" | "paid" | "cancelled";
+
+export interface Invoice {
+  id: string;
+  project_id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  status: InvoiceStatus;
+  paid_at: string | null;
+  file_path: string | null;
+  created_by_label: string | null;
+  created_at: string;
+}
+
+// Resposta da função get_project_invoices(token) — só o essencial, pra
+// mostrar na página pública /progresso/<token>.
+export interface PublicInvoice {
+  id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  status: InvoiceStatus;
+  paid_at: string | null;
+  file_path: string | null;
+}
+
 export interface DriveFolder {
   id: string;
   name: string;

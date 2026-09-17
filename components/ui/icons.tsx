@@ -324,6 +324,14 @@ export const TargetIcon = createIcon(
   </>
 );
 
+export const ReceiptIcon = createIcon(
+  "ReceiptIcon",
+  <>
+    <path d="M6 3h12v18l-2.5-1.5L13 21l-1-1.5L11 21l-2.5-1.5L6 21V3Z" />
+    <path d="M9 8h6M9 11.5h6M9 15h4" />
+  </>
+);
+
 export const UsersIcon = createIcon(
   "UsersIcon",
   <>

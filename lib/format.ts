@@ -57,3 +57,23 @@ export function formatarDataHora(iso: string): string {
   const dia = data.getDate().toString().padStart(2, "0");
   return `${dia} ${MESES[data.getMonth()]}, ${data.getFullYear()}`;
 }
+
+// Formata uma data "YYYY-MM-DD" (sem hora, tipo due_date/vencimento) como
+// "dd/mm/aaaa" — parse manual (não usa "new Date(str)") pra não sofrer
+// com fuso horário virando o dia errado.
+export function formatarDataBR(dataISO: string | null | undefined): string {
+  if (!dataISO) return "";
+  const partes = dataISO.slice(0, 10).split("-");
+  if (partes.length !== 3) return dataISO;
+  const [ano, mes, dia] = partes;
+  return `${dia}/${mes}/${ano}`;
+}
+
+// Formata um valor numérico como moeda brasileira ("R$ 1.234,56") — usado
+// nas Faturas.
+export function formatarMoeda(valor: number): string {
+  return valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}

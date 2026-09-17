@@ -28,7 +28,7 @@ export function DocumentsPanel({
   const semNada = folders.length === 0 && arquivosRaiz.length === 0;
 
   return (
-    <div className="mt-8">
+    <div>
       <p className="text-sm font-semibold text-ink">Documentos</p>
       <p className="mt-0.5 text-sm text-ink-muted">
         Arquivos e materiais compartilhados pela equipe.

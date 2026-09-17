@@ -6,6 +6,7 @@ import NewPageButton from "@/components/NewPageButton";
 import ShareProjectLink from "@/components/ShareProjectLink";
 import ProjectTabs from "@/components/ProjectTabs";
 import DriveBrowser from "@/components/DriveBrowser";
+import InvoicesManager from "@/components/InvoicesManager";
 import { PaginaRow } from "@/components/WikiPagesPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
@@ -113,6 +114,9 @@ export default async function ProjetoPage({
             currentUserId={user?.id ?? ""}
             currentUserLabel={userLabel}
           />
+        }
+        faturas={
+          <InvoicesManager projectId={id} currentUserLabel={userLabel} />
         }
       />
     </main>
