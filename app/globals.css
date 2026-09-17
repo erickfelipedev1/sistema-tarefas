@@ -3,6 +3,57 @@
 @tailwind utilities;
 
 @layer base {
+  /* Tema escuro (padrão) — a "vibe NDL" original: quase preto com
+     verde-limão neon de destaque. Valores em "R G B" (sem vírgula) pra
+     funcionar com o formato rgb(var(--x) / <alpha-value>) do Tailwind,
+     que permite usar opacidade (ex: bg-brand/10) mesmo vindo de variável. */
+  :root {
+    --color-canvas: 10 13 8;
+    --color-surface: 18 22 13;
+    --color-surface-hover: 26 32 19;
+    --color-line: 35 43 27;
+    --color-ink: 243 246 239;
+    --color-ink-muted: 147 160 140;
+    --color-brand: 198 255 61;
+    --color-brand-hover: 174 230 42;
+    --color-brand-light: 30 42 14;
+    --color-success: 52 211 153;
+    --color-success-light: 18 35 24;
+    --color-warning: 242 179 61;
+    --color-warning-light: 43 34 16;
+    --color-danger: 240 85 90;
+    --color-danger-light: 43 20 20;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
+    --shadow-card-hover: 0 14px 28px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.3);
+    --shadow-dropdown: 0 16px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Tema claro — fundo branco/cinza bem claro, texto quase-preto, e o
+     verde-limão vira um tom mais escuro/oliva (o neon original não tem
+     contraste suficiente como texto sobre fundo claro). */
+  :root[data-theme="light"] {
+    --color-canvas: 246 248 243;
+    --color-surface: 255 255 255;
+    --color-surface-hover: 238 241 232;
+    --color-line: 222 227 213;
+    --color-ink: 20 23 15;
+    --color-ink-muted: 91 102 83;
+    --color-brand: 96 134 6;
+    --color-brand-hover: 79 110 4;
+    --color-brand-light: 232 242 214;
+    --color-success: 15 122 76;
+    --color-success-light: 225 245 234;
+    --color-warning: 154 102 8;
+    --color-warning-light: 251 240 220;
+    --color-danger: 196 42 48;
+    --color-danger-light: 251 228 228;
+
+    --shadow-card: 0 1px 2px rgba(20, 23, 15, 0.08), 0 1px 1px rgba(20, 23, 15, 0.04);
+    --shadow-card-hover: 0 14px 28px rgba(20, 23, 15, 0.14), 0 4px 10px rgba(20, 23, 15, 0.08);
+    --shadow-dropdown: 0 16px 40px rgba(20, 23, 15, 0.18);
+  }
+
   * {
     @apply border-line;
   }
@@ -12,11 +63,11 @@
   }
 
   ::selection {
-    background-color: rgba(198, 255, 61, 0.25);
+    background-color: rgb(var(--color-brand) / 0.25);
   }
 
   :focus-visible {
-    outline: 2px solid #c6ff3d;
+    outline: 2px solid rgb(var(--color-brand));
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -26,14 +77,14 @@
   /* Scrollbar discreto — usado no quadro Kanban e em listas longas. */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #2c3722 transparent;
+    scrollbar-color: rgb(var(--color-line)) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #2c3722;
+    background-color: rgb(var(--color-line));
     border-radius: 9999px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {

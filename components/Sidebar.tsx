@@ -14,9 +14,12 @@ import {
   ClipboardListIcon,
   FolderIcon,
   MessageCircleIcon,
+  MoonIcon,
   SendIcon,
+  SunIcon,
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
+import { useTheme } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import type { Project } from "@/lib/types";
 
@@ -74,6 +77,7 @@ export default function Sidebar({
   const supabase = createClient();
   const { totalUnread, notificationPermission, requestNotificationPermission } =
     useNotifications();
+  const { theme, toggleTheme } = useTheme();
 
   const [projects, setProjects] = useState<Project[]>(initialProjects);
 
@@ -213,6 +217,18 @@ export default function Sidebar({
             <p className="truncate text-xs text-slate-500">{userLabel}</p>
           )}
         </div>
+        <button
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+          aria-label={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/5 hover:text-white"
+        >
+          {theme === "dark" ? (
+            <SunIcon className="h-4 w-4" />
+          ) : (
+            <MoonIcon className="h-4 w-4" />
+          )}
+        </button>
         <LogoutButton />
       </div>
     </aside>

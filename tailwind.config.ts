@@ -9,30 +9,43 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Paleta "vibe NDL" (nowdigitallab.com.br): fundo quase preto com
-        // leve tom esverdeado + verde-limão neon de destaque, no lugar do
-        // azul/branco de antes. Valores estimados a partir de um print do
-        // site (fácil de ajustar se o Erick mandar os hex exatos depois).
+        // Paleta "vibe NDL" (nowdigitallab.com.br), agora com tema claro e
+        // escuro: os tokens abaixo (exceto navy/chat, que não trocam de
+        // tema de propósito) lêem de variáveis CSS definidas em
+        // globals.css — trocar o valor da variável (via [data-theme]) já
+        // atualiza toda a UI, sem precisar mexer em cada componente.
+        // "navy" é o quase-preto fixo, usado como texto escuro sobre o
+        // verde (bg-brand text-navy) e como fundo permanente da barra
+        // lateral — não muda com o tema.
         navy: {
           DEFAULT: "#12160D",
           light: "#1B2213",
         },
         brand: {
-          DEFAULT: "#C6FF3D",
-          hover: "#AEE62A",
-          light: "#1E2A0E",
+          DEFAULT: "rgb(var(--color-brand) / <alpha-value>)",
+          hover: "rgb(var(--color-brand-hover) / <alpha-value>)",
+          light: "rgb(var(--color-brand-light) / <alpha-value>)",
         },
-        canvas: "#0A0D08",
-        surface: "#12160D",
-        "surface-hover": "#1A2013",
-        line: "#232B1B",
+        canvas: "rgb(var(--color-canvas) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        "surface-hover": "rgb(var(--color-surface-hover) / <alpha-value>)",
+        line: "rgb(var(--color-line) / <alpha-value>)",
         ink: {
-          DEFAULT: "#F3F6EF",
-          muted: "#93A08C",
+          DEFAULT: "rgb(var(--color-ink) / <alpha-value>)",
+          muted: "rgb(var(--color-ink-muted) / <alpha-value>)",
         },
-        success: { DEFAULT: "#34D399", light: "#122318" },
-        warning: { DEFAULT: "#F2B33D", light: "#2B2210" },
-        danger: { DEFAULT: "#F0555A", light: "#2B1414" },
+        success: {
+          DEFAULT: "rgb(var(--color-success) / <alpha-value>)",
+          light: "rgb(var(--color-success-light) / <alpha-value>)",
+        },
+        warning: {
+          DEFAULT: "rgb(var(--color-warning) / <alpha-value>)",
+          light: "rgb(var(--color-warning-light) / <alpha-value>)",
+        },
+        danger: {
+          DEFAULT: "rgb(var(--color-danger) / <alpha-value>)",
+          light: "rgb(var(--color-danger-light) / <alpha-value>)",
+        },
         // Paleta escura só da tela de Mensagens — mantida em roxo/azulado
         // como um "canto" próprio dentro do sistema (agora que o resto
         // também é escuro/verde-limão, o roxo ainda funciona como um
@@ -57,13 +70,13 @@ const config: Config = {
         xl: "12px",
         "2xl": "16px",
       },
-      // Sombras recalibradas pro fundo escuro: precisam de mais opacidade
-      // de preto puro pra "descolar" o card do fundo (a receita antiga,
-      // pensada pra cards brancos sobre fundo claro, ficava invisível aqui).
+      // Sombras também trocam de tema (mais fortes no escuro, bem mais
+      // sutis no claro) — por isso viram variáveis também, em vez de
+      // valores fixos.
       boxShadow: {
-        card: "0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25)",
-        "card-hover": "0 14px 28px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.3)",
-        dropdown: "0 16px 40px rgba(0, 0, 0, 0.55)",
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+        dropdown: "var(--shadow-dropdown)",
       },
     },
   },
