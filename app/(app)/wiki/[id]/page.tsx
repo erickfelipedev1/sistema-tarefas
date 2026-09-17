@@ -68,7 +68,7 @@ export default async function WikiDocPage({
               </Link>
               {!ehPaginaDeProjeto && (
                 <>
-                  <span className="text-slate-300">/</span>
+                  <span className="text-ink-muted">/</span>
                   <span className="truncate text-ink-muted">
                     {page.title || "Sem título"}
                   </span>
@@ -76,7 +76,7 @@ export default async function WikiDocPage({
               )}
               {tarefaVinculada && (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-ink-muted">·</span>
                   <Link
                     href="/board"
                     className="text-ink-muted hover:text-brand"

@@ -17,10 +17,10 @@ export function EmptyState({
     <div
       className={`flex flex-col items-center justify-center gap-1 px-3 py-5 text-center ${className}`}
     >
-      {icon && <div className="mb-0.5 text-slate-300">{icon}</div>}
+      {icon && <div className="mb-0.5 text-ink-muted">{icon}</div>}
       <p className="text-xs font-medium text-ink-muted">{title}</p>
       {description && (
-        <p className="text-[11px] text-slate-400">{description}</p>
+        <p className="text-[11px] text-ink-muted">{description}</p>
       )}
       {action && <div className="mt-2">{action}</div>}
     </div>

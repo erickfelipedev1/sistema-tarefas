@@ -209,7 +209,7 @@ export default function ProjectsList({
     return (
       <div>
         <PageHeader title={title} subtitle={subtitle} />
-        <div className="rounded-2xl border border-line bg-white">
+        <div className="rounded-2xl border border-line bg-surface">
           <EmptyState
             className="py-16"
             icon={<FolderIcon className="h-8 w-8" />}
@@ -250,7 +250,7 @@ export default function ProjectsList({
         <select
           value={responsavelFiltro}
           onChange={(e) => setResponsavelFiltro(e.target.value)}
-          className="h-10 rounded-lg border border-line bg-white px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="">Todos os responsáveis</option>
           {criadores.map((p) => (
@@ -263,12 +263,12 @@ export default function ProjectsList({
           type="date"
           value={dataFiltro}
           onChange={(e) => setDataFiltro(e.target.value)}
-          className="h-10 rounded-lg border border-line bg-white px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <select
           value={ordenacao}
           onChange={(e) => setOrdenacao(e.target.value as Ordenacao)}
-          className="h-10 rounded-lg border border-line bg-white px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="recentes">Mais recentes</option>
           <option value="antigos">Mais antigos</option>
@@ -284,7 +284,7 @@ export default function ProjectsList({
       </div>
 
       {projetosFiltrados.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-white">
+        <div className="rounded-2xl border border-line bg-surface">
           <EmptyState
             className="py-16"
             title="Não encontramos nenhum projeto."
@@ -343,7 +343,7 @@ function ProjectCard({
   }, [menuAberto]);
 
   return (
-    <div className="group relative rounded-2xl border border-line bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
+    <div className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
       <Link href={`/projetos/${project.id}`} className="block">
         <p className="pr-7 text-base font-semibold leading-snug text-ink">
           {project.name}
@@ -384,7 +384,7 @@ function ProjectCard({
           aria-haspopup="menu"
           aria-expanded={menuAberto}
           data-open={menuAberto}
-          className="rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-slate-100 hover:text-ink group-hover:opacity-100 data-[open=true]:opacity-100"
+          className="rounded-md p-1 text-ink-muted opacity-0 transition-opacity hover:bg-surface-hover hover:text-ink group-hover:opacity-100 data-[open=true]:opacity-100"
         >
           <MoreVerticalIcon className="h-4 w-4" />
         </button>
@@ -392,12 +392,12 @@ function ProjectCard({
         {menuAberto && (
           <div
             role="menu"
-            className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-dropdown"
+            className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown"
           >
             <Link
               href={`/projetos/${project.id}`}
               role="menuitem"
-              className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-slate-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-hover"
               onClick={() => setMenuAberto(false)}
             >
               <ChevronRightIcon className="h-3.5 w-3.5" />
@@ -409,7 +409,7 @@ function ProjectCard({
                 setMenuAberto(false);
                 onRename();
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
             >
               <PencilIcon className="h-3.5 w-3.5" />
               Editar

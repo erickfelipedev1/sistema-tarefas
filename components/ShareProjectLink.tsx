@@ -55,7 +55,7 @@ export default function ShareProjectLink({
   }
 
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white px-4 py-3">
+    <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3">
       <span className="text-sm text-ink-muted">
         📊 Link de progresso pro cliente:
       </span>
@@ -64,7 +64,7 @@ export default function ShareProjectLink({
       </code>
       <button
         onClick={copiar}
-        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-slate-50"
+        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-hover"
       >
         {copiado ? "Copiado!" : "Copiar link"}
       </button>

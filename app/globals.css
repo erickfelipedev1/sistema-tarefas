@@ -12,11 +12,11 @@
   }
 
   ::selection {
-    background-color: rgba(49, 87, 213, 0.18);
+    background-color: rgba(198, 255, 61, 0.25);
   }
 
   :focus-visible {
-    outline: 2px solid #3157d5;
+    outline: 2px solid #c6ff3d;
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -26,14 +26,14 @@
   /* Scrollbar discreto — usado no quadro Kanban e em listas longas. */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: #2c3722 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: #2c3722;
     border-radius: 9999px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {

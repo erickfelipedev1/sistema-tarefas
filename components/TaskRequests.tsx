@@ -40,7 +40,7 @@ const URGENCY_TONE: Record<string, BadgeTone> = {
 const DESCRICAO_MAX = 2000;
 
 const campoClasse =
-  "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
+  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
 export default function TaskRequests({
   currentUserId,
@@ -355,13 +355,13 @@ export default function TaskRequests({
         </div>
       )}
 
-      <div className="mb-5 inline-flex rounded-lg border border-line bg-white p-1">
+      <div className="mb-5 inline-flex rounded-lg border border-line bg-surface p-1">
         <button
           onClick={() => setAba("recebidas")}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             aba === "recebidas"
-              ? "bg-brand text-white"
-              : "text-ink-muted hover:bg-slate-50 hover:text-ink"
+              ? "bg-brand text-navy"
+              : "text-ink-muted hover:bg-surface-hover hover:text-ink"
           }`}
         >
           Recebidas
@@ -370,8 +370,8 @@ export default function TaskRequests({
           onClick={() => setAba("enviadas")}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
             aba === "enviadas"
-              ? "bg-brand text-white"
-              : "text-ink-muted hover:bg-slate-50 hover:text-ink"
+              ? "bg-brand text-navy"
+              : "text-ink-muted hover:bg-surface-hover hover:text-ink"
           }`}
         >
           Enviadas
@@ -580,7 +580,7 @@ export default function TaskRequests({
           return (
             <div
               key={req.id}
-              className="rounded-2xl border border-line bg-white p-4 transition-colors hover:border-slate-300"
+              className="rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-ink-muted"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -627,7 +627,7 @@ export default function TaskRequests({
         })}
 
         {lista.length === 0 && (
-          <div className="rounded-2xl border border-line bg-white">
+          <div className="rounded-2xl border border-line bg-surface">
             <EmptyState
               className="py-14"
               icon={<InboxIcon className="h-7 w-7" />}
@@ -659,7 +659,7 @@ function FormSection({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5">
       <h2 className="text-sm font-semibold text-ink">{title}</h2>
       {description && <p className="mt-0.5 text-xs text-ink-muted">{description}</p>}
       <div className="mt-4 space-y-4">{children}</div>

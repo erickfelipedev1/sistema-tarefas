@@ -21,7 +21,7 @@ export function StatTile({
   tone?: Tone;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3.5">
+    <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3.5">
       <span
         className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${toneStyles[tone]}`}
       >

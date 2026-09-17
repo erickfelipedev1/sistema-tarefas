@@ -90,7 +90,7 @@ export default async function ProjetoPage({
               <NewPageButton projectId={id} />
             </div>
             {(pages ?? []).length === 0 ? (
-              <div className="rounded-2xl border border-line bg-white">
+              <div className="rounded-2xl border border-line bg-surface">
                 <EmptyState
                   icon={<BookOpenIcon className="h-6 w-6" />}
                   title="Nenhuma página ainda neste projeto"
@@ -98,7 +98,7 @@ export default async function ProjetoPage({
                 />
               </div>
             ) : (
-              <div className="divide-y divide-line rounded-2xl border border-line bg-white">
+              <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
                 {(pages ?? []).map((p) => (
                   <PaginaRow key={p.id} pagina={p} />
                 ))}

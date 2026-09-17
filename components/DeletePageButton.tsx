@@ -28,7 +28,7 @@ export default function DeletePageButton({ pageId }: { pageId: string }) {
       disabled={deleting}
       title="Excluir página"
       aria-label="Excluir página"
-      className="rounded-md p-1 text-slate-300 transition-colors hover:bg-danger-light hover:text-danger disabled:opacity-50"
+      className="rounded-md p-1 text-ink-muted transition-colors hover:bg-danger-light hover:text-danger disabled:opacity-50"
     >
       {deleting ? (
         <span className="text-xs">…</span>

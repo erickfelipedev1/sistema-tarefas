@@ -10,10 +10,10 @@ const base =
   "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand text-white shadow-sm hover:bg-brand-hover",
-  secondary: "border border-line bg-white text-ink hover:bg-slate-50",
-  ghost: "text-ink-muted hover:bg-slate-100 hover:text-ink",
-  danger: "border border-line bg-white text-danger hover:bg-danger-light",
+  primary: "bg-brand text-navy shadow-sm hover:bg-brand-hover",
+  secondary: "border border-line bg-surface text-ink hover:bg-surface-hover",
+  ghost: "text-ink-muted hover:bg-surface-hover hover:text-ink",
+  danger: "border border-line bg-surface text-danger hover:bg-danger-light",
 };
 
 const sizes: Record<Size, string> = {

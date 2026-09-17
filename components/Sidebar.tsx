@@ -166,7 +166,7 @@ export default function Sidebar({
   return (
     <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-navy">
           N
         </span>
         <span className="text-sm font-semibold tracking-tight text-white">
@@ -234,7 +234,7 @@ export default function Sidebar({
                     onClick={onNavigate}
                     className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       active
-                        ? "bg-brand text-white"
+                        ? "bg-brand text-navy"
                         : "text-slate-400 hover:bg-white/5 hover:text-white"
                     }`}
                   >
@@ -315,7 +315,7 @@ function ExpandableNavItem({
     <div>
       <div
         className={`group flex items-center gap-2.5 rounded-lg pr-1 text-sm font-medium transition-colors ${
-          active ? "bg-brand text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
+          active ? "bg-brand text-navy" : "text-slate-400 hover:bg-white/5 hover:text-white"
         }`}
       >
         <Link

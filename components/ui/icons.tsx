@@ -242,6 +242,32 @@ export const MenuIcon = createIcon(
   <path d="M4 6h16M4 12h16M4 18h16" />
 );
 
+export const SmileIcon = createIcon(
+  "SmileIcon",
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M8.5 14c.9 1.2 2 1.8 3.5 1.8s2.6-.6 3.5-1.8" />
+    <circle cx="9" cy="10" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="10" r="0.9" fill="currentColor" stroke="none" />
+  </>
+);
+
+export const CopyIcon = createIcon(
+  "CopyIcon",
+  <>
+    <rect x="8.5" y="8.5" width="11" height="11" rx="1.5" />
+    <path d="M15 8.5V6.5A1.5 1.5 0 0 0 13.5 5h-8A1.5 1.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16h2" />
+  </>
+);
+
+export const CircleDotIcon = createIcon(
+  "CircleDotIcon",
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none" />
+  </>
+);
+
 export const BellIcon = createIcon(
   "BellIcon",
   <>

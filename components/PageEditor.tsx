@@ -53,16 +53,16 @@ export default function PageEditor({ page }: { page: Page }) {
           scheduleSave(e.target.value);
         }}
         placeholder="Título da página"
-        className="w-full border-none bg-transparent text-3xl font-semibold tracking-tight text-ink placeholder:text-slate-300 focus:outline-none sm:text-4xl"
+        className="w-full border-none bg-transparent text-3xl font-semibold tracking-tight text-ink placeholder:text-ink-muted focus:outline-none sm:text-4xl"
       />
 
       <div className="mb-6 mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
         {page.created_by_label && <span>por {page.created_by_label}</span>}
-        {page.created_by_label && <span className="text-slate-300">·</span>}
+        {page.created_by_label && <span className="text-ink-muted">·</span>}
         <span>Atualizado {formatarRelativo(updatedAt)}</span>
         {status !== "idle" && (
           <>
-            <span className="text-slate-300">·</span>
+            <span className="text-ink-muted">·</span>
             <span
               className={
                 status === "saving" ? "text-warning" : "text-success"
@@ -74,8 +74,12 @@ export default function PageEditor({ page }: { page: Page }) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-line bg-white px-2 py-4 sm:px-6">
-        <BlockNoteView editor={editor} onChange={() => scheduleSave(title)} />
+      <div className="rounded-2xl border border-line bg-surface px-2 py-4 sm:px-6">
+        <BlockNoteView
+          editor={editor}
+          theme="dark"
+          onChange={() => scheduleSave(title)}
+        />
       </div>
     </div>
   );

@@ -271,7 +271,7 @@ export default function CalendarView({
         }
       />
 
-      <div className="rounded-2xl border border-line bg-white p-3 sm:p-4">
+      <div className="rounded-2xl border border-line bg-surface p-3 sm:p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-ink sm:text-lg">
             {MESES[mes]} {ano}
@@ -282,7 +282,7 @@ export default function CalendarView({
               <button
                 onClick={irParaMesAnterior}
                 aria-label="Mês anterior"
-                className="rounded-lg border border-line p-1.5 text-ink-muted hover:bg-slate-50 hover:text-ink"
+                className="rounded-lg border border-line p-1.5 text-ink-muted hover:bg-surface-hover hover:text-ink"
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </button>
@@ -292,27 +292,27 @@ export default function CalendarView({
               <button
                 onClick={irParaProximoMes}
                 aria-label="Próximo mês"
-                className="rounded-lg border border-line p-1.5 text-ink-muted hover:bg-slate-50 hover:text-ink"
+                className="rounded-lg border border-line p-1.5 text-ink-muted hover:bg-surface-hover hover:text-ink"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex items-center gap-0.5 rounded-lg border border-line bg-white p-0.5">
-              <button className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-white">
+            <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5">
+              <button className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-navy">
                 Mês
               </button>
               <button
                 disabled
                 title="Em breve"
-                className="cursor-not-allowed rounded-md px-3 py-1.5 text-xs font-medium text-slate-300"
+                className="cursor-not-allowed rounded-md px-3 py-1.5 text-xs font-medium text-ink-muted"
               >
                 Semana
               </button>
               <button
                 disabled
                 title="Em breve"
-                className="cursor-not-allowed rounded-md px-3 py-1.5 text-xs font-medium text-slate-300"
+                className="cursor-not-allowed rounded-md px-3 py-1.5 text-xs font-medium text-ink-muted"
               >
                 Dia
               </button>
@@ -340,7 +340,7 @@ export default function CalendarView({
               const visiveis = tarefasDoDia.slice(0, MAX_EVENTOS_VISIVEIS);
               const extras = tarefasDoDia.length - visiveis.length;
 
-              let cellBg = "bg-white hover:bg-canvas/70";
+              let cellBg = "bg-surface hover:bg-canvas/70";
               if (!noMesAtual) cellBg = "bg-canvas/40 hover:bg-canvas/70";
               else if (fimDeSemana) cellBg = "bg-canvas/40 hover:bg-canvas/70";
 
@@ -354,10 +354,10 @@ export default function CalendarView({
                   <span
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${
                       ehHoje
-                        ? "bg-brand font-semibold text-white"
+                        ? "bg-brand font-semibold text-navy"
                         : noMesAtual
                         ? "font-medium text-ink"
-                        : "text-slate-300"
+                        : "text-ink-muted"
                     }`}
                   >
                     {date.getDate()}
@@ -371,7 +371,7 @@ export default function CalendarView({
                           e.stopPropagation();
                           abrirEditar(task);
                         }}
-                        className="group/chip flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-slate-100"
+                        className="group/chip flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-surface-hover"
                       >
                         <span
                           className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
@@ -395,7 +395,7 @@ export default function CalendarView({
                         <button
                           onClick={(e) => handleDeleteTask(e, task)}
                           title="Excluir tarefa"
-                          className="hidden flex-shrink-0 text-slate-300 hover:text-danger group-hover/chip:inline-flex"
+                          className="hidden flex-shrink-0 text-ink-muted hover:text-danger group-hover/chip:inline-flex"
                         >
                           <XIcon className="h-3 w-3" />
                         </button>

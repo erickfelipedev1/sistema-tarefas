@@ -393,7 +393,7 @@ export default function TaskBoard({
                 <select
                   value={filtroResponsavel}
                   onChange={(e) => setFiltroResponsavel(e.target.value)}
-                  className="h-10 rounded-lg border border-line bg-white px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                  className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 >
                   <option value="">Todos os responsáveis</option>
                   {responsaveisNoQuadro.map((p) => (
@@ -462,7 +462,7 @@ export default function TaskBoard({
               <div className="mb-3 flex items-center gap-2 px-1">
                 <span className={`h-2 w-2 rounded-full ${coluna.dot}`} />
                 <h2 className="text-sm font-semibold text-ink">{coluna.label}</h2>
-                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-ink-muted">
+                <span className="rounded-full bg-surface-hover px-1.5 py-0.5 text-[11px] font-medium text-ink-muted">
                   {tarefasDaColuna.length}
                 </span>
               </div>
@@ -481,7 +481,7 @@ export default function TaskBoard({
                       onDragStart={(e) => handleDragStart(e, task)}
                       onDragEnd={handleDragEnd}
                       onClick={() => abrirEditar(task)}
-                      className={`group cursor-pointer rounded-xl border border-line border-l-[3px] bg-white p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                      className={`group cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
                         corTarefa(task.color).borda
                       } ${draggedId === task.id ? "opacity-40" : ""}`}
                     >
@@ -495,7 +495,7 @@ export default function TaskBoard({
                             deleteTask(task);
                           }}
                           title="Excluir tarefa"
-                          className="flex-shrink-0 text-slate-300 opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                          className="flex-shrink-0 text-ink-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
                         >
                           <Trash2Icon className="h-3.5 w-3.5" />
                         </button>
@@ -522,11 +522,11 @@ export default function TaskBoard({
                                   name={nomeDe(id)}
                                   src={profileById.get(id)?.avatar_url}
                                   size="xs"
-                                  className="ring-2 ring-white"
+                                  className="ring-2 ring-surface"
                                 />
                               ))}
                               {task.assigned_to.length > 3 && (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-semibold text-ink-muted ring-2 ring-white">
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-hover text-[9px] font-semibold text-ink-muted ring-2 ring-surface">
                                   +{task.assigned_to.length - 3}
                                 </span>
                               )}
@@ -565,7 +565,7 @@ export default function TaskBoard({
                             }}
                             disabled={coluna.key === COLUNAS[0].key}
                             title="Mover para a coluna anterior"
-                            className="rounded-md p-1 text-ink-muted hover:bg-slate-100 hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+                            className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
                           >
                             <ChevronLeftIcon className="h-3.5 w-3.5" />
                           </button>
@@ -576,7 +576,7 @@ export default function TaskBoard({
                             }}
                             disabled={coluna.key === COLUNAS[COLUNAS.length - 1].key}
                             title="Mover para a próxima coluna"
-                            className="rounded-md p-1 text-ink-muted hover:bg-slate-100 hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+                            className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
                           >
                             <ChevronRightIcon className="h-3.5 w-3.5" />
                           </button>
@@ -587,7 +587,7 @@ export default function TaskBoard({
                             abrirWiki(task);
                           }}
                           title={task.page_id ? "Abrir na Wiki" : "Criar página na Wiki"}
-                          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
+                          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-ink-muted hover:bg-surface-hover hover:text-ink"
                         >
                           <FileStackIcon className="h-3.5 w-3.5" />
                         </button>
@@ -618,7 +618,7 @@ export default function TaskBoard({
       </div>
 
       {showHeader && tasks.length === 0 && (
-        <div className="mt-5 flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-white px-6 py-7 text-center">
+        <div className="mt-5 flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-surface px-6 py-7 text-center">
           <SparklesIcon className="h-5 w-5 text-brand" />
           <p className="text-sm font-medium text-ink">Seu dia está livre ✨</p>
           <p className="text-xs text-ink-muted">

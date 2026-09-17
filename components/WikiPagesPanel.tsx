@@ -40,7 +40,7 @@ export default function WikiPagesPanel({
     return (
       <div>
         <PageHeader title={title} subtitle={subtitle} />
-        <div className="rounded-2xl border border-line bg-white">
+        <div className="rounded-2xl border border-line bg-surface">
           <EmptyState
             className="py-16"
             icon={<BookOpenIcon className="h-8 w-8" />}
@@ -92,14 +92,14 @@ export default function WikiPagesPanel({
         </h2>
 
         {paginasFiltradas.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-white">
+          <div className="rounded-2xl border border-line bg-surface">
             <EmptyState
               title="Nenhuma página encontrada"
               description="Tente buscar por outro termo."
             />
           </div>
         ) : (
-          <div className="divide-y divide-line rounded-2xl border border-line bg-white">
+          <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
             {paginasFiltradas.map((p) => (
               <PaginaRow key={p.id} pagina={p} />
             ))}
@@ -117,7 +117,7 @@ function metaTexto(pagina: PaginaResumo) {
 
 function PaginaCard({ pagina }: { pagina: PaginaResumo }) {
   return (
-    <div className="group relative rounded-2xl border border-line bg-white p-4 shadow-card transition-shadow hover:shadow-card-hover">
+    <div className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover">
       <Link href={`/wiki/${pagina.id}`} className="block">
         <p className="truncate pr-6 text-sm font-medium text-ink">
           {pagina.title || "Sem título"}
@@ -136,7 +136,7 @@ function PaginaCard({ pagina }: { pagina: PaginaResumo }) {
 // linha de página.
 export function PaginaRow({ pagina }: { pagina: PaginaResumo }) {
   return (
-    <div className="group relative flex items-center hover:bg-slate-50">
+    <div className="group relative flex items-center hover:bg-surface-hover">
       <Link
         href={`/wiki/${pagina.id}`}
         className="flex flex-1 items-center justify-between gap-3 px-4 py-3"

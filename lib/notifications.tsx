@@ -19,6 +19,8 @@ export function channelKey(channelId: string) {
   return `channel:${channelId}`;
 }
 
+type PresenceStatus = "online" | "away";
+
 type NotificationsContextValue = {
   unreadByConversation: Record<string, number>;
   totalUnread: number;
@@ -26,6 +28,9 @@ type NotificationsContextValue = {
   setOpenConversation: (conversationKey: string | null) => void;
   notificationPermission: NotificationPermission | "unsupported";
   requestNotificationPermission: () => void;
+  // Quem está online agora (e se está "ausente" — aba em segundo plano),
+  // via Supabase Realtime Presence. Quem não aparece aqui está offline.
+  presenceByUserId: Record<string, PresenceStatus>;
 };
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(
@@ -56,6 +61,9 @@ export default function NotificationsProvider({
   const [permission, setPermission] = useState<
     NotificationPermission | "unsupported"
   >("default");
+  const [presenceByUserId, setPresenceByUserId] = useState<
+    Record<string, PresenceStatus>
+  >({});
 
   // Guardados em ref (não em state) porque só são lidos dentro do listener
   // do realtime, que é montado uma única vez.
@@ -185,6 +193,49 @@ export default function NotificationsProvider({
     []
   );
 
+  // Presença online: cada aba aberta "se marca presente" num canal
+  // compartilhado (sem precisar de nenhuma tabela nova no banco). Fica
+  // "ausente" quando a aba vai pra segundo plano, e "offline" assim que a
+  // aba fecha ou perde conexão (o Supabase remove a presença sozinho).
+  useEffect(() => {
+    const canal = supabase.channel("presenca-online", {
+      config: { presence: { key: currentUserId } },
+    });
+
+    function statusAtual(): PresenceStatus {
+      return typeof document !== "undefined" && document.hidden
+        ? "away"
+        : "online";
+    }
+
+    canal
+      .on("presence", { event: "sync" }, () => {
+        const estado = canal.presenceState<{ status: PresenceStatus }>();
+        const mapa: Record<string, PresenceStatus> = {};
+        Object.entries(estado).forEach(([userId, presencas]) => {
+          const ultima = presencas[presencas.length - 1];
+          mapa[userId] = ultima?.status === "away" ? "away" : "online";
+        });
+        setPresenceByUserId(mapa);
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          canal.track({ status: statusAtual() });
+        }
+      });
+
+    function aoMudarVisibilidade() {
+      canal.track({ status: statusAtual() });
+    }
+    document.addEventListener("visibilitychange", aoMudarVisibilidade);
+
+    return () => {
+      document.removeEventListener("visibilitychange", aoMudarVisibilidade);
+      supabase.removeChannel(canal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
+
   // Escuta toda mensagem nova (o RLS do Supabase já garante que só chegam
   // mensagens de canais, ou DMs em que eu sou remetente ou destinatário) e
   // também toda tarefa nova que for atribuída a mim.
@@ -300,6 +351,7 @@ export default function NotificationsProvider({
         setOpenConversation,
         notificationPermission: permission,
         requestNotificationPermission,
+        presenceByUserId,
       }}
     >
       {children}

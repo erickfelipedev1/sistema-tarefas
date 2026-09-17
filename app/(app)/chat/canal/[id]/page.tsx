@@ -46,6 +46,7 @@ export default async function ChannelPage({
       currentUserId={user.id}
       initialMessages={messages ?? []}
       profilesById={profilesById}
+      totalMembros={(allProfiles ?? []).length}
     />
   );
 }

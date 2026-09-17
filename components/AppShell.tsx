@@ -41,11 +41,11 @@ export default function AppShell({
 
   return (
     <div className="flex min-h-screen">
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-white px-4 lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
         <button
           onClick={() => setAberto(true)}
           aria-label="Abrir menu"
-          className="rounded-lg p-2 text-ink-muted hover:bg-slate-100"
+          className="rounded-lg p-2 text-ink-muted hover:bg-surface-hover"
         >
           <MenuIcon className="h-5 w-5" />
         </button>
@@ -67,7 +67,7 @@ export default function AppShell({
               <button
                 onClick={() => setAberto(false)}
                 aria-label="Fechar menu"
-                className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white"
+                className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-ink-muted hover:bg-white/10 hover:text-white"
               >
                 <XIcon className="h-4 w-4" />
               </button>

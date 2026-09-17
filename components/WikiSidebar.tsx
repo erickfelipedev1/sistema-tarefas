@@ -20,7 +20,7 @@ export default function WikiSidebar({
         </p>
         <nav className="space-y-0.5">
           {pages.length === 0 && (
-            <p className="px-2 py-1.5 text-xs text-slate-400">
+            <p className="px-2 py-1.5 text-xs text-ink-muted">
               Nenhuma página ainda.
             </p>
           )}
@@ -33,7 +33,7 @@ export default function WikiSidebar({
                 className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                   ativo
                     ? "bg-brand/10 font-medium text-brand"
-                    : "text-ink-muted hover:bg-slate-100 hover:text-ink"
+                    : "text-ink-muted hover:bg-surface-hover hover:text-ink"
                 }`}
               >
                 <FileTextIcon className="h-3.5 w-3.5 flex-shrink-0" />

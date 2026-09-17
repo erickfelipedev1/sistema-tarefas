@@ -333,7 +333,7 @@ export default function ArquivosDashboard({
           title="Arquivos"
           subtitle="Organize, envie e compartilhe seus documentos."
         />
-        <div className="rounded-2xl border border-line bg-white">
+        <div className="rounded-2xl border border-line bg-surface">
           <EmptyState
             className="py-16"
             icon={<FolderIcon className="h-8 w-8" />}
@@ -373,7 +373,7 @@ export default function ArquivosDashboard({
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link
           href="/arquivos/meus"
-          className="group rounded-2xl border border-line bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+          className="group rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-light text-brand">
             <FolderIcon className="h-4 w-4" />
@@ -394,7 +394,7 @@ export default function ArquivosDashboard({
 
         <Link
           href="/arquivos/compartilhados"
-          className="group rounded-2xl border border-line bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+          className="group rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-success-light text-success">
             <UserIcon className="h-4 w-4" />
@@ -435,7 +435,7 @@ export default function ArquivosDashboard({
         <select
           value={filtroCliente}
           onChange={(e) => setFiltroCliente(e.target.value)}
-          className="h-9 rounded-lg border border-line bg-white px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-9 rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="">Todos os clientes</option>
           {clients.map((c) => (
@@ -447,7 +447,7 @@ export default function ArquivosDashboard({
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="h-9 rounded-lg border border-line bg-white px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-9 rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="">Todos os tipos</option>
           {tiposPresentes.map((tipo) => (
@@ -459,7 +459,7 @@ export default function ArquivosDashboard({
         <select
           value={filtroLocal}
           onChange={(e) => setFiltroLocal(e.target.value)}
-          className="h-9 rounded-lg border border-line bg-white px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-9 rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="">Todos os locais</option>
           <option value="meus">Meus arquivos</option>
@@ -469,7 +469,7 @@ export default function ArquivosDashboard({
           type="date"
           value={filtroData}
           onChange={(e) => setFiltroData(e.target.value)}
-          className="h-9 rounded-lg border border-line bg-white px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="h-9 rounded-lg border border-line bg-surface px-3 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         {temFiltroAtivo && (
           <button
@@ -482,7 +482,7 @@ export default function ArquivosDashboard({
       </div>
 
       {arquivosFiltrados.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-white">
+        <div className="rounded-2xl border border-line bg-surface">
           <EmptyState
             title="Nenhum arquivo encontrado."
             description="Experimente alterar sua busca ou filtro."
@@ -494,7 +494,7 @@ export default function ArquivosDashboard({
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-white">
+        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
           <div className="hidden border-b border-line px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted sm:grid sm:grid-cols-[1fr_140px_100px_140px_140px] sm:gap-3 sm:pr-8">
             <span>Nome</span>
             <span>Cliente</span>
@@ -556,8 +556,8 @@ function UploadMenu({
       </Button>
 
       {aberto && (
-        <div className="absolute right-0 top-11 z-10 w-56 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-dropdown">
-          <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-slate-50">
+        <div className="absolute right-0 top-11 z-10 w-56 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown">
+          <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-hover">
             Enviar para Meus arquivos
             <input
               type="file"
@@ -568,7 +568,7 @@ function UploadMenu({
               }}
             />
           </label>
-          <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-slate-50">
+          <label className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-hover">
             Enviar para Compartilhados
             <input
               type="file"
@@ -622,7 +622,7 @@ function FileRow({
   const quando = formatarDataHora(arquivo.created_at);
 
   const toneChip: Record<typeof tipo.tone, string> = {
-    neutral: "bg-slate-100 text-ink-muted",
+    neutral: "bg-surface-hover text-ink-muted",
     brand: "bg-brand-light text-brand",
     success: "bg-success-light text-success",
     warning: "bg-warning-light text-warning",
@@ -630,7 +630,7 @@ function FileRow({
   };
 
   return (
-    <div className="group relative px-4 py-3 hover:bg-slate-50">
+    <div className="group relative px-4 py-3 hover:bg-surface-hover">
       {/* Mobile: cartão empilhado */}
       <div className="sm:hidden">
         <div className="flex items-center gap-2.5 pr-8">
@@ -688,7 +688,7 @@ function FileRow({
           aria-haspopup="menu"
           aria-expanded={menuAberto}
           data-open={menuAberto}
-          className="rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-slate-100 hover:text-ink group-hover:opacity-100 data-[open=true]:opacity-100"
+          className="rounded-md p-1 text-ink-muted opacity-0 transition-opacity hover:bg-surface-hover hover:text-ink group-hover:opacity-100 data-[open=true]:opacity-100"
         >
           <MoreVerticalIcon className="h-4 w-4" />
         </button>
@@ -696,7 +696,7 @@ function FileRow({
         {menuAberto && (
           <div
             role="menu"
-            className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-dropdown"
+            className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown"
           >
             <button
               role="menuitem"
@@ -704,7 +704,7 @@ function FileRow({
                 setMenuAberto(false);
                 onAbrir();
               }}
-              className="flex w-full items-center px-3 py-2 text-left text-sm text-ink hover:bg-slate-50"
+              className="flex w-full items-center px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
             >
               Abrir
             </button>
@@ -714,7 +714,7 @@ function FileRow({
                 setMenuAberto(false);
                 onBaixar();
               }}
-              className="flex w-full items-center px-3 py-2 text-left text-sm text-ink hover:bg-slate-50"
+              className="flex w-full items-center px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
             >
               Baixar
             </button>
@@ -724,7 +724,7 @@ function FileRow({
                 setMenuAberto(false);
                 onCompartilhar();
               }}
-              className="flex w-full items-center px-3 py-2 text-left text-sm text-ink hover:bg-slate-50"
+              className="flex w-full items-center px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
             >
               Compartilhar
             </button>
@@ -734,7 +734,7 @@ function FileRow({
                 setMenuAberto(false);
                 onRenomear();
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-slate-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
             >
               <PencilIcon className="h-3.5 w-3.5" />
               Renomear

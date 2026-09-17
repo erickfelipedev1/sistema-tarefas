@@ -302,7 +302,7 @@ export default function DriveBrowser({
         </button>
         {caminho.map((c, index) => (
           <span key={c.id} className="flex items-center gap-1">
-            <span className="text-slate-300">/</span>
+            <span className="text-ink-muted">/</span>
             <button
               onClick={() => irParaNivel(index)}
               className={`hover:text-ink ${
@@ -321,7 +321,7 @@ export default function DriveBrowser({
           Nova pasta
         </Button>
         <label
-          className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-brand px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-brand-hover active:scale-[0.98] ${
+          className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-brand px-3 text-xs font-medium text-navy shadow-sm transition-all hover:bg-brand-hover active:scale-[0.98] ${
             enviando ? "pointer-events-none opacity-50" : ""
           }`}
         >
@@ -340,7 +340,7 @@ export default function DriveBrowser({
         {folders.map((pasta) => (
           <div
             key={pasta.id}
-            className="group flex items-center justify-between rounded-xl border border-line bg-white px-3 py-2.5 hover:border-slate-300"
+            className="group flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2.5 hover:border-ink-muted"
           >
             <button
               onClick={() => entrarNaPasta(pasta)}
@@ -352,7 +352,7 @@ export default function DriveBrowser({
             <button
               onClick={() => excluirPasta(pasta)}
               title="Excluir pasta"
-              className="rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-danger-light hover:text-danger group-hover:opacity-100"
+              className="rounded-md p-1 text-ink-muted opacity-0 transition-opacity hover:bg-danger-light hover:text-danger group-hover:opacity-100"
             >
               <Trash2Icon className="h-3.5 w-3.5" />
             </button>
@@ -365,7 +365,7 @@ export default function DriveBrowser({
           return (
             <div
               key={arquivo.id}
-              className="group flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2.5 hover:border-slate-300"
+              className="group flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 hover:border-ink-muted"
             >
               <button
                 onClick={() => abrirArquivo(arquivo)}
@@ -380,7 +380,7 @@ export default function DriveBrowser({
               <button
                 onClick={() => excluirArquivo(arquivo)}
                 title="Excluir arquivo"
-                className="flex-shrink-0 rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-danger-light hover:text-danger group-hover:opacity-100"
+                className="flex-shrink-0 rounded-md p-1 text-ink-muted opacity-0 transition-opacity hover:bg-danger-light hover:text-danger group-hover:opacity-100"
               >
                 <Trash2Icon className="h-3.5 w-3.5" />
               </button>
