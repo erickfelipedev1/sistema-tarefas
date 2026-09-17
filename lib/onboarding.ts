@@ -107,7 +107,7 @@ export function stepPayload<T = Record<string, unknown>>(
 ): T | null {
   const step = steps.find((s) => s.step_key === key);
   if (!step || Object.keys(step.payload).length === 0) return null;
-  return step.payload as T;
+  return step.payload as unknown as T;
 }
 
 // Shape esperado do payload de cada etapa — usado só como referência de

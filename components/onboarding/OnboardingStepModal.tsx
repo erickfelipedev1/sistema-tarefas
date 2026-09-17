@@ -84,14 +84,14 @@ export function OnboardingStepModal({
         <div className="overflow-y-auto px-5 py-4">
           {step === "company_info" && (
             <CompanyInfoForm
-              initialPayload={initialPayload as CompanyInfoPayload | null}
+              initialPayload={initialPayload as unknown as CompanyInfoPayload | null}
               saving={saving}
               onSubmit={onSubmit}
             />
           )}
           {step === "objectives" && (
             <ObjectivesForm
-              initialPayload={initialPayload as ObjectivesPayload | null}
+              initialPayload={initialPayload as unknown as ObjectivesPayload | null}
               saving={saving}
               onSubmit={onSubmit}
             />
@@ -106,7 +106,7 @@ export function OnboardingStepModal({
           )}
           {step === "participants" && (
             <ParticipantsForm
-              initialPayload={initialPayload as ParticipantsPayload | null}
+              initialPayload={initialPayload as unknown as ParticipantsPayload | null}
               saving={saving}
               onSubmit={onSubmit}
             />
@@ -148,7 +148,7 @@ function CompanyInfoForm({
   const [notes, setNotes] = useState(initialPayload?.notes ?? "");
   const [erro, setErro] = useState<string | null>(null);
 
-  function payload(): CompanyInfoPayload {
+  function payload(): Record<string, unknown> {
     return {
       company_name: companyName.trim(),
       contact_name: contactName.trim(),
@@ -230,7 +230,7 @@ function ObjectivesForm({
   const [objectives, setObjectives] = useState(initialPayload?.objectives ?? "");
   const [erro, setErro] = useState<string | null>(null);
 
-  function payload(): ObjectivesPayload {
+  function payload(): Record<string, unknown> {
     return { objectives: objectives.trim() };
   }
 
@@ -379,7 +379,7 @@ function ParticipantsForm({
     setParticipantes((atual) => atual.filter((_, idx) => idx !== i));
   }
 
-  function payload(): ParticipantsPayload {
+  function payload(): Record<string, unknown> {
     const validos = participantes
       .map((p) => ({ name: p.name.trim(), email: p.email.trim(), role: p.role.trim() }))
       .filter((p) => p.name || p.email);
@@ -473,12 +473,12 @@ function ApprovalReview({
   onSubmit: (payload: Record<string, unknown>, complete: boolean) => void;
 }) {
   const company = allSteps.find((s) => s.step_key === "company_info")
-    ?.payload as CompanyInfoPayload | undefined;
+    ?.payload as unknown as CompanyInfoPayload | undefined;
   const objectives = allSteps.find((s) => s.step_key === "objectives")
-    ?.payload as ObjectivesPayload | undefined;
+    ?.payload as unknown as ObjectivesPayload | undefined;
   const scopeOk = allSteps.find((s) => s.step_key === "scope")?.status === "completed";
   const participants = allSteps.find((s) => s.step_key === "participants")
-    ?.payload as ParticipantsPayload | undefined;
+    ?.payload as unknown as ParticipantsPayload | undefined;
 
   function confirmar() {
     onSubmit({ approved: true }, true);
