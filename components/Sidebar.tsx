@@ -12,7 +12,6 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ClipboardListIcon,
-  FileStackIcon,
   FolderIcon,
   MessageCircleIcon,
   SendIcon,
@@ -36,8 +35,9 @@ const SECOES: {
   {
     titulo: "Projetos",
     itens: [
+      // Arquivos não tem mais tela própria — cada projeto tem sua aba
+      // "Arquivos" (ver ProjectTabs), então não tem link avulso aqui.
       { href: "/projetos", label: "Projetos", icon: FolderIcon },
-      { href: "/arquivos", label: "Arquivos", icon: FileStackIcon },
     ],
   },
   {
@@ -160,29 +160,6 @@ export default function Sidebar({
                       itemHref={(id) => `/projetos/${id}`}
                       emptyLabel="Nenhum projeto ainda."
                       defaultOpen={pathname.startsWith("/projetos")}
-                      onNavigate={onNavigate}
-                    />
-                  );
-                }
-
-                if (item.href === "/arquivos") {
-                  // Os arquivos de cada cliente agora vivem dentro do
-                  // projeto dele (aba "Arquivos" em /projetos/[id]) — aqui
-                  // sobram só os dois atalhos fixos, sem lista de clientes.
-                  return (
-                    <ExpandableNavItem
-                      key={item.href}
-                      href="/arquivos"
-                      label="Arquivos"
-                      icon={Icon}
-                      active={active}
-                      items={[]}
-                      itemHref={() => "/arquivos"}
-                      defaultOpen={pathname.startsWith("/arquivos")}
-                      extraLinks={[
-                        { href: "/arquivos/meus", label: "🔒 Meus arquivos" },
-                        { href: "/arquivos/compartilhados", label: "👥 Compartilhados" },
-                      ]}
                       onNavigate={onNavigate}
                     />
                   );

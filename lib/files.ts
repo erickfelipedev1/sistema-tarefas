@@ -37,35 +37,3 @@ export function tipoArquivo(fileName: string): TipoArquivo {
     }
   );
 }
-
-// Um arquivo do Drive "Geral" — é o formato usado pela lista "Recentemente
-// acessados" do dashboard de Arquivos. Arquivos ligados a um projeto não
-// passam por aqui: eles vivem só na aba "Arquivos" do projeto (ver
-// DriveBrowser), então esse tipo nem carrega project_id.
-export interface ArquivoComContexto {
-  id: string;
-  file_name: string;
-  file_path: string;
-  file_size: number | null;
-  owner_id: string | null;
-  uploaded_by_label: string | null;
-  created_at: string;
-}
-
-// "Local" do arquivo dentro do Drive "Geral" — Meus arquivos ou
-// Compartilhados (arquivos de projeto não aparecem nessa lista central).
-export function localDoArquivo(
-  arquivo: Pick<ArquivoComContexto, "owner_id">,
-  currentUserId: string
-): { label: string; href: string } {
-  if (arquivo.owner_id === currentUserId) {
-    return { label: "Meus arquivos", href: "/arquivos/meus" };
-  }
-  return { label: "Compartilhados", href: "/arquivos/compartilhados" };
-}
-
-// Bucket + política de acesso: só os arquivos de "Meus arquivos" (owner_id
-// preenchido) ficam no bucket privado — o resto sempre foi público.
-export function bucketDoArquivo(ownerId: string | null): string {
-  return ownerId ? "drive-files-private" : "drive-files";
-}
