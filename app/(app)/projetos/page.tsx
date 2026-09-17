@@ -38,8 +38,8 @@ export default async function ProjetosPage() {
     );
 
     const filtro = idsDeProjetos.length
-      ? `created_by.eq.${user?.id},id.in.(${idsDeProjetos.join(",")})`
-      : `created_by.eq.${user?.id}`;
+      ? `created_by.eq.${user?.id},is_public.eq.true,id.in.(${idsDeProjetos.join(",")})`
+      : `created_by.eq.${user?.id},is_public.eq.true`;
 
     ({ data: projects } = await supabase
       .from("projects")

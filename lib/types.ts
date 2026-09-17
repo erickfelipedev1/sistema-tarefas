@@ -75,6 +75,10 @@ export interface Project {
   // Código do link público de progresso ("/progresso/<share_token>") que dá
   // pra mandar pro cliente — sem precisar de login pra ver.
   share_token: string;
+  // Projeto público: todo mundo vê, mesmo quem não é dono e não tem
+  // tarefa nele (usado pros projetos que são clientes da empresa).
+  // Nasce sempre falso — só vira público quem marcar manualmente.
+  is_public: boolean;
   created_by: string | null;
   created_by_label: string | null;
   created_at: string;

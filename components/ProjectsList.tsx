@@ -14,6 +14,8 @@ import { SearchInput } from "./ui/SearchInput";
 import {
   ChevronRightIcon,
   FolderIcon,
+  GlobeIcon,
+  LockIcon,
   MoreVerticalIcon,
   PencilIcon,
   PlusIcon,
@@ -121,11 +123,11 @@ export default function ProjectsList({
           setProjects((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Project;
-              // Individual: só entra na hora se o projeto for meu (a não
-              // ser que eu tenha "ve_tudo"). Se eu ganhar uma tarefa num
-              // projeto de outra pessoa, ele só aparece aqui no próximo
-              // carregamento da página.
-              if (!verTudo && novo.created_by !== currentUserId) {
+              // Individual: só entra na hora se o projeto for meu ou for
+              // público (a não ser que eu tenha "ve_tudo"). Se eu ganhar
+              // uma tarefa num projeto privado de outra pessoa, ele só
+              // aparece aqui no próximo carregamento da página.
+              if (!verTudo && !novo.is_public && novo.created_by !== currentUserId) {
                 return current;
               }
               if (current.some((p) => p.id === novo.id)) return current;
@@ -133,6 +135,19 @@ export default function ProjectsList({
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Project;
+              const jaEstava = current.some((p) => p.id === atualizado.id);
+              if (!jaEstava) {
+                // Não estava na lista — só entra agora se acabou de virar
+                // público (ou eu tenho "ve_tudo"/sou o dono).
+                if (
+                  !verTudo &&
+                  !atualizado.is_public &&
+                  atualizado.created_by !== currentUserId
+                ) {
+                  return current;
+                }
+                return [atualizado, ...current];
+              }
               return current.map((p) =>
                 p.id === atualizado.id ? atualizado : p
               );
@@ -201,6 +216,21 @@ export default function ProjectsList({
 
     setProjects((current) => current.filter((p) => p.id !== project.id));
     await supabase.from("projects").delete().eq("id", project.id);
+  }
+
+  // Projeto público: todo mundo vê, mesmo sem tarefa nele. Todo projeto
+  // nasce privado — só vira público quem marcar aqui manualmente.
+  async function handleTogglePublic(project: Project) {
+    const novoValor = !project.is_public;
+    setProjects((current) =>
+      current.map((p) =>
+        p.id === project.id ? { ...p, is_public: novoValor } : p
+      )
+    );
+    await supabase
+      .from("projects")
+      .update({ is_public: novoValor })
+      .eq("id", project.id);
   }
 
   // Nenhum projeto existe ainda: estado vazio central, sem barra de
@@ -309,6 +339,7 @@ export default function ProjectsList({
               }
               onRename={() => handleRename(project)}
               onDelete={() => handleDelete(project)}
+              onTogglePublic={() => handleTogglePublic(project)}
             />
           ))}
         </div>
@@ -322,11 +353,13 @@ function ProjectCard({
   avatarUrl,
   onRename,
   onDelete,
+  onTogglePublic,
 }: {
   project: Project;
   avatarUrl: string | null | undefined;
   onRename: () => void;
   onDelete: () => void;
+  onTogglePublic: () => void;
 }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -351,6 +384,13 @@ function ProjectCard({
         <p className="mt-1 text-sm text-ink-muted">
           Quadro de tarefas e Wiki próprios
         </p>
+
+        {project.is_public && (
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-medium text-brand">
+            <GlobeIcon className="h-3 w-3" />
+            Público
+          </span>
+        )}
 
         {project.created_by_label && (
           <div className="mt-4 flex items-center gap-2">
@@ -413,6 +453,26 @@ function ProjectCard({
             >
               <PencilIcon className="h-3.5 w-3.5" />
               Editar
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setMenuAberto(false);
+                onTogglePublic();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
+            >
+              {project.is_public ? (
+                <>
+                  <LockIcon className="h-3.5 w-3.5" />
+                  Tornar privado
+                </>
+              ) : (
+                <>
+                  <GlobeIcon className="h-3.5 w-3.5" />
+                  Tornar público
+                </>
+              )}
             </button>
             <button
               role="menuitem"

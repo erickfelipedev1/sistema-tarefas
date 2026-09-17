@@ -288,3 +288,19 @@ export const MoonIcon = createIcon(
   "MoonIcon",
   <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" />
 );
+
+export const GlobeIcon = createIcon(
+  "GlobeIcon",
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+  </>
+);
+
+export const LockIcon = createIcon(
+  "LockIcon",
+  <>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V7a4 4 0 1 1 8 0v4" />
+  </>
+);

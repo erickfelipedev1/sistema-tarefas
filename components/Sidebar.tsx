@@ -93,10 +93,13 @@ export default function Sidebar({
           setProjects((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Project;
-              // Menu individual: só entra na hora se o projeto for meu — se
-              // eu ganhar uma tarefa num projeto de outra pessoa, ele só
-              // aparece aqui no próximo carregamento da página.
-              if (!verTudo && novo.created_by !== currentUserId) return current;
+              // Menu individual: só entra na hora se o projeto for meu ou
+              // for público — se eu ganhar uma tarefa num projeto privado
+              // de outra pessoa, ele só aparece aqui no próximo
+              // carregamento da página.
+              if (!verTudo && !novo.is_public && novo.created_by !== currentUserId) {
+                return current;
+              }
               if (current.some((p) => p.id === novo.id)) return current;
               return [...current, novo].sort((a, b) =>
                 a.name.localeCompare(b.name)
@@ -109,7 +112,20 @@ export default function Sidebar({
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Project;
               const jaEstava = current.some((p) => p.id === atualizado.id);
-              if (!jaEstava) return current;
+              if (!jaEstava) {
+                // Não estava na lista — só entra agora se acabou de virar
+                // público (ou eu tenho "ve_tudo"/sou o dono).
+                if (
+                  !verTudo &&
+                  !atualizado.is_public &&
+                  atualizado.created_by !== currentUserId
+                ) {
+                  return current;
+                }
+                return [...current, atualizado].sort((a, b) =>
+                  a.name.localeCompare(b.name)
+                );
+              }
               return current
                 .map((p) => (p.id === atualizado.id ? atualizado : p))
                 .sort((a, b) => a.name.localeCompare(b.name));
