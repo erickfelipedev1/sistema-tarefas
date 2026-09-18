@@ -286,6 +286,15 @@ export interface Profile {
   avatar_url: string | null;
 }
 
+export interface PersonalApiToken {
+  id: string;
+  token_prefix: string;
+  label: string | null;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
 export type TaskRequestStatus = "pending" | "accepted" | "declined";
 
 export interface TaskRequest {

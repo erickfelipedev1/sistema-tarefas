@@ -16,6 +16,7 @@ import {
   MessageCircleIcon,
   MoonIcon,
   SendIcon,
+  SparklesIcon,
   SunIcon,
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
@@ -48,6 +49,12 @@ const SECOES: {
     itens: [
       { href: "/solicitacoes", label: "Solicitações", icon: SendIcon },
       { href: "/chat", label: "Mensagens", icon: MessageCircleIcon },
+    ],
+  },
+  {
+    titulo: "Conta",
+    itens: [
+      { href: "/conta/ia", label: "Integração com IA", icon: SparklesIcon },
     ],
   },
 ];

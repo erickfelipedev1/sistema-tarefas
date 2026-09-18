@@ -14,11 +14,14 @@
     "@blocknote/react": "^0.54.0",
     "@mantine/core": "^8.3.11",
     "@mantine/hooks": "^8.3.11",
+    "@modelcontextprotocol/sdk": "1.26.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
+    "mcp-handler": "1.1.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "zod": "^3.25.50"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
