@@ -69,6 +69,11 @@ export interface Page {
   updated_at: string;
 }
 
+// Etapa do projeto (portal do cliente) — controla o "stepper" e o rótulo
+// do card "Seu projeto". "Projeto iniciado" não é um valor aqui: é sempre
+// considerado concluído (a partir da data de criação do projeto).
+export type ProjectStatus = "planejamento" | "execucao" | "revisao" | "concluido";
+
 export interface Project {
   id: string;
   name: string;
@@ -79,8 +84,92 @@ export interface Project {
   // tarefa nele (usado pros projetos que são clientes da empresa).
   // Nasce sempre falso — só vira público quem marcar manualmente.
   is_public: boolean;
+  // Portal do cliente (Visão geral) — preenchidos pela equipe em
+  // /projetos/[id]. Nascem com status "planejamento" e o resto vazio.
+  status: ProjectStatus;
+  responsible_id: string | null;
+  responsible_label: string | null;
+  start_date: string | null;
+  target_end_date: string | null;
+  // Item manual do checklist ("Responder informações iniciais") — a
+  // equipe marca depois de alinhar com o cliente por fora do sistema.
+  initial_info_confirmed: boolean;
   created_by: string | null;
   created_by_label: string | null;
+  created_at: string;
+}
+
+// Item do checklist de onboarding mostrado na "Visão geral" do portal do
+// cliente — sempre calculado (get_project_overview), nunca marcado pelo
+// cliente: o portal é só leitura (decisão do Erick).
+export interface ProjectChecklistItem {
+  key: string;
+  title: string;
+  description: string;
+  done: boolean;
+}
+
+// Resposta da função get_project_overview(token) — o que a aba "Visão
+// geral" do portal do cliente precisa.
+export interface ProjectOverview {
+  project_name: string;
+  status: ProjectStatus;
+  responsible_label: string | null;
+  start_date: string | null;
+  target_end_date: string | null;
+  created_at: string;
+  checklist: ProjectChecklistItem[];
+}
+
+// Resposta da função get_project_team(token) — responsável do projeto +
+// quem tem tarefa atribuída nele (não existe um cadastro de "time do
+// projeto" à parte).
+export interface ProjectTeamMember {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  is_responsible: boolean;
+}
+
+export type ProjectNotificationType =
+  | "document"
+  | "invoice"
+  | "task"
+  | "task_done"
+  | "message"
+  | "status";
+
+// Linha de project_notifications — alimentada só por gatilhos (nunca por
+// texto solto da equipe). Serve tanto pro sino de notificações quanto
+// pro "Histórico de atividades" no portal do cliente.
+export interface ProjectNotification {
+  id: string;
+  type: ProjectNotificationType;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
+export type MessageSenderType = "team" | "client";
+
+// Linha de project_messages, do lado da equipe (aba "Mensagens" em
+// /projetos/[id]) — inclui project_id porque vem direto da tabela.
+export interface ProjectMessage {
+  id: string;
+  project_id: string;
+  sender_type: MessageSenderType;
+  sender_label: string;
+  content: string;
+  created_at: string;
+}
+
+// Resposta de get_project_messages(token)/send_project_message — o que o
+// portal do cliente usa (sem project_id, que não faz sentido expor).
+export interface PublicProjectMessage {
+  id: string;
+  sender_type: MessageSenderType;
+  sender_label: string;
+  content: string;
   created_at: string;
 }
 

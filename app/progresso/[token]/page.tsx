@@ -3,8 +3,17 @@ import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProjectProgressPanel } from "@/components/onboarding/ProjectProgressPanel";
 import { DocumentsPanel } from "@/components/onboarding/DocumentsPanel";
 import { InvoicesPanel } from "@/components/onboarding/InvoicesPanel";
+import { ProjectOverviewPanel } from "@/components/onboarding/ProjectOverviewPanel";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
-import type { ProjectDocuments, ProjectProgress, PublicInvoice } from "@/lib/types";
+import type {
+  ProjectDocuments,
+  ProjectNotification,
+  ProjectOverview,
+  ProjectProgress,
+  ProjectTeamMember,
+  PublicInvoice,
+  PublicProjectMessage,
+} from "@/lib/types";
 
 export default async function ProgressoPage({
   params,
@@ -17,15 +26,24 @@ export default async function ProgressoPage({
     { data: progressData, error: progressError },
     { data: documentsData },
     { data: invoicesData },
+    { data: overviewData },
+    { data: teamData },
+    { data: notificationsData },
+    { data: messagesData },
   ] = await Promise.all([
     supabase.rpc("get_project_progress", { p_token: params.token }),
     supabase.rpc("get_project_documents", { p_token: params.token }),
     supabase.rpc("get_project_invoices", { p_token: params.token }),
+    supabase.rpc("get_project_overview", { p_token: params.token }),
+    supabase.rpc("get_project_team", { p_token: params.token }),
+    supabase.rpc("get_project_notifications", { p_token: params.token }),
+    supabase.rpc("get_project_messages", { p_token: params.token }),
   ]);
 
   const progresso = progressData as ProjectProgress | null;
+  const overview = overviewData as ProjectOverview | null;
 
-  if (progressError || !progresso) {
+  if (progressError || !progresso || !overview) {
     return (
       <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-5 py-14 text-center">
         <p className="text-lg font-semibold text-ink">Link não encontrado</p>
@@ -54,11 +72,30 @@ export default async function ProgressoPage({
       : null,
   }));
 
+  const equipe = (teamData as ProjectTeamMember[] | null) ?? [];
+  const notificacoes = (notificationsData as ProjectNotification[] | null) ?? [];
+  const mensagens = (messagesData as PublicProjectMessage[] | null) ?? [];
+
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-5 py-10 sm:px-6 sm:py-14">
-      <OnboardingHeader projectName={progresso.project_name} />
+      <OnboardingHeader
+        projectName={progresso.project_name}
+        token={params.token}
+        notifications={notificacoes}
+      />
 
       <ClientDashboardTabs
+        visaoGeral={
+          <ProjectOverviewPanel
+            token={params.token}
+            overview={overview}
+            team={equipe}
+            notifications={notificacoes}
+            messages={mensagens}
+            invoices={faturas}
+            tasks={progresso.tasks}
+          />
+        }
         andamento={<ProjectProgressPanel data={progresso} />}
         documentos={
           <DocumentsPanel

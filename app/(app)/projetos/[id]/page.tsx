@@ -7,6 +7,9 @@ import ShareProjectLink from "@/components/ShareProjectLink";
 import ProjectTabs from "@/components/ProjectTabs";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
+import ProjectDetailsCard from "@/components/ProjectDetailsCard";
+import ProjectMessagesManager from "@/components/ProjectMessagesManager";
+import ProjectFeedbackList from "@/components/ProjectFeedbackList";
 import { PaginaRow } from "@/components/WikiPagesPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
@@ -53,6 +56,12 @@ export default async function ProjetoPage({
     .eq("project_id", id)
     .order("updated_at", { ascending: false });
 
+  const { data: feedback } = await supabase
+    .from("project_feedback")
+    .select("id, stage_label, rating, comment, created_at")
+    .eq("project_id", id)
+    .order("created_at", { ascending: false });
+
   return (
     <main className="mx-auto max-w-[1400px] px-6 py-8">
       <Link
@@ -75,6 +84,16 @@ export default async function ProjetoPage({
       </div>
 
       <ShareProjectLink projectId={id} shareToken={project.share_token} />
+
+      <ProjectDetailsCard
+        projectId={id}
+        profiles={profiles ?? []}
+        initialStatus={project.status}
+        initialResponsibleId={project.responsible_id}
+        initialStartDate={project.start_date}
+        initialTargetEndDate={project.target_end_date}
+        initialInfoConfirmed={project.initial_info_confirmed}
+      />
 
       <ProjectTabs
         tarefas={
@@ -117,6 +136,12 @@ export default async function ProjetoPage({
         }
         faturas={
           <InvoicesManager projectId={id} currentUserLabel={userLabel} />
+        }
+        mensagens={
+          <div>
+            <ProjectMessagesManager projectId={id} currentUserLabel={userLabel} />
+            <ProjectFeedbackList feedback={feedback ?? []} />
+          </div>
         }
       />
     </main>

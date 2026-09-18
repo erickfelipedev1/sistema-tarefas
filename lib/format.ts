@@ -77,3 +77,14 @@ export function formatarMoeda(valor: number): string {
     currency: "BRL",
   });
 }
+
+// Quebra uma data "YYYY-MM-DD" em { dia, mes } ("19", "SET") — usado no
+// selo de data das "Próximas entregas" no portal do cliente. Parse manual
+// (mesmo motivo de formatarDataBR: evitar o fuso horário virar o dia).
+export function formatarDiaMes(dataISO: string): { dia: string; mes: string } {
+  const partes = dataISO.slice(0, 10).split("-");
+  if (partes.length !== 3) return { dia: "--", mes: "" };
+  const [, mes, dia] = partes;
+  const indiceMes = Number(mes) - 1;
+  return { dia, mes: (MESES[indiceMes] ?? "").toUpperCase() };
+}
