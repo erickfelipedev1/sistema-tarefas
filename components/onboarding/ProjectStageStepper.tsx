@@ -39,9 +39,9 @@ export function ProjectStageStepper({
   const proxima = proximaEtapaLabel(status);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-        <div className="sm:w-56 sm:flex-shrink-0">
+    <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      <div className="flex flex-col gap-6 sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-start sm:gap-8">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-ink">Progresso do projeto</p>
           <div className="mt-3 flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-hover">
@@ -64,7 +64,7 @@ export function ProjectStageStepper({
           )}
         </div>
 
-        <div className="min-w-0 flex-1 sm:border-l sm:border-line sm:pl-5">
+        <div className="min-w-0 sm:border-l sm:border-line sm:pl-6">
           <p className="mb-3 text-sm font-semibold text-ink sm:hidden">
             Etapas do projeto
           </p>

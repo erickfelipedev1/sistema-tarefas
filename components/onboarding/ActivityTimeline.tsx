@@ -36,7 +36,7 @@ export function ActivityTimeline({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="h-full rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <p className="text-sm font-semibold text-ink">Histórico de atividades</p>
 
       {notifications.length === 0 ? (

@@ -18,7 +18,7 @@ export function UpcomingDeliveries({
     .slice(0, 5);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <p className="text-sm font-semibold text-ink">Próximas entregas</p>
       <p className="mt-0.5 text-xs text-ink-muted">
         Atividades do projeto com data prevista.

@@ -36,7 +36,7 @@ export function FeedbackWidget({
 
   if (enviado) {
     return (
-      <div className="rounded-2xl border border-line bg-surface p-5 text-center">
+      <div className="rounded-2xl border border-line bg-surface p-5 text-center sm:p-6">
         <p className="text-sm font-medium text-ink">Obrigado pelo retorno!</p>
         <p className="mt-0.5 text-xs text-ink-muted">
           Sua avaliação ajuda a equipe a melhorar o projeto.
@@ -46,7 +46,7 @@ export function FeedbackWidget({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <p className="text-sm font-semibold text-ink">Como foi essa etapa do projeto?</p>
       <p className="mt-0.5 text-xs text-ink-muted">Sua opinião nos ajuda a melhorar.</p>
 

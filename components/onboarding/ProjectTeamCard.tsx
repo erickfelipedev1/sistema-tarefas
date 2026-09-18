@@ -14,7 +14,7 @@ function iniciais(nome: string): string {
 // projeto" à parte (decisão do Erick), então é essa a fonte real.
 export function ProjectTeamCard({ team }: { team: ProjectTeamMember[] }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="h-full rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <p className="text-sm font-semibold text-ink">Sua equipe</p>
 
       {team.length === 0 ? (

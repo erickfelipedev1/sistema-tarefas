@@ -121,7 +121,7 @@ export function NotificationsWidget({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold text-ink">Notificações</p>
         {notifications.length > 0 && (

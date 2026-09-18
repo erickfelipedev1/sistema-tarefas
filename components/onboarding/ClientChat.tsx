@@ -85,7 +85,7 @@ export function ClientChat({
   }
 
   return (
-    <div id="comunicacao-do-projeto" className="rounded-2xl border border-line bg-surface p-5">
+    <div id="comunicacao-do-projeto" className="h-full rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <p className="text-sm font-semibold text-ink">Comunicação do projeto</p>
 
       <div className="mt-3 max-h-80 space-y-3 overflow-y-auto rounded-xl bg-canvas p-3">

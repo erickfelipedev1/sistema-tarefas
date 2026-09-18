@@ -20,7 +20,7 @@ export function PendingInvoicesCard({ invoices }: { invoices: PublicInvoice[] })
   if (pendentes.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-warning/25 bg-warning-light/40 p-5">
+    <div className="h-full rounded-2xl border border-warning/25 bg-warning-light/40 p-5 sm:p-6">
       <div className="flex items-start gap-2.5">
         <AlertTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
         <div>

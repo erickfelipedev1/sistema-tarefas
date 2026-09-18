@@ -11,7 +11,7 @@ export function OnboardingChecklist({ items }: { items: ProjectChecklistItem[] }
   const indiceAtual = items.findIndex((i) => !i.done);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="h-full rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-ink">

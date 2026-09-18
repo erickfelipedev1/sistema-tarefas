@@ -77,7 +77,7 @@ export default async function ProgressoPage({
   const mensagens = (messagesData as PublicProjectMessage[] | null) ?? [];
 
   return (
-    <main className="mx-auto min-h-screen max-w-2xl px-5 py-10 sm:px-6 sm:py-14">
+    <main className="mx-auto min-h-screen max-w-[1400px] px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
       <OnboardingHeader
         projectName={progresso.project_name}
         token={params.token}

@@ -21,16 +21,18 @@ export function ProjectStatusCard({
   targetEndDate: string | null;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-ink-muted">Seu projeto</p>
-          <p className="mt-0.5 text-lg font-semibold text-ink">{projectName}</p>
+          <p className="mt-0.5 text-lg font-semibold text-ink sm:text-xl">
+            {projectName}
+          </p>
         </div>
         <Badge tone="brand">{PROJECT_STATUS_BADGE_LABEL[status]}</Badge>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-3 sm:gap-8 lg:w-3/4">
         <div>
           <p className="text-xs text-ink-muted">Responsável</p>
           <p className="mt-0.5 text-sm font-medium text-ink">
