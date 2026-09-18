@@ -94,10 +94,12 @@ ela e a tarefa já é criada de verdade, em nome de quem pediu.
    Claude Code.
 
 As ferramentas disponíveis pra IA de cada um: criar tarefa, listar
-projetos, listar tarefas, mudar o status de uma tarefa e comentar numa
-tarefa — sempre respeitando a mesma visibilidade que a pessoa já tem
-dentro do próprio site (não dá pra ver/mexer em projeto de outra pessoa
-que não seja público).
+projetos, listar tarefas, editar uma tarefa (título, descrição, prazo,
+responsável e/ou status — dá pra mudar mais de uma coisa de uma vez),
+mudar só o status de uma tarefa e comentar numa tarefa — sempre
+respeitando a mesma visibilidade que a pessoa já tem dentro do próprio
+site (não dá pra ver/mexer em projeto de outra pessoa que não seja
+público).
 
 ## Estrutura do projeto
 

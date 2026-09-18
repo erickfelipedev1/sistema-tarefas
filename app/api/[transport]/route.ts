@@ -432,6 +432,186 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
     );
 
     server.registerTool(
+      "now_editar_tarefa",
+      {
+        title: "Editar tarefa",
+        description: `Edita uma ou mais informações de uma tarefa já existente — título, descrição, prazo, responsável e/ou status. Só muda o que for informado; o resto continua como está.
+
+Args:
+  - tarefa (string, obrigatório): título (ou parte do título) da tarefa a editar.
+  - novo_titulo (string, opcional): novo título da tarefa.
+  - descricao (string, opcional): nova descrição (pode mandar vazio "" pra apagar a descrição).
+  - data_prazo (string, opcional): nova data no formato AAAA-MM-DD. Pra tirar o prazo, mande "remover" ou "".
+  - responsavel (string, opcional): nome de quem deve ficar responsável (aceita "eu"/"mim", e substitui quem já estava). Pra tirar o responsável, mande "remover" ou "ninguém".
+  - status (string, opcional): "todo", "doing", "done" ou "cancelled".
+  - projeto (string, opcional): nome do projeto, só pra ajudar a achar a tarefa certa quando o título é ambíguo (não move a tarefa de projeto).
+
+Retorna: confirmação com o que foi alterado.
+
+Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferramenta lista o que encontrou — chame de novo com um título mais específico ou informando o projeto. Também dá erro se nenhum campo pra alterar for informado.`,
+        inputSchema: {
+          tarefa: z.string().min(1).max(200).describe("Título (ou parte do título) da tarefa a editar."),
+          novo_titulo: z.string().min(1).max(200).optional().describe("Novo título da tarefa."),
+          descricao: z
+            .string()
+            .max(5000)
+            .optional()
+            .describe('Nova descrição. Mande "" pra apagar.'),
+          data_prazo: z
+            .string()
+            .max(20)
+            .optional()
+            .describe('Nova data no formato AAAA-MM-DD. Mande "remover" ou "" pra tirar o prazo.'),
+          responsavel: z
+            .string()
+            .max(200)
+            .optional()
+            .describe('Nome de quem fica responsável (substitui). Aceita "eu"/"mim". Mande "remover" pra tirar.'),
+          status: z.enum(["todo", "doing", "done", "cancelled"]).optional().describe("Novo status."),
+          projeto: z.string().max(200).optional().describe("Nome do projeto, pra desambiguar (opcional)."),
+        },
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      },
+      async (
+        { tarefa, novo_titulo, descricao, data_prazo, responsavel, status, projeto },
+        extra
+      ) => {
+        try {
+          const perfil = perfilDoContexto(extra as ContextoFerramenta);
+          const admin = createAdminClient();
+
+          const resolProjeto = await resolverProjeto(admin, perfil.profileId, projeto);
+          if (!resolProjeto.ok) {
+            return { isError: true, content: [{ type: "text", text: resolProjeto.erro }] };
+          }
+
+          const atualizacoes: Record<string, unknown> = {};
+          const resumo: string[] = [];
+
+          if (novo_titulo !== undefined) {
+            atualizacoes.title = novo_titulo.trim();
+            resumo.push(`título → "${novo_titulo.trim()}"`);
+          }
+
+          if (descricao !== undefined) {
+            atualizacoes.description = descricao.trim() || null;
+            resumo.push(descricao.trim() ? "descrição atualizada" : "descrição removida");
+          }
+
+          if (data_prazo !== undefined) {
+            const normalizado = data_prazo.trim().toLowerCase();
+            if (normalizado === "" || ["remover", "nenhuma", "sem prazo", "sem data"].includes(normalizado)) {
+              atualizacoes.due_date = null;
+              resumo.push("prazo removido");
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(data_prazo.trim())) {
+              atualizacoes.due_date = data_prazo.trim();
+              resumo.push(`prazo → ${data_prazo.trim()}`);
+            } else {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: "text",
+                    text: `Data inválida: "${data_prazo}". Use o formato AAAA-MM-DD, ou "remover" pra tirar o prazo.`,
+                  },
+                ],
+              };
+            }
+          }
+
+          if (responsavel !== undefined) {
+            const normalizado = responsavel.trim().toLowerCase();
+            if (["remover", "ninguém", "ninguem", "nenhum", "sem responsável", "sem responsavel"].includes(normalizado)) {
+              atualizacoes.assigned_to = [];
+              resumo.push("responsável removido");
+            } else {
+              const resolResp = await resolverResponsavel(admin, perfil.profileId, responsavel);
+              if (!resolResp.ok) {
+                return { isError: true, content: [{ type: "text", text: resolResp.erro }] };
+              }
+              atualizacoes.assigned_to = resolResp.ids;
+              resumo.push(`responsável → ${responsavel.trim()}`);
+            }
+          }
+
+          if (status !== undefined) {
+            atualizacoes.status = status;
+            resumo.push(`status → ${STATUS_LABEL[status as TaskStatus]}`);
+          }
+
+          if (Object.keys(atualizacoes).length === 0) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: "Nada pra atualizar. Informe ao menos um campo: novo_titulo, descricao, data_prazo, responsavel ou status.",
+                },
+              ],
+            };
+          }
+
+          const candidatas = await encontrarTarefasPorTitulo(
+            admin,
+            perfil.profileId,
+            tarefa,
+            resolProjeto.projeto?.id ?? null
+          );
+
+          if (candidatas.length === 0) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: `Não achei nenhuma tarefa com "${tarefa}" no título. Confira o nome ou use now_listar_tarefas.`,
+                },
+              ],
+            };
+          }
+          if (candidatas.length > 1) {
+            const lista = candidatas.map((t) => `- ${t.title}`).join("\n");
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: `Mais de uma tarefa bate com "${tarefa}":\n${lista}\nChame de novo com um título mais específico ou informando o projeto.`,
+                },
+              ],
+            };
+          }
+
+          const alvo = candidatas[0];
+          const { error } = await admin.from("tasks").update(atualizacoes).eq("id", alvo.id);
+
+          if (error) {
+            return { isError: true, content: [{ type: "text", text: `Erro ao atualizar: ${error.message}` }] };
+          }
+
+          const tituloFinal = (atualizacoes.title as string | undefined) ?? alvo.title;
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Tarefa "${tituloFinal}" atualizada: ${resumo.join(", ")}.`,
+              },
+            ],
+            structuredContent: { id: alvo.id, title: tituloFinal, alteracoes: resumo },
+          };
+        } catch (error) {
+          return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
+        }
+      }
+    );
+
+    server.registerTool(
       "now_comentar_tarefa",
       {
         title: "Comentar numa tarefa",
