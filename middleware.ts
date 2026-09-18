@@ -41,8 +41,12 @@ export async function middleware(request: NextRequest) {
   // Página pública de progresso do projeto (link que o cliente recebe) —
   // não passa por login, o acesso é controlado pelo token na própria URL.
   const isPublicRoute = pathname.startsWith("/progresso");
+  // Rotas de API (ex: /api/mcp) cuidam da própria autenticação (Bearer
+  // token pessoal, no caso do MCP) — não fazem parte do fluxo de login por
+  // cookie, então não podem ser redirecionadas pra /login aqui.
+  const isApiRoute = pathname.startsWith("/api/");
 
-  if (!user && !isLoginRoute && !isPublicRoute) {
+  if (!user && !isLoginRoute && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -54,7 +58,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && !isOnboardingRoute && !isLoginRoute && !isPublicRoute) {
+  if (user && !isOnboardingRoute && !isLoginRoute && !isPublicRoute && !isApiRoute) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("name")
