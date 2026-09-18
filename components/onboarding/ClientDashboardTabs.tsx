@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  CalendarIcon,
   ClipboardListIcon,
   FileStackIcon,
   HomeIcon,
@@ -13,6 +14,7 @@ import { CLIENT_TAB_SWITCH_EVENT, type ClientPortalTab } from "./client-tab-swit
 const ABAS = [
   { key: "visaoGeral", label: "Visão geral", icon: HomeIcon },
   { key: "andamento", label: "Andamento", icon: ClipboardListIcon },
+  { key: "calendario", label: "Calendário", icon: CalendarIcon },
   { key: "documentos", label: "Documentos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
 ] as const satisfies readonly { key: ClientPortalTab; label: string; icon: unknown }[];
@@ -26,11 +28,13 @@ const ABAS = [
 export function ClientDashboardTabs({
   visaoGeral,
   andamento,
+  calendario,
   documentos,
   faturas,
 }: {
   visaoGeral: ReactNode;
   andamento: ReactNode;
+  calendario: ReactNode;
   documentos: ReactNode;
   faturas: ReactNode;
 }) {
@@ -70,6 +74,7 @@ export function ClientDashboardTabs({
 
       <div className={aba === "visaoGeral" ? "" : "hidden"}>{visaoGeral}</div>
       <div className={aba === "andamento" ? "" : "hidden"}>{andamento}</div>
+      <div className={aba === "calendario" ? "" : "hidden"}>{calendario}</div>
       <div className={aba === "documentos" ? "" : "hidden"}>{documentos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
     </div>

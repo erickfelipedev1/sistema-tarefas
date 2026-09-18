@@ -4,7 +4,12 @@
 // só pra isso.
 export const CLIENT_TAB_SWITCH_EVENT = "client-portal:switch-tab";
 
-export type ClientPortalTab = "visaoGeral" | "andamento" | "documentos" | "faturas";
+export type ClientPortalTab =
+  | "visaoGeral"
+  | "andamento"
+  | "calendario"
+  | "documentos"
+  | "faturas";
 
 export function irParaAba(aba: ClientPortalTab) {
   window.dispatchEvent(

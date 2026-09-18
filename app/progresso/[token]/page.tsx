@@ -4,6 +4,7 @@ import { ProjectProgressPanel } from "@/components/onboarding/ProjectProgressPan
 import { DocumentsPanel } from "@/components/onboarding/DocumentsPanel";
 import { InvoicesPanel } from "@/components/onboarding/InvoicesPanel";
 import { ProjectOverviewPanel } from "@/components/onboarding/ProjectOverviewPanel";
+import { ClientCalendar } from "@/components/onboarding/ClientCalendar";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
   ProjectDocuments,
@@ -97,6 +98,7 @@ export default async function ProgressoPage({
           />
         }
         andamento={<ProjectProgressPanel data={progresso} />}
+        calendario={<ClientCalendar tasks={progresso.tasks} />}
         documentos={
           <DocumentsPanel
             folders={documentos?.folders ?? []}

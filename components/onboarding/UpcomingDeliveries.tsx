@@ -1,5 +1,8 @@
-import { CalendarIcon } from "../ui/icons";
+"use client";
+
+import { CalendarIcon, ChevronRightIcon } from "../ui/icons";
 import { formatarDiaMes } from "@/lib/format";
+import { irParaAba } from "./client-tab-switch";
 import type { TaskStatus } from "@/lib/types";
 
 // "Próximas entregas" — o mockup original pedia uma seção de "eventos"
@@ -19,10 +22,21 @@ export function UpcomingDeliveries({
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
-      <p className="text-sm font-semibold text-ink">Próximas entregas</p>
-      <p className="mt-0.5 text-xs text-ink-muted">
-        Atividades do projeto com data prevista.
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-ink">Próximas entregas</p>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            Atividades do projeto com data prevista.
+          </p>
+        </div>
+        <button
+          onClick={() => irParaAba("calendario")}
+          className="inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand hover:underline"
+        >
+          Ver calendário
+          <ChevronRightIcon className="h-3 w-3" />
+        </button>
+      </div>
 
       {proximas.length === 0 ? (
         <p className="mt-4 text-xs text-ink-muted">
