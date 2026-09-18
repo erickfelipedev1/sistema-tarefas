@@ -203,27 +203,27 @@ export default function TaskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl md:flex-row"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl md:flex-row"
       >
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-1 flex items-start justify-between gap-4">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-ink">
               {isNovo ? "Nova tarefa" : "Atualize aqui sua tarefa"}
             </h2>
             <button
               onClick={onClose}
-              className="text-xl leading-none text-slate-400 hover:text-slate-700"
+              className="text-xl leading-none text-ink-muted hover:text-ink"
             >
               ✕
             </button>
           </div>
           {!isNovo && (
-            <p className="mb-4 text-xs text-slate-400">
+            <p className="mb-4 text-xs text-ink-muted">
               As alterações são salvas automaticamente.
             </p>
           )}
           {erro && (
-            <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+            <p className="mb-3 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
               {erro}
             </p>
           )}
@@ -231,7 +231,7 @@ export default function TaskModal({
           {aba === "detalhes" && (
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-ink-muted">
                   Nome da tarefa *
                 </label>
                 <input
@@ -244,12 +244,12 @@ export default function TaskModal({
                     salvarCampo({ title: title.trim() })
                   }
                   placeholder="Nome da tarefa..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-ink-muted">
                   Descrição
                 </label>
                 <textarea
@@ -261,19 +261,19 @@ export default function TaskModal({
                   }
                   rows={4}
                   placeholder="Detalhes da tarefa..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-medium text-slate-500">
+                <label className="mb-2 block text-xs font-medium text-ink-muted">
                   Status
                 </label>
                 <div className="flex flex-wrap gap-3">
                   {STATUS_OPTIONS.map((opt) => (
                     <label
                       key={opt.key}
-                      className="flex items-center gap-1.5 text-sm text-slate-600"
+                      className="flex items-center gap-1.5 text-sm text-ink-muted"
                     >
                       <input
                         type="radio"
@@ -292,7 +292,7 @@ export default function TaskModal({
 
               <div className="flex flex-wrap gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Data
                   </label>
                   <input
@@ -302,11 +302,11 @@ export default function TaskModal({
                       setDueDate(e.target.value);
                       if (!isNovo) salvarCampo({ due_date: e.target.value || null });
                     }}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Horário
                   </label>
                   <input
@@ -316,11 +316,11 @@ export default function TaskModal({
                       setDueTime(e.target.value);
                       if (!isNovo) salvarCampo({ due_time: e.target.value || null });
                     }}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Repetir
                   </label>
                   <select
@@ -330,7 +330,7 @@ export default function TaskModal({
                       setRepeatRule(v);
                       if (!isNovo) salvarCampo({ repeat_rule: v });
                     }}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   >
                     {REPEAT_OPTIONS.map((o) => (
                       <option key={o.key} value={o.key}>
@@ -341,14 +341,14 @@ export default function TaskModal({
                 </div>
               </div>
               {repeatRule !== "none" && (
-                <p className="-mt-2 text-xs text-slate-400">
+                <p className="-mt-2 text-xs text-ink-muted">
                   A recorrência é só uma lembrança por enquanto — ainda não
                   recria a tarefa automaticamente.
                 </p>
               )}
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-ink-muted">
                   Responsáveis
                 </label>
                 <div className="flex flex-wrap items-center gap-1">
@@ -357,13 +357,13 @@ export default function TaskModal({
                     return (
                       <span
                         key={id}
-                        className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600"
+                        className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-xs font-medium text-brand"
                       >
                         {p?.name || p?.username || "?"}
                         <button
                           type="button"
                           onClick={() => removerResponsavel(id)}
-                          className="text-indigo-400 hover:text-indigo-700"
+                          className="text-brand/60 hover:text-brand"
                         >
                           ✕
                         </button>
@@ -371,13 +371,13 @@ export default function TaskModal({
                     );
                   })}
                   {assignedTo.length === 0 && (
-                    <span className="text-xs text-slate-400">Ninguém</span>
+                    <span className="text-xs text-ink-muted">Ninguém</span>
                   )}
                 </div>
                 <select
                   value=""
                   onChange={(e) => adicionarResponsavel(e.target.value)}
-                  className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                  className="mt-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 >
                   <option value="">+ Adicionar responsável</option>
                   {profiles
@@ -393,7 +393,7 @@ export default function TaskModal({
               <div className="flex flex-wrap gap-3">
                 {projects.length > 0 && (
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-500">
+                    <label className="mb-1 block text-xs font-medium text-ink-muted">
                       Projeto
                     </label>
                     <select
@@ -403,7 +403,7 @@ export default function TaskModal({
                         if (!isNovo)
                           salvarCampo({ project_id: e.target.value || null });
                       }}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 focus:border-slate-500 focus:outline-none"
+                      className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                     >
                       <option value="">Geral</option>
                       {projects.map((p) => (
@@ -416,10 +416,10 @@ export default function TaskModal({
                 )}
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Cor
                   </label>
-                  <div className="flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-2">
+                  <div className="flex items-center gap-1 rounded-lg border border-line px-2 py-2">
                     {CORES_TAREFA.map((cor) => (
                       <button
                         key={cor.key}
@@ -431,7 +431,7 @@ export default function TaskModal({
                         }}
                         className={`h-4 w-4 rounded-full ${cor.dot} ${
                           color === cor.key
-                            ? "ring-2 ring-slate-400 ring-offset-1"
+                            ? "ring-2 ring-brand ring-offset-1 ring-offset-surface"
                             : ""
                         }`}
                       />
@@ -443,18 +443,18 @@ export default function TaskModal({
               {!isNovo && current?.due_date && (
                 <Link
                   href="/calendario"
-                  className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-success/30 bg-success-light px-4 py-2 text-xs font-medium text-success hover:bg-success/10"
                 >
                   📅 Ver no Calendário
                 </Link>
               )}
 
-              <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between border-t border-line pt-4">
                 {isNovo ? (
                   <button
                     onClick={criar}
                     disabled={saving}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                    className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-navy hover:bg-brand-hover disabled:opacity-50"
                   >
                     {saving ? "Criando..." : "Criar tarefa"}
                   </button>
@@ -462,7 +462,7 @@ export default function TaskModal({
                   <button
                     onClick={excluirTarefa}
                     title="Excluir tarefa"
-                    className="text-sm text-slate-400 hover:text-red-600"
+                    className="text-sm text-ink-muted hover:text-danger"
                   >
                     🗑️
                   </button>
@@ -470,7 +470,7 @@ export default function TaskModal({
               </div>
 
               {isNovo && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-ink-muted">
                   Checklist, anexos, comentários e horas ficam disponíveis
                   depois de criar a tarefa.
                 </p>
@@ -504,8 +504,8 @@ export default function TaskModal({
           )}
         </div>
 
-        <div className="flex flex-shrink-0 flex-row gap-1 border-t border-slate-100 bg-slate-50 p-2 md:w-40 md:flex-col md:border-l md:border-t-0">
-          <p className="hidden px-2 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400 md:block">
+        <div className="flex flex-shrink-0 flex-row gap-1 border-t border-line bg-canvas p-2 md:w-40 md:flex-col md:border-l md:border-t-0">
+          <p className="hidden px-2 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-ink-muted md:block">
             Menu
           </p>
           {ABAS.map((item) => (
@@ -515,8 +515,8 @@ export default function TaskModal({
               onClick={() => setAba(item.key)}
               className={`flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium disabled:cursor-not-allowed disabled:opacity-30 ${
                 aba === item.key
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-brand text-navy"
+                  : "text-ink-muted hover:bg-surface-hover"
               }`}
             >
               <span>{item.icone}</span>
@@ -633,7 +633,7 @@ function ChecklistTab({
   return (
     <div>
       {items.length > 0 && (
-        <p className="mb-2 text-xs text-slate-400">
+        <p className="mb-2 text-xs text-ink-muted">
           {feitos}/{items.length} concluídos
         </p>
       )}
@@ -641,7 +641,7 @@ function ChecklistTab({
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-slate-50"
+            className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-surface-hover"
           >
             <input
               type="checkbox"
@@ -650,21 +650,21 @@ function ChecklistTab({
             />
             <span
               className={`flex-1 text-sm ${
-                item.done ? "text-slate-400 line-through" : "text-slate-700"
+                item.done ? "text-ink-muted line-through" : "text-ink"
               }`}
             >
               {item.title}
             </span>
             <button
               onClick={() => remover(item)}
-              className="text-xs text-slate-300 hover:text-red-600"
+              className="text-xs text-ink-muted hover:text-danger"
             >
               ✕
             </button>
           </div>
         ))}
         {!carregando && items.length === 0 && (
-          <p className="text-xs text-slate-400">Nenhum item ainda.</p>
+          <p className="text-xs text-ink-muted">Nenhum item ainda.</p>
         )}
       </div>
       <form onSubmit={adicionar} className="mt-3 flex gap-2">
@@ -672,11 +672,11 @@ function ChecklistTab({
           value={novoItem}
           onChange={(e) => setNovoItem(e.target.value)}
           placeholder="Novo item..."
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
+          className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <button
           type="submit"
-          className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-navy hover:bg-brand-hover"
         >
           Adicionar
         </button>
@@ -795,40 +795,40 @@ function AnexosTab({
   return (
     <div>
       <label className="mb-3 block">
-        <span className="mb-1 block text-xs font-medium text-slate-500">
+        <span className="mb-1 block text-xs font-medium text-ink-muted">
           {enviando ? "Enviando..." : "Anexar arquivo"}
         </span>
         <input
           type="file"
           onChange={enviarArquivo}
           disabled={enviando}
-          className="block w-full text-sm text-slate-600"
+          className="block w-full text-sm text-ink-muted"
         />
       </label>
       <div className="space-y-1">
         {anexos.map((a) => (
           <div
             key={a.id}
-            className="flex items-center justify-between gap-2 rounded-md border border-slate-200 px-3 py-2"
+            className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2"
           >
             <a
               href={urlPublica(a.file_path)}
               target="_blank"
               rel="noreferrer"
-              className="truncate text-sm text-slate-700 hover:underline"
+              className="truncate text-sm text-ink hover:underline"
             >
               📎 {a.file_name}
             </a>
             <button
               onClick={() => remover(a)}
-              className="flex-shrink-0 text-xs text-slate-300 hover:text-red-600"
+              className="flex-shrink-0 text-xs text-ink-muted hover:text-danger"
             >
               ✕
             </button>
           </div>
         ))}
         {anexos.length === 0 && (
-          <p className="text-xs text-slate-400">Nenhum anexo ainda.</p>
+          <p className="text-xs text-ink-muted">Nenhum anexo ainda.</p>
         )}
       </div>
     </div>
@@ -913,16 +913,16 @@ function ComentariosTab({
     <div>
       <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
         {comentarios.map((c) => (
-          <div key={c.id} className="rounded-lg bg-slate-50 px-3 py-2">
-            <p className="text-sm text-slate-700">{c.content}</p>
-            <p className="mt-1 text-[10px] text-slate-400">
+          <div key={c.id} className="rounded-lg bg-canvas px-3 py-2">
+            <p className="text-sm text-ink">{c.content}</p>
+            <p className="mt-1 text-[10px] text-ink-muted">
               {c.created_by_label ?? "Alguém"} ·{" "}
               {new Date(c.created_at).toLocaleString("pt-BR")}
             </p>
           </div>
         ))}
         {comentarios.length === 0 && (
-          <p className="text-xs text-slate-400">Nenhum comentário ainda.</p>
+          <p className="text-xs text-ink-muted">Nenhum comentário ainda.</p>
         )}
       </div>
       <form onSubmit={enviar} className="flex gap-2">
@@ -930,11 +930,11 @@ function ComentariosTab({
           value={novoComentario}
           onChange={(e) => setNovoComentario(e.target.value)}
           placeholder="Escreva um comentário..."
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
+          className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <button
           type="submit"
-          className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-navy hover:bg-brand-hover"
         >
           Enviar
         </button>
@@ -1034,7 +1034,7 @@ function HorasTab({
 
   return (
     <div>
-      <p className="mb-3 text-sm text-slate-600">
+      <p className="mb-3 text-sm text-ink-muted">
         Total lançado: <strong>{total.toLocaleString("pt-BR")}h</strong>
       </p>
       <form onSubmit={lancar} className="mb-3 flex flex-wrap gap-2">
@@ -1043,17 +1043,17 @@ function HorasTab({
           onChange={(e) => setHoras(e.target.value)}
           placeholder="Horas (ex: 1.5)"
           inputMode="decimal"
-          className="w-28 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
+          className="w-28 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <input
           value={nota}
           onChange={(e) => setNota(e.target.value)}
           placeholder="O que foi feito (opcional)"
-          className="min-w-[150px] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
+          className="min-w-[150px] flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <button
           type="submit"
-          className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-navy hover:bg-brand-hover"
         >
           Lançar
         </button>
@@ -1062,29 +1062,29 @@ function HorasTab({
         {lancamentos.map((h) => (
           <div
             key={h.id}
-            className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm"
+            className="flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm"
           >
             <div>
-              <span className="font-medium text-slate-700">
+              <span className="font-medium text-ink">
                 {Number(h.hours).toLocaleString("pt-BR")}h
               </span>
-              {h.note && <span className="ml-2 text-slate-500">— {h.note}</span>}
+              {h.note && <span className="ml-2 text-ink-muted">— {h.note}</span>}
               {h.created_by_label && (
-                <span className="ml-2 text-xs text-slate-400">
+                <span className="ml-2 text-xs text-ink-muted">
                   por {h.created_by_label}
                 </span>
               )}
             </div>
             <button
               onClick={() => remover(h)}
-              className="text-xs text-slate-300 hover:text-red-600"
+              className="text-xs text-ink-muted hover:text-danger"
             >
               ✕
             </button>
           </div>
         ))}
         {lancamentos.length === 0 && (
-          <p className="text-xs text-slate-400">Nenhum lançamento ainda.</p>
+          <p className="text-xs text-ink-muted">Nenhum lançamento ainda.</p>
         )}
       </div>
     </div>
