@@ -349,3 +349,11 @@ export const UsersIcon = createIcon(
     <path d="M18 14.4c2 .6 3.4 2.1 4 4.6" />
   </>
 );
+
+export const BarChartIcon = createIcon(
+  "BarChartIcon",
+  <>
+    <path d="M4 20h16" />
+    <path d="M7 16v-5M12 16V6M17 16v-8" />
+  </>
+);

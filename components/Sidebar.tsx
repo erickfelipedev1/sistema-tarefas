@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import { Avatar } from "./ui/Avatar";
 import {
+  BarChartIcon,
   BellIcon,
   BookOpenIcon,
   CalendarIcon,
@@ -32,6 +33,7 @@ const SECOES: {
   {
     titulo: null,
     itens: [
+      { href: "/painel", label: "Painel", icon: BarChartIcon },
       { href: "/board", label: "Tarefas", icon: ClipboardListIcon },
       { href: "/calendario", label: "Calendário", icon: CalendarIcon },
       { href: "/wiki", label: "Wiki", icon: BookOpenIcon },
