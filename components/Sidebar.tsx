@@ -17,6 +17,7 @@ import {
   MoonIcon,
   SendIcon,
   SparklesIcon,
+  UserIcon,
   SunIcon,
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
@@ -54,6 +55,7 @@ const SECOES: {
   {
     titulo: "Conta",
     itens: [
+      { href: "/conta/perfil", label: "Meu perfil", icon: UserIcon },
       { href: "/conta/ia", label: "Integração com IA", icon: SparklesIcon },
     ],
   },
@@ -231,15 +233,21 @@ export default function Sidebar({
       )}
 
       <div className="flex items-center gap-2.5 border-t border-white/10 p-3">
-        <Avatar name={userName || userLabel} src={avatarUrl} size="md" />
-        <div className="flex-1 overflow-hidden">
-          <p className="truncate text-sm font-medium text-white">
-            {userName || userLabel}
-          </p>
-          {userName && userLabel && (
-            <p className="truncate text-xs text-slate-500">{userLabel}</p>
-          )}
-        </div>
+        <Link
+          href="/conta/perfil"
+          title="Meu perfil"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 -m-1 hover:bg-white/5"
+        >
+          <Avatar name={userName || userLabel} src={avatarUrl} size="md" />
+          <div className="flex-1 overflow-hidden">
+            <p className="truncate text-sm font-medium text-white">
+              {userName || userLabel}
+            </p>
+            {userName && userLabel && (
+              <p className="truncate text-xs text-slate-500">{userLabel}</p>
+            )}
+          </div>
+        </Link>
         <button
           onClick={toggleTheme}
           title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
