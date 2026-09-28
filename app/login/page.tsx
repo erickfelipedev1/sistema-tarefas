@@ -59,7 +59,10 @@ export default function LoginPage() {
         setError(traduzErro(error.message));
         return;
       }
-      router.push("/board");
+      // ?next= vem do middleware (ex: tela de autorizar o ChatGPT). Só
+      // caminhos internos, pra não virar redirecionamento pra fora.
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/board");
       router.refresh();
     } else {
       const { error } = await supabase.auth.signUp({

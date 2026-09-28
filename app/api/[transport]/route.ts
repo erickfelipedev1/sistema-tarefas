@@ -723,8 +723,12 @@ const verifyToken = async (
   };
 };
 
+// resourceMetadataPath: no 401, aponta pros metadados OAuth deste recurso —
+// é por ali que o ChatGPT descobre como fazer login (ver lib/oauth.ts).
+// Quem conecta com o token no cabeçalho (Claude) nem passa por isso.
 const authHandler = withMcpAuth(handler, verifyToken, {
   required: true,
+  resourceMetadataPath: "/.well-known/oauth-protected-resource/api/mcp",
 });
 
 export { authHandler as GET, authHandler as POST };

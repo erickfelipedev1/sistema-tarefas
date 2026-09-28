@@ -106,6 +106,31 @@ export default function PersonalAiTokens({
         </p>
       </div>
 
+      <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+        <p className="text-sm font-semibold text-ink">ChatGPT</p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          O ChatGPT não usa token: ele pede pra você entrar no Now Organiza e
+          autorizar. Precisa de plano Plus, Pro, Business ou superior, no site
+          (chatgpt.com).
+        </p>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-xs text-ink-muted">
+          <li>
+            Em <strong className="text-ink">Configurações → Apps → Configurações avançadas</strong>,
+            ative o <strong className="text-ink">Modo desenvolvedor</strong>.
+          </li>
+          <li>
+            Crie um app/conector com o endereço{" "}
+            <code className="rounded bg-canvas px-1.5 py-0.5 text-ink">{urlDoServidor}</code>{" "}
+            e autenticação <strong className="text-ink">OAuth</strong>.
+          </li>
+          <li>
+            Clique em conectar, entre com seu usuário e clique em{" "}
+            <strong className="text-ink">Autorizar</strong>. O token aparece na lista
+            abaixo — revogue por lá pra desconectar.
+          </li>
+        </ol>
+      </div>
+
       {tokenRecemCriado && (
         <div className="rounded-2xl border border-success/30 bg-success-light px-5 py-4">
           <p className="text-sm font-semibold text-success">

@@ -50,15 +50,32 @@ export async function middleware(request: NextRequest) {
   // token pessoal, no caso do MCP) — não fazem parte do fluxo de login por
   // cookie, então não podem ser redirecionadas pra /login aqui.
   const isApiRoute = pathname.startsWith("/api/");
+  // Endpoints OAuth chamados de servidor pra servidor pelo app de IA
+  // (ChatGPT) — sem cookie. /oauth/authorize NÃO entra aqui: precisa do
+  // login da equipe.
+  const isOAuthMachineRoute =
+    pathname.startsWith("/.well-known/") ||
+    pathname === "/oauth/token" ||
+    pathname === "/oauth/register";
+  if (isOAuthMachineRoute) return response;
 
   if (!user && !isLoginRoute && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Volta pra onde a pessoa estava depois de entrar (ex: a tela de
+    // autorizar o ChatGPT).
+    url.search = "";
+    url.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
   if (user && isLoginRoute) {
+    const next = request.nextUrl.searchParams.get("next");
+    if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")) {
+      return NextResponse.redirect(new URL(next, request.url));
+    }
     const url = request.nextUrl.clone();
+    url.search = "";
     url.pathname = "/board";
     return NextResponse.redirect(url);
   }
