@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import TaskBoard from "@/components/TaskBoard";
 import NewPageButton from "@/components/NewPageButton";
 import ShareProjectLink from "@/components/ShareProjectLink";
+import ClientRequestAccess, {
+  type AcessoCliente,
+} from "@/components/ClientRequestAccess";
+import { createAdminClient } from "@/lib/supabase/admin";
 import ProjectTabs from "@/components/ProjectTabs";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
@@ -62,6 +66,23 @@ export default async function ProjetoPage({
     .eq("project_id", id)
     .order("created_at", { ascending: false });
 
+  // Logins do cliente pra área de solicitações — client_logins só é
+  // acessível pela service_role (migration 0032).
+  let acessosCliente: AcessoCliente[] = [];
+  let erroAcessos: string | null = null;
+  try {
+    const { data, error } = await createAdminClient()
+      .from("client_logins")
+      .select("id, username, created_at, last_login_at")
+      .eq("project_id", id)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    acessosCliente = data ?? [];
+  } catch {
+    erroAcessos =
+      "Não deu pra carregar os acessos do cliente. Confere se a migration 0032_client_logins.sql já foi rodada no Supabase.";
+  }
+
   return (
     <main className="mx-auto max-w-[1400px] px-6 py-8">
       <Link
@@ -84,6 +105,13 @@ export default async function ProjetoPage({
       </div>
 
       <ShareProjectLink projectId={id} shareToken={project.share_token} />
+
+      <ClientRequestAccess
+        projectId={id}
+        acessos={acessosCliente}
+        semResponsavel={!project.responsible_id}
+        erroCarregar={erroAcessos}
+      />
 
       <ProjectDetailsCard
         projectId={id}

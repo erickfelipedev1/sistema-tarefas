@@ -40,7 +40,12 @@ export async function middleware(request: NextRequest) {
   const isOnboardingRoute = pathname.startsWith("/onboarding");
   // Página pública de progresso do projeto (link que o cliente recebe) —
   // não passa por login, o acesso é controlado pelo token na própria URL.
-  const isPublicRoute = pathname.startsWith("/progresso");
+  // Área do cliente (/cliente) tem login próprio (lib/client-auth.ts), sem
+  // sessão do Supabase — também não passa pelo login da equipe.
+  const isPublicRoute =
+    pathname.startsWith("/progresso") ||
+    pathname === "/cliente" ||
+    pathname.startsWith("/cliente/");
   // Rotas de API (ex: /api/mcp) cuidam da própria autenticação (Bearer
   // token pessoal, no caso do MCP) — não fazem parte do fluxo de login por
   // cookie, então não podem ser redirecionadas pra /login aqui.
