@@ -169,7 +169,7 @@ export default function ProjectsList({
   }, [currentUserId, verTudo]);
 
   async function handleNewProject() {
-    const nome = window.prompt("Nome do novo projeto:");
+    const nome = window.prompt("Nome do novo cliente:");
     if (!nome || !nome.trim()) return;
 
     setCreating(true);
@@ -187,13 +187,13 @@ export default function ProjectsList({
       router.push(`/projetos/${data.id}`);
     } else {
       window.alert(
-        "Não deu pra criar o projeto. Confere se a migration 0012_projects.sql já foi rodada no Supabase."
+        "Não deu pra criar o cliente. Confere se a migration 0012_projects.sql já foi rodada no Supabase."
       );
     }
   }
 
   async function handleRename(project: Project) {
-    const novoNome = window.prompt("Novo nome do projeto:", project.name);
+    const novoNome = window.prompt("Novo nome do cliente:", project.name);
     if (!novoNome || !novoNome.trim() || novoNome.trim() === project.name) {
       return;
     }
@@ -210,7 +210,7 @@ export default function ProjectsList({
 
   async function handleDelete(project: Project) {
     const confirmado = window.confirm(
-      `Excluir o projeto "${project.name}"? As tarefas e páginas dele voltam para o quadro/wiki "Geral" — nada é apagado.`
+      `Excluir o cliente "${project.name}"? As tarefas e páginas dele voltam para o quadro/wiki "Geral" — nada é apagado.`
     );
     if (!confirmado) return;
 
@@ -243,12 +243,12 @@ export default function ProjectsList({
           <EmptyState
             className="py-16"
             icon={<FolderIcon className="h-8 w-8" />}
-            title="Nenhum projeto ainda"
-            description="Crie seu primeiro projeto para começar a organizar seu trabalho."
+            title="Nenhum cliente ainda"
+            description="Crie seu primeiro cliente para começar a organizar seu trabalho."
             action={
               <Button onClick={handleNewProject} disabled={creating}>
                 <PlusIcon className="h-4 w-4" />
-                {creating ? "Criando..." : "Criar projeto"}
+                {creating ? "Criando..." : "Criar cliente"}
               </Button>
             }
           />
@@ -265,7 +265,7 @@ export default function ProjectsList({
         actions={
           <Button onClick={handleNewProject} disabled={creating}>
             <PlusIcon className="h-4 w-4" />
-            {creating ? "Criando..." : "Novo projeto"}
+            {creating ? "Criando..." : "Novo cliente"}
           </Button>
         }
       />
@@ -274,7 +274,7 @@ export default function ProjectsList({
         <SearchInput
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar projetos..."
+          placeholder="Buscar clientes..."
           className="w-full sm:w-60"
         />
         <select
@@ -317,7 +317,7 @@ export default function ProjectsList({
         <div className="rounded-2xl border border-line bg-surface">
           <EmptyState
             className="py-16"
-            title="Não encontramos nenhum projeto."
+            title="Não encontramos nenhum cliente."
             description="Experimente alterar sua busca ou filtro."
             action={
               <Button variant="secondary" size="sm" onClick={limparFiltros}>
@@ -406,7 +406,7 @@ function ProjectCard({
             {formatarRelativo(project.created_at)}
           </span>
           <span className="inline-flex items-center gap-1 text-xs font-medium text-brand">
-            Abrir projeto
+            Abrir cliente
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </span>
         </div>
@@ -419,8 +419,8 @@ function ProjectCard({
             e.stopPropagation();
             setMenuAberto((v) => !v);
           }}
-          title="Ações do projeto"
-          aria-label="Ações do projeto"
+          title="Ações do cliente"
+          aria-label="Ações do cliente"
           aria-haspopup="menu"
           aria-expanded={menuAberto}
           data-open={menuAberto}

@@ -69,7 +69,7 @@ export default async function ProjetoPage({
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
         <ChevronLeftIcon className="h-3.5 w-3.5" />
-        Projetos
+        Clientes
       </Link>
 
       <div className="mb-5 mt-2">
@@ -114,8 +114,8 @@ export default async function ProjetoPage({
               <div className="rounded-2xl border border-line bg-surface">
                 <EmptyState
                   icon={<BookOpenIcon className="h-6 w-6" />}
-                  title="Nenhuma página ainda neste projeto"
-                  description="Crie a primeira página da Wiki deste projeto."
+                  title="Nenhuma página ainda para este cliente"
+                  description="Crie a primeira página da Wiki para este cliente."
                 />
               </div>
             ) : (

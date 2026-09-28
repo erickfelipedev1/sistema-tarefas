@@ -37,11 +37,11 @@ const SECOES: {
     ],
   },
   {
-    titulo: "Projetos",
+    titulo: "Clientes",
     itens: [
       // Arquivos não tem mais tela própria — cada projeto tem sua aba
       // "Arquivos" (ver ProjectTabs), então não tem link avulso aqui.
-      { href: "/projetos", label: "Projetos", icon: FolderIcon },
+      { href: "/projetos", label: "Clientes", icon: FolderIcon },
     ],
   },
   {
@@ -180,12 +180,12 @@ export default function Sidebar({
                     <ExpandableNavItem
                       key={item.href}
                       href="/projetos"
-                      label="Projetos"
+                      label="Clientes"
                       icon={Icon}
                       active={active}
                       items={projects}
                       itemHref={(id) => `/projetos/${id}`}
-                      emptyLabel="Nenhum projeto ainda."
+                      emptyLabel="Nenhum cliente ainda."
                       defaultOpen={pathname.startsWith("/projetos")}
                       onNavigate={onNavigate}
                     />

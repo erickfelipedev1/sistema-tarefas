@@ -394,7 +394,7 @@ export default function TaskModal({
                 {projects.length > 0 && (
                   <div>
                     <label className="mb-1 block text-xs font-medium text-ink-muted">
-                      Projeto
+                      Cliente
                     </label>
                     <select
                       value={taskProjectId}

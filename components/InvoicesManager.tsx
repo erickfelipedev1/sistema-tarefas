@@ -230,7 +230,7 @@ export default function InvoicesManager({
     <div>
       <PageHeader
         title="Faturas"
-        subtitle="Cadastre as faturas do projeto — o cliente vê essa lista, só leitura, no link público dele."
+        subtitle="Cadastre as faturas do cliente — ele vê essa lista, só leitura, no link público dele."
         actions={
           mostrarForm ? (
             <Button variant="ghost" size="sm" onClick={limparForm}>

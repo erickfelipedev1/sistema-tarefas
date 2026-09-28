@@ -47,7 +47,7 @@ export default async function WikiDocPage({
       );
 
   const voltarHref = ehPaginaDeProjeto ? `/projetos/${page.project_id}` : "/wiki";
-  const voltarLabel = ehPaginaDeProjeto ? "Voltar para o projeto" : "Wiki";
+  const voltarLabel = ehPaginaDeProjeto ? "Voltar para o cliente" : "Wiki";
 
   return (
     <main className="mx-auto max-w-[1400px] px-6 py-8">

@@ -417,15 +417,15 @@ export default function TaskRequests({
 
           <FormSection
             title="Contexto"
-            description="Relacione a demanda a um projeto (cada projeto é um cliente)."
+            description="Relacione a demanda a um cliente."
           >
-            <Campo label="Projeto">
+            <Campo label="Cliente">
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 className={campoClasse}
               >
-                <option value="">Sem projeto</option>
+                <option value="">Sem cliente</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}

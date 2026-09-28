@@ -61,8 +61,8 @@ export default async function ProjetosPage() {
         currentUserLabel={currentUserLabel}
         verTudo={verTudo}
         profiles={profiles ?? []}
-        title={verTudo ? "Todos os projetos" : "Meus projetos"}
-        subtitle="Organize seus projetos, equipes e entregas em um só lugar."
+        title={verTudo ? "Todos os clientes" : "Meus clientes"}
+        subtitle="Organize seus clientes, equipes e entregas em um só lugar."
       />
     </main>
   );

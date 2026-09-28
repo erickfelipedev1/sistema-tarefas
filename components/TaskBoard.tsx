@@ -510,7 +510,7 @@ export default function TaskBoard({
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Badge tone="neutral">
-                                {projectsById.get(task.project_id) ?? "Projeto"}
+                                {projectsById.get(task.project_id) ?? "Cliente"}
                               </Badge>
                             </Link>
                           )}
