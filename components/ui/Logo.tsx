@@ -9,19 +9,20 @@ export const VERDE_LOGO = "#12B955";
 export function LogoMarca({ className = "h-8 w-8" }: { className?: string }) {
   return (
     <svg viewBox="0 0 100 92" className={className} role="img" aria-label="NowHub">
-      <defs>
-        <linearGradient id="nowhub-fita" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#079A44" />
-          <stop offset="0.55" stopColor="#10B24F" />
-          <stop offset="1" stopColor="#12B955" />
-        </linearGradient>
-      </defs>
+      {/* Cores sólidas, sem <linearGradient>: um id de degradê repetido em
+          dois logos na mesma página (um deles escondido, como o do topo no
+          celular) fazia a diagonal sumir. */}
       {/* perna direita */}
       <rect x="64" y="0" width="36" height="92" rx="18" fill="#12B955" />
       {/* perna esquerda */}
       <rect x="0" y="0" width="36" height="92" rx="18" fill="#16C55E" />
-      {/* diagonal: passa por cima da perna esquerda com uma dobra mais escura */}
-      <path d="M 18 0 C 24 0 28 2 32 6 L 94 64 C 102 72 100 92 82 92 C 76 92 72 90 68 86 L 22 43 L 22 22 C 22 12 18 4 18 0 Z" fill="url(#nowhub-fita)" />
+      {/* diagonal */}
+      <path
+        d="M 18 0 C 24 0 28 2 32 6 L 94 64 C 102 72 100 92 82 92 C 76 92 72 90 68 86 L 22 43 L 22 22 C 22 12 18 4 18 0 Z"
+        fill="#10B24F"
+      />
+      {/* dobra mais escura onde a diagonal sai da perna esquerda */}
+      <path d="M 18 0 C 24 0 28 2 32 6 L 58 30 L 44 64 L 22 43 L 22 22 C 22 12 18 4 18 0 Z" fill="#089A44" />
     </svg>
   );
 }
