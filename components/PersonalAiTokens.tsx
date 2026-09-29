@@ -99,8 +99,8 @@ export default function PersonalAiTokens({
           <h1 className="text-lg font-semibold text-ink">Integração com IA</h1>
         </div>
         <p className="mt-1 text-sm text-ink-muted">
-          Conecte sua própria IA (Claude Desktop, Claude Code etc.) ao Now
-          Organiza. Depois de conectada, você pode pedir coisas como &quot;cria
+          Conecte sua própria IA (Claude, ChatGPT etc.) ao NowHub. Depois de
+          conectada, você pode pedir coisas como &quot;cria
           uma tarefa no projeto X&quot; ou &quot;quais são minhas tarefas hoje&quot; e ela
           faz de verdade no sistema, em seu nome.
         </p>
