@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import { Avatar } from "./ui/Avatar";
+import { Logo } from "./ui/Logo";
 import {
   BarChartIcon,
   BellIcon,
@@ -156,12 +157,7 @@ export default function Sidebar({
   return (
     <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-navy">
-          N
-        </span>
-        <span className="text-sm font-semibold tracking-tight text-white">
-          NowHub
-        </span>
+        <Logo tamanho="md" corNow="#FFFFFF" />
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4 scrollbar-thin">

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { lerCliente } from "@/lib/oauth";
 import AuthorizeButtons from "./AuthorizeButtons";
+import { Logo } from "@/components/ui/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,7 @@ function Cartao({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <Logo tamanho="sm" corNow="#15191A" className="mb-5" />
         {children}
       </div>
     </main>

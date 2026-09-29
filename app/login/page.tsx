@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Logo } from "@/components/ui/Logo";
 
 // O Supabase Auth exige um e-mail por baixo dos panos, então cada username
 // vira um e-mail interno falso (ex: "erick" -> "erick@sistema-tarefas.app").
@@ -83,7 +84,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold">NowHub</h1>
+        <h1 className="mb-1">
+          <Logo tamanho="md" corNow="#15191A" />
+        </h1>
+        <p className="mb-5 text-xs text-slate-500">Central de tarefas, clientes e demandas.</p>
         <p className="mb-6 text-sm text-slate-500">
           {mode === "login"
             ? "Entre com seu usuário e senha."

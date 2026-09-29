@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sidebar from "./Sidebar";
+import { Logo } from "./ui/Logo";
 import { MenuIcon, XIcon } from "./ui/icons";
 import type { Project } from "@/lib/types";
 
@@ -46,7 +47,7 @@ export default function AppShell({
         >
           <MenuIcon className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold text-ink">NowHub</span>
+        <Logo tamanho="sm" corNow="rgb(var(--color-ink))" />
       </div>
 
       <div className="hidden lg:flex">

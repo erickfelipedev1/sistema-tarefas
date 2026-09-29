@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -9,9 +9,17 @@ const inter = Inter({
   display: "swap",
 });
 
+// Fonte só do nome no logo (components/ui/Logo.tsx).
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["800"],
+  variable: "--font-logo",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "NowHub",
-  description: "Sistema de organização da empresa",
+  description: "Central de tarefas, clientes e demandas.",
 };
 
 export default function RootLayout({
@@ -20,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={inter.variable} data-theme="dark">
+    <html lang="pt-BR" className={`${inter.variable} ${outfit.variable}`} data-theme="dark">
       <head>
         {/* Aplica o tema salvo antes do React hidratar, pra não piscar o
             tema errado por uma fração de segundo. */}
