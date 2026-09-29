@@ -134,6 +134,8 @@ export default function CalendarView({
   const supabase = createClient();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [busca, setBusca] = useState("");
+  // Líderes (verTudo): de quem ver o calendário. "" = todo mundo.
+  const [pessoaFiltro, setPessoaFiltro] = useState("");
 
   const hoje = new Date();
   const [visao, setVisao] = useState<Visao>("mes");
@@ -208,6 +210,14 @@ export default function CalendarView({
     tasks.forEach((t) => {
       if (!t.due_date) return;
       if (termo && !t.title.toLowerCase().includes(termo)) return;
+      // Pessoa escolhida: é responsável, ou criou e não tem responsável.
+      if (
+        pessoaFiltro &&
+        !t.assigned_to.includes(pessoaFiltro) &&
+        !(t.assigned_to.length === 0 && t.created_by === pessoaFiltro)
+      ) {
+        return;
+      }
       if (!mapa[t.due_date]) mapa[t.due_date] = [];
       mapa[t.due_date].push(t);
     });
@@ -216,7 +226,7 @@ export default function CalendarView({
       lista.sort((a, b) => (a.due_time ?? "").localeCompare(b.due_time ?? ""))
     );
     return mapa;
-  }, [tasks, busca]);
+  }, [tasks, busca, pessoaFiltro]);
 
   // Dias mostrados na visão atual (pro aviso de "calendário livre").
   const diasVisiveis = useMemo(() => {
@@ -297,16 +307,45 @@ export default function CalendarView({
     await supabase.from("tasks").delete().eq("id", task.id);
   }
 
+  function nomeDaPessoa(id: string) {
+    const p = profiles.find((x) => x.id === id);
+    return p?.name || p?.username || "alguém";
+  }
+
   const hojeKey = dateKey(hoje);
   const rotuloPeriodo = { mes: "mês", semana: "semana", dia: "dia" }[visao];
 
   return (
     <div>
       <PageHeader
-        title={title ?? "Meu calendário"}
+        title={
+          pessoaFiltro
+            ? pessoaFiltro === currentUserId
+              ? "Meu calendário"
+              : `Calendário de ${nomeDaPessoa(pessoaFiltro)}`
+            : title ?? "Meu calendário"
+        }
         subtitle={subtitle ?? "Veja e organize seus compromissos e tarefas."}
         actions={
           <>
+            {verTudo && (
+              <select
+                value={pessoaFiltro}
+                onChange={(e) => setPessoaFiltro(e.target.value)}
+                aria-label="Ver o calendário de"
+                className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none sm:w-52"
+              >
+                <option value="">Todo mundo</option>
+                {currentUserId && <option value={currentUserId}>Eu</option>}
+                {profiles
+                  .filter((p) => p.id !== currentUserId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || p.username || "Sem nome"}
+                    </option>
+                  ))}
+              </select>
+            )}
             <SearchInput
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
