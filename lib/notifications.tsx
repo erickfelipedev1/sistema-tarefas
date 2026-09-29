@@ -11,6 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { Message, Task } from "@/lib/types";
 import { prepararSom, tocarSomNotificacao } from "@/lib/som";
+import { textoDaMensagem } from "@/lib/chat";
 
 export function dmKey(otherUserId: string) {
   return `dm:${otherUserId}`;
@@ -336,7 +337,7 @@ export default function NotificationsProvider({
 
             try {
               const notificacao = new Notification(titulo, {
-                body: nova.content,
+                body: textoDaMensagem(nova),
                 silent: true,
               });
               notificacao.onclick = () => {

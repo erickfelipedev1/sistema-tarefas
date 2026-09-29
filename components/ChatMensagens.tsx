@@ -1,22 +1,30 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { Message } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import {
   chaveDoDia,
   copiarMensagem,
   deveAgruparComAnterior,
+  formatarTamanho,
   horaCurta,
   rotuloDia,
 } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
-import { CopyIcon } from "@/components/ui/icons";
+import { CopyIcon, FileTextIcon } from "@/components/ui/icons";
 
 export type Remetente = {
   name: string | null;
   username: string | null;
   avatar_url: string | null;
 };
+
+// Estado da mensagem que eu enviei, no estilo WhatsApp:
+//   enviada  ✓  cinza
+//   entregue ✓✓ cinza (a outra pessoa está com o sistema aberto)
+//   lida     ✓✓ azul
+export type EstadoEnvio = "enviada" | "entregue" | "lida";
 
 // Lista de mensagens em balões — usada nas conversas diretas e nos canais.
 // As minhas ficam à direita (verde-claro), as dos outros à esquerda. Nos
@@ -27,15 +35,17 @@ export default function ChatMensagens({
   mensagens,
   currentUserId,
   remetentes,
+  estadoDe,
 }: {
   mensagens: Message[];
   currentUserId: string;
   remetentes?: Record<string, Remetente>;
+  estadoDe: (m: Message) => EstadoEnvio;
 }) {
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
   async function copiar(m: Message) {
-    if (await copiarMensagem(m.content)) {
+    if (await copiarMensagem(m.content || m.attachment_name || "")) {
       setCopiadoId(m.id);
       setTimeout(() => setCopiadoId((atual) => (atual === m.id ? null : atual)), 1500);
     }
@@ -93,29 +103,21 @@ export default function ChatMensagens({
                 )}
                 <div
                   className={`rounded-2xl px-3 py-1.5 text-sm text-ink ${
-                    minha
-                      ? "rounded-br-md bg-brand-light"
-                      : "rounded-bl-md bg-surface-hover"
+                    minha ? "rounded-br-md bg-brand-light" : "rounded-bl-md bg-surface-hover"
                   }`}
                 >
-                  <span className="whitespace-pre-wrap break-words">{m.content}</span>
+                  {m.attachment_path && (
+                    <AnexoMensagem
+                      caminho={m.attachment_path}
+                      nome={m.attachment_name ?? "arquivo"}
+                      mime={m.attachment_mime ?? ""}
+                      tamanho={m.attachment_size ?? null}
+                    />
+                  )}
+                  {m.content && <span className="whitespace-pre-wrap break-words">{m.content}</span>}
                   <span className="float-right ml-3 mt-1.5 inline-flex translate-y-0.5 items-center gap-0.5 text-[10px] leading-none text-ink-muted">
                     {horaCurta(m.created_at)}
-                    {minha && (
-                      <svg
-                        viewBox="0 0 16 16"
-                        className="h-3 w-3 text-brand"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        role="img"
-                        aria-label="Enviada"
-                      >
-                        <path d="M3 8.5l3 3 7-7" />
-                      </svg>
-                    )}
+                    {minha && <Checks estado={estadoDe(m)} />}
                   </span>
                 </div>
               </div>
@@ -125,5 +127,102 @@ export default function ChatMensagens({
         );
       })}
     </>
+  );
+}
+
+function Checks({ estado }: { estado: EstadoEnvio }) {
+  const rotulo = { enviada: "Enviada", entregue: "Entregue", lida: "Lida" }[estado];
+  const cor = estado === "lida" ? "var(--viz-tarefas)" : "currentColor";
+  return (
+    <svg
+      viewBox={estado === "enviada" ? "0 0 16 16" : "0 0 22 16"}
+      className={estado === "enviada" ? "h-3.5 w-3.5" : "h-3.5 w-[19px]"}
+      fill="none"
+      stroke={cor}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label={rotulo}
+    >
+      <title>{rotulo}</title>
+      {estado === "enviada" ? (
+        <path d="M3 8.5l3 3 7-7" />
+      ) : (
+        <>
+          <path d="M1.5 8.5l3.5 3.5 7-7.5" />
+          <path d="M9.5 12l7.5-7.5" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// Anexo dentro do balão: imagem aparece direto (clica pra abrir grande);
+// outros arquivos viram um cartão com nome e tamanho, pra baixar. O link é
+// assinado (vale 1 hora) porque o bucket é privado.
+function AnexoMensagem({
+  caminho,
+  nome,
+  mime,
+  tamanho,
+}: {
+  caminho: string;
+  nome: string;
+  mime: string;
+  tamanho: number | null;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [erro, setErro] = useState(false);
+  const ehImagem = mime.startsWith("image/");
+
+  useEffect(() => {
+    let ativo = true;
+    createClient()
+      .storage.from("chat-files")
+      .createSignedUrl(caminho, 60 * 60)
+      .then(({ data }) => {
+        if (!ativo) return;
+        if (data?.signedUrl) setUrl(data.signedUrl);
+        else setErro(true);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [caminho]);
+
+  if (ehImagem && url) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="mb-1 block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={nome}
+          className="max-h-64 max-w-full rounded-xl object-cover"
+          loading="lazy"
+        />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={url ?? undefined}
+      target="_blank"
+      rel="noreferrer"
+      download={nome}
+      aria-disabled={!url}
+      className="mb-1 flex min-w-[200px] items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2 hover:border-brand"
+    >
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-surface-hover text-ink-muted">
+        <FileTextIcon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-ink">{nome}</span>
+        <span className="block text-[11px] text-ink-muted">
+          {erro ? "Arquivo indisponível" : url ? `${formatarTamanho(tamanho)} · Baixar` : "Carregando..."}
+        </span>
+      </span>
+    </a>
   );
 }

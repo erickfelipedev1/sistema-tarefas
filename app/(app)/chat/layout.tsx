@@ -1,3 +1,4 @@
+import { textoDaMensagem } from "@/lib/chat";
 import { createClient } from "@/lib/supabase/server";
 import ChatShell from "@/components/ChatShell";
 import type {
@@ -33,7 +34,7 @@ export default async function ChatLayout({
       // de cada conversa mesmo em times com bastante volume de chat.
       supabase
         .from("messages")
-        .select("id, sender_id, recipient_id, channel_id, content, created_at")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(400),
     ]);
@@ -45,7 +46,7 @@ export default async function ChatLayout({
     if (m.channel_id) {
       if (!previewCanais[m.channel_id]) {
         previewCanais[m.channel_id] = {
-          content: m.content,
+          content: textoDaMensagem(m),
           created_at: m.created_at,
         };
       }
@@ -58,7 +59,7 @@ export default async function ChatLayout({
     if (!outraPessoa) return;
     if (!previewDms[outraPessoa]) {
       previewDms[outraPessoa] = {
-        content: m.content,
+        content: textoDaMensagem(m),
         created_at: m.created_at,
         mine: souEuQueEnviei,
       };

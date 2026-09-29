@@ -8,7 +8,8 @@ import { dmKey, useNotifications } from "@/lib/notifications";
 import { rotuloPresenca } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
 import { ChevronLeftIcon, SearchIcon, XIcon } from "@/components/ui/icons";
-import ChatMensagens from "./ChatMensagens";
+import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
+import { enviarAnexo, pastaDaDm, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
 
 export default function ChatThread({
@@ -28,6 +29,9 @@ export default function ChatThread({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  // Até quando a outra pessoa leu esta conversa (message_reads dela).
+  const [lidoAte, setLidoAte] = useState<string | null>(null);
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [busca, setBusca] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -83,37 +87,99 @@ export default function ChatThread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, otherUserId]);
 
+  // Confirmação de leitura: busca e acompanha em tempo real o registro de
+  // leitura da outra pessoa pra esta conversa (migration 0036).
+  useEffect(() => {
+    const chave = dmKey(currentUserId);
+    supabase
+      .from("message_reads")
+      .select("last_read_at")
+      .eq("user_id", otherUserId)
+      .eq("conversation_key", chave)
+      .maybeSingle()
+      .then(({ data }) => setLidoAte(data?.last_read_at ?? null));
+
+    const canal = supabase
+      .channel(`leitura-${otherUserId}-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "message_reads",
+          filter: `user_id=eq.${otherUserId}`,
+        },
+        (payload) => {
+          const linha = payload.new as { conversation_key?: string; last_read_at?: string };
+          if (linha?.conversation_key === chave && linha.last_read_at) {
+            setLidoAte(linha.last_read_at);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, otherUserId]);
+
   const mensagensVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return messages;
-    return messages.filter((m) => m.content.toLowerCase().includes(termo));
+    return messages.filter((m) =>
+      `${m.content} ${m.attachment_name ?? ""}`.toLowerCase().includes(termo)
+    );
   }, [messages, busca]);
 
-  async function enviar() {
+  async function enviar(arquivo: File | null): Promise<boolean> {
     const content = text.trim();
-    if (!content || sending) return;
+    if ((!content && !arquivo) || sending) return false;
     setSending(true);
-    setText("");
+    setErroEnvio(null);
 
+    let anexo: AnexoEnviado | null = null;
+    if (arquivo) {
+      const r = await enviarAnexo(supabase, pastaDaDm(currentUserId, otherUserId), arquivo);
+      if (!r.ok) {
+        setSending(false);
+        setErroEnvio(r.erro);
+        return false;
+      }
+      anexo = r.anexo;
+    }
+
+    setText("");
     const { data, error } = await supabase
       .from("messages")
       .insert({
         sender_id: currentUserId,
         recipient_id: otherUserId,
         content,
+        ...(anexo ?? {}),
       })
       .select()
       .single();
 
     setSending(false);
-    if (!error && data) {
-      setMessages((current) =>
-        current.some((m) => m.id === data.id) ? current : [...current, data]
-      );
-    } else {
+    if (error || !data) {
       // Não perde o que a pessoa escreveu se o envio falhar.
       setText(content);
+      setErroEnvio("Não deu pra enviar. Tente de novo.");
+      return false;
     }
+    setMessages((current) =>
+      current.some((m) => m.id === data.id) ? current : [...current, data]
+    );
+    return true;
+  }
+
+  // Setas estilo WhatsApp: lida quando a outra pessoa abriu a conversa
+  // depois da mensagem; entregue quando ela está com o sistema aberto.
+  function estadoDe(m: Message): EstadoEnvio {
+    if (lidoAte && Date.parse(m.created_at) <= Date.parse(lidoAte)) return "lida";
+    if (status === "online" || status === "away") return "entregue";
+    return "enviada";
   }
 
   return (
@@ -190,7 +256,11 @@ export default function ChatThread({
       )}
 
       <div className="flex-1 overflow-y-auto px-4 py-2 sm:px-6">
-        <ChatMensagens mensagens={mensagensVisiveis} currentUserId={currentUserId} />
+        <ChatMensagens
+          mensagens={mensagensVisiveis}
+          currentUserId={currentUserId}
+          estadoDe={estadoDe}
+        />
         {mensagensVisiveis.length === 0 && busca && (
           <p className="py-6 text-center text-sm text-ink-muted">
             Nenhuma mensagem encontrada para &quot;{busca}&quot;.
@@ -210,6 +280,7 @@ export default function ChatThread({
         enviar={enviar}
         enviando={sending}
         placeholder="Escreva uma mensagem..."
+        erro={erroEnvio}
       />
     </div>
   );

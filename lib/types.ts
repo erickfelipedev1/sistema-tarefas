@@ -336,4 +336,9 @@ export interface Message {
   channel_id: string | null;
   content: string;
   created_at: string;
+  // Anexo (migration 0036) — arquivo no bucket privado "chat-files".
+  attachment_path?: string | null;
+  attachment_name?: string | null;
+  attachment_mime?: string | null;
+  attachment_size?: number | null;
 }

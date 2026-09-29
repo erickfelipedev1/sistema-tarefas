@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import type { Message } from "@/lib/types";
 import { channelKey, useNotifications } from "@/lib/notifications";
 import { ChevronLeftIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/icons";
-import ChatMensagens from "./ChatMensagens";
+import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
+import { enviarAnexo, pastaDoCanal, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
 
 type SenderInfo = {
@@ -23,6 +24,7 @@ export default function ChannelThread({
   profilesById,
   totalMembros,
   privado = false,
+  membrosIds,
 }: {
   channelId: string;
   channelName: string;
@@ -31,11 +33,15 @@ export default function ChannelThread({
   profilesById: Record<string, SenderInfo>;
   totalMembros: number;
   privado?: boolean;
+  membrosIds: string[];
 }) {
   const supabase = createClient();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  // Até quando cada membro leu este canal (message_reads).
+  const [leituras, setLeituras] = useState<Record<string, string>>({});
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [busca, setBusca] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -86,33 +92,107 @@ export default function ChannelThread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
+  // Confirmação de leitura: registros de leitura deste canal, em tempo real
+  // (migration 0036).
+  useEffect(() => {
+    const chave = channelKey(channelId);
+    supabase
+      .from("message_reads")
+      .select("user_id, last_read_at")
+      .eq("conversation_key", chave)
+      .then(({ data }) => {
+        const mapa: Record<string, string> = {};
+        (data ?? []).forEach((l) => {
+          mapa[l.user_id as string] = l.last_read_at as string;
+        });
+        setLeituras(mapa);
+      });
+
+    const canal = supabase
+      .channel(`leitura-canal-${channelId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "message_reads",
+          filter: `conversation_key=eq.${chave}`,
+        },
+        (payload) => {
+          const linha = payload.new as { user_id?: string; last_read_at?: string };
+          if (linha?.user_id && linha.last_read_at) {
+            setLeituras((atual) => ({ ...atual, [linha.user_id as string]: linha.last_read_at as string }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId]);
+
   const mensagensVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return messages;
-    return messages.filter((m) => m.content.toLowerCase().includes(termo));
+    return messages.filter((m) =>
+      `${m.content} ${m.attachment_name ?? ""}`.toLowerCase().includes(termo)
+    );
   }, [messages, busca]);
 
-  async function enviar() {
+  async function enviar(arquivo: File | null): Promise<boolean> {
     const content = text.trim();
-    if (!content || sending) return;
+    if ((!content && !arquivo) || sending) return false;
     setSending(true);
-    setText("");
+    setErroEnvio(null);
 
+    let anexo: AnexoEnviado | null = null;
+    if (arquivo) {
+      const r = await enviarAnexo(supabase, pastaDoCanal(channelId), arquivo);
+      if (!r.ok) {
+        setSending(false);
+        setErroEnvio(r.erro);
+        return false;
+      }
+      anexo = r.anexo;
+    }
+
+    setText("");
     const { data, error } = await supabase
       .from("messages")
-      .insert({ sender_id: currentUserId, channel_id: channelId, content })
+      .insert({ sender_id: currentUserId, channel_id: channelId, content, ...(anexo ?? {}) })
       .select()
       .single();
 
     setSending(false);
-    if (!error && data) {
-      setMessages((current) =>
-        current.some((m) => m.id === data.id) ? current : [...current, data]
-      );
-    } else {
+    if (error || !data) {
       // Não perde o que a pessoa escreveu se o envio falhar.
       setText(content);
+      setErroEnvio("Não deu pra enviar. Tente de novo.");
+      return false;
     }
+    setMessages((current) =>
+      current.some((m) => m.id === data.id) ? current : [...current, data]
+    );
+    return true;
+  }
+
+  // Em canal, como nos grupos do WhatsApp: ✓✓ azul quando todos os outros
+  // membros já leram; senão ✓✓ cinza (entregue no canal).
+  const outrosMembros = useMemo(
+    () => membrosIds.filter((id) => id !== currentUserId),
+    [membrosIds, currentUserId]
+  );
+  function estadoDe(m: Message): EstadoEnvio {
+    const quando = Date.parse(m.created_at);
+    const todosLeram =
+      outrosMembros.length > 0 &&
+      outrosMembros.every((id) => {
+        const lido = leituras[id];
+        return !!lido && Date.parse(lido) >= quando;
+      });
+    return todosLeram ? "lida" : "entregue";
   }
 
   return (
@@ -184,6 +264,7 @@ export default function ChannelThread({
           mensagens={mensagensVisiveis}
           currentUserId={currentUserId}
           remetentes={profilesById}
+          estadoDe={estadoDe}
         />
         {mensagensVisiveis.length === 0 && busca && (
           <p className="py-6 text-center text-sm text-ink-muted">
@@ -204,6 +285,7 @@ export default function ChannelThread({
         enviar={enviar}
         enviando={sending}
         placeholder={`Mensagem em #${channelName}`}
+        erro={erroEnvio}
       />
     </div>
   );

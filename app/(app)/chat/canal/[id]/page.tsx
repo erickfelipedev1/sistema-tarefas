@@ -55,6 +55,11 @@ export default async function ChannelPage({
       profilesById={profilesById}
       totalMembros={privado ? (membros ?? []).length : (allProfiles ?? []).length}
       privado={privado}
+      membrosIds={
+        privado
+          ? (membros ?? []).map((m) => m.profile_id as string)
+          : (allProfiles ?? []).map((p) => p.id as string)
+      }
     />
   );
 }

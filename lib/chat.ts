@@ -98,3 +98,24 @@ export function rotuloHoraLista(iso: string, agora = new Date()): string {
   if (diaDe(data) === diaAnterior(agora)) return "Ontem";
   return data.toLocaleDateString("pt-BR", { timeZone: FUSO, day: "2-digit", month: "2-digit" });
 }
+
+// ---------- Anexos ----------
+
+// Texto pra prévia/notificação: a mensagem, ou "📎 arquivo.pdf" quando for
+// só um anexo.
+export function textoDaMensagem(m: {
+  content: string;
+  attachment_name?: string | null;
+}): string {
+  if (m.content.trim()) return m.content;
+  return m.attachment_name ? `📎 ${m.attachment_name}` : "";
+}
+
+export function formatarTamanho(bytes: number | null | undefined): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+}
+
+export const LIMITE_ANEXO_MB = 25;
