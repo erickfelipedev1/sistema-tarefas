@@ -48,7 +48,7 @@ const config: Config = {
         },
         // Paleta escura só da tela de Mensagens — mantida em roxo/azulado
         // como um "canto" próprio dentro do sistema (agora que o resto
-        // também é escuro/verde-limão, o roxo ainda funciona como um
+        // também é escuro/verde, o roxo ainda funciona como um
         // diferencial sutil, só que entre dois tons escuros em vez de
         // escuro-contra-claro).
         chat: {

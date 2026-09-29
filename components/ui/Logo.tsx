@@ -1,7 +1,8 @@
 // Logo do NowHub: o "N" em fita verde + o nome ("Now" na cor do texto,
 // "Hub" em verde). Desenhado em SVG a partir da arte enviada, pra ficar
-// nítido em qualquer tamanho e funcionar em fundo claro e escuro. O verde
-// é o da marca NowHub, separado do verde-limão da interface (--color-brand).
+// nítido em qualquer tamanho e funcionar em fundo claro e escuro. O verde é
+// fixo (#12B955) — a interface usa o mesmo no tema escuro (--color-brand) e
+// um tom mais escuro no claro, por contraste.
 
 export const VERDE_LOGO = "#12B955";
 
