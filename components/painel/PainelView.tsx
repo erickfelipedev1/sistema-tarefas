@@ -33,6 +33,7 @@ export default function PainelView({
   semMigracao,
   totalHoras,
   nomesProjetos,
+  lembreteLixo = null,
 }: {
   painel: Painel;
   eficiencia: Eficiencia;
@@ -50,6 +51,8 @@ export default function PainelView({
   semMigracao: boolean;
   totalHoras: number;
   nomesProjetos: Record<string, string>;
+  // Se a pessoa está na escala do lixo hoje (lib/regras.ts).
+  lembreteLixo?: { rotulo: string; colegas: string[] } | null;
 }) {
   const nomeDe = (id: string | null) => (id ? nomesProjetos[id] ?? "Cliente" : "Geral");
   const maiorCliente = Math.max(1, ...painel.porCliente.map((c) => c.total));
@@ -71,6 +74,22 @@ export default function PainelView({
           Falta rodar a migration 0033_task_completed_at.sql no Supabase — sem ela o painel não sabe
           quando cada tarefa foi concluída.
         </p>
+      )}
+
+      {lembreteLixo && (
+        <Link
+          href="/regras"
+          className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-brand-forte/40 bg-brand-light px-5 py-3 text-sm hover:border-brand-forte"
+        >
+          <span aria-hidden="true">🗑️</span>
+          <span className="font-semibold text-ink">
+            Hoje ({lembreteLixo.rotulo.toLowerCase()}) é seu dia de verificar o lixo, às 12h e às 18h
+          </span>
+          {lembreteLixo.colegas.length > 0 && (
+            <span className="text-ink-muted">com {juntarNomes(lembreteLixo.colegas)}</span>
+          )}
+          <span className="ml-auto text-xs font-medium text-brand-forte">Ver regras →</span>
+        </Link>
       )}
 
       {/* Faixa do topo: quem é, eficiência geral e a divisão das atividades */}
@@ -471,4 +490,9 @@ function CartaoEficiencia({
       </dl>
     </section>
   );
+}
+
+function juntarNomes(nomes: string[]) {
+  if (nomes.length <= 1) return nomes.join("");
+  return `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
 }

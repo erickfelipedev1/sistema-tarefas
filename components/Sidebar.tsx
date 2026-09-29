@@ -15,6 +15,7 @@ import {
   ChevronRightIcon,
   ClipboardListIcon,
   FolderIcon,
+  ListChecksIcon,
   MessageCircleIcon,
   MoonIcon,
   SendIcon,
@@ -53,6 +54,7 @@ const SECOES: {
     itens: [
       { href: "/solicitacoes", label: "Solicitações", icon: SendIcon },
       { href: "/chat", label: "Mensagens", icon: MessageCircleIcon },
+      { href: "/regras", label: "Regras", icon: ListChecksIcon },
     ],
   },
   {

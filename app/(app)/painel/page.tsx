@@ -9,6 +9,7 @@ import {
   type TarefaMetrica,
 } from "@/lib/painel";
 import PainelView from "@/components/painel/PainelView";
+import { escalaDeHojePara, type PerfilBasico } from "@/lib/regras";
 
 export const dynamic = "force-dynamic";
 
@@ -136,6 +137,9 @@ export default async function PainelPage({
       semMigracao={semMigracao}
       totalHoras={totalHoras}
       nomesProjetos={nomesProjetos}
+      lembreteLixo={
+        pessoaId === user.id ? escalaDeHojePara(user.id, (perfis ?? []) as PerfilBasico[]) : null
+      }
     />
   );
 }

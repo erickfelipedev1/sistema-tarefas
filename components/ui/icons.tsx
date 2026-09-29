@@ -357,3 +357,11 @@ export const BarChartIcon = createIcon(
     <path d="M7 16v-5M12 16V6M17 16v-8" />
   </>
 );
+
+export const ListChecksIcon = createIcon(
+  "ListChecksIcon",
+  <>
+    <path d="M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17" />
+    <path d="M11 6h10M11 12h10M11 18h10" />
+  </>
+);
