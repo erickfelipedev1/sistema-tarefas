@@ -59,13 +59,13 @@ export default function NovoCanalModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-chat-surface p-5 shadow-dropdown">
+      <div className="w-full max-w-sm rounded-xl bg-surface p-5 shadow-dropdown">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">Novo canal</h2>
+          <h2 className="text-sm font-semibold text-ink">Novo canal</h2>
           <button
             onClick={fecharModal}
             aria-label="Fechar"
-            className="rounded-md p-1 text-chat-muted hover:bg-chat-surface-hover hover:text-white"
+            className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink"
           >
             <XIcon className="h-4 w-4" />
           </button>
@@ -73,17 +73,17 @@ export default function NovoCanalModal() {
 
         <form onSubmit={criarCanal} className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-chat-muted">
+            <label className="mb-1 block text-xs font-medium text-ink-muted">
               Nome do canal
             </label>
-            <div className="flex items-center rounded-lg border border-chat-border bg-chat-bg px-3 focus-within:border-brand">
-              <span className="text-sm text-chat-muted">#</span>
+            <div className="flex items-center rounded-lg border border-line bg-canvas px-3 focus-within:border-brand">
+              <span className="text-sm text-ink-muted">#</span>
               <input
                 autoFocus
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="marketing"
-                className="h-10 w-full bg-transparent px-1 text-sm text-white placeholder-chat-muted focus:outline-none"
+                className="h-10 w-full bg-transparent px-1 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
               />
             </div>
             {erro && <p className="mt-1 text-xs text-danger">{erro}</p>}
@@ -95,7 +95,7 @@ export default function NovoCanalModal() {
               variant="ghost"
               size="sm"
               onClick={fecharModal}
-              className="text-chat-muted hover:bg-chat-surface-hover hover:text-white"
+              className="text-ink-muted hover:bg-surface-hover hover:text-ink"
             >
               Cancelar
             </Button>

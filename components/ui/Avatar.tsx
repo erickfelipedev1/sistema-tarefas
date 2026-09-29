@@ -18,7 +18,7 @@ export function Avatar({
   const inicial = (name || "?").trim().slice(0, 1).toUpperCase();
   return (
     <span
-      className={`flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-navy font-semibold text-white ${sizes[size]} ${className}`}
+      className={`flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-avatar font-semibold text-white ${sizes[size]} ${className}`}
       title={name ?? undefined}
     >
       {src ? (

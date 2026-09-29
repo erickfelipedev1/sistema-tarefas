@@ -10,13 +10,14 @@ const config: Config = {
     extend: {
       colors: {
         // Paleta "vibe NDL" (nowdigitallab.com.br), agora com tema claro e
-        // escuro: os tokens abaixo (exceto navy/chat, que não trocam de
+        // escuro: os tokens abaixo (exceto navy, que não troca de
         // tema de propósito) lêem de variáveis CSS definidas em
         // globals.css — trocar o valor da variável (via [data-theme]) já
         // atualiza toda a UI, sem precisar mexer em cada componente.
         // "navy" é o quase-preto fixo, usado como texto escuro sobre o
         // verde (bg-brand text-navy) e como fundo permanente da barra
         // lateral — não muda com o tema.
+        avatar: "rgb(var(--color-avatar) / <alpha-value>)",
         navy: {
           DEFAULT: "#12160D",
           light: "#1B2213",
@@ -45,22 +46,6 @@ const config: Config = {
         danger: {
           DEFAULT: "rgb(var(--color-danger) / <alpha-value>)",
           light: "rgb(var(--color-danger-light) / <alpha-value>)",
-        },
-        // Paleta escura só da tela de Mensagens — mantida em roxo/azulado
-        // como um "canto" próprio dentro do sistema (agora que o resto
-        // também é escuro/verde, o roxo ainda funciona como um
-        // diferencial sutil, só que entre dois tons escuros em vez de
-        // escuro-contra-claro).
-        chat: {
-          bg: "#120C22",
-          sidebar: "#170F27",
-          surface: "#1F1838",
-          "surface-hover": "#292048",
-          border: "#2C2450",
-          active: "#3B2C5E",
-          bubble: "#241C42",
-          "bubble-mine": "#43308A",
-          muted: "#948DB6",
         },
       },
       fontFamily: {

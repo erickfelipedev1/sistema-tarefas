@@ -46,3 +46,55 @@ export const EMOJIS_RAPIDOS = [
   "👍", "🙏", "👏", "🙌", "💪", "🤝", "👀", "✅",
   "🔥", "🎉", "🚀", "⚡", "💡", "📌", "❤️", "😎",
 ];
+
+// ---------- Datas do chat (fuso de São Paulo) ----------
+
+const FUSO = "America/Sao_Paulo";
+
+function diaDe(data: Date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO }).format(data);
+}
+
+function diaAnterior(data: Date) {
+  return diaDe(new Date(data.getTime() - 24 * 60 * 60 * 1000));
+}
+
+// "10:24"
+export function horaCurta(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    timeZone: FUSO,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Chave do dia ("2026-09-25") — pra saber onde entra o separador de data.
+export function chaveDoDia(iso: string): string {
+  return diaDe(new Date(iso));
+}
+
+// Separador entre dias na conversa: "Hoje, 25 de setembro",
+// "Ontem, 24 de setembro" ou "12 de agosto" (com o ano se for outro).
+export function rotuloDia(iso: string, agora = new Date()): string {
+  const data = new Date(iso);
+  const mesmoAno =
+    new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric" }).format(data) ===
+    new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric" }).format(agora);
+  const texto = data.toLocaleDateString("pt-BR", {
+    timeZone: FUSO,
+    day: "numeric",
+    month: "long",
+    ...(mesmoAno ? {} : { year: "numeric" }),
+  });
+  if (diaDe(data) === diaDe(agora)) return `Hoje, ${texto}`;
+  if (diaDe(data) === diaAnterior(agora)) return `Ontem, ${texto}`;
+  return texto;
+}
+
+// Horário na lista de conversas: "10:32" hoje, "Ontem", ou "24/09".
+export function rotuloHoraLista(iso: string, agora = new Date()): string {
+  const data = new Date(iso);
+  if (diaDe(data) === diaDe(agora)) return horaCurta(iso);
+  if (diaDe(data) === diaAnterior(agora)) return "Ontem";
+  return data.toLocaleDateString("pt-BR", { timeZone: FUSO, day: "2-digit", month: "2-digit" });
+}

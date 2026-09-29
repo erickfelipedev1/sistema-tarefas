@@ -32,11 +32,11 @@ export default function ChatShell({
 
   return (
     <ChatUIProvider>
-      <div className="flex h-full">
+      <div className="flex h-full w-full min-w-0 flex-1">
         <div
           className={`${
             naListaPrincipal ? "flex w-full" : "hidden"
-          } md:flex md:w-[280px] md:flex-shrink-0`}
+          } md:flex md:w-[340px] md:flex-shrink-0`}
         >
           <MessengerSidebar
             channels={channels}

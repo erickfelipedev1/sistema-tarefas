@@ -14,6 +14,10 @@
     --color-line: 35 43 27;
     --color-ink: 243 246 239;
     --color-ink-muted: 147 160 140;
+    /* Fundo do círculo de avatar (inicial) e do ícone de canal: precisa
+       aparecer sobre o fundo escuro. */
+    --color-avatar: 86 104 74;
+
     /* Verde da marca NowHub (o mesmo do logo, #12B955). */
     --color-brand: 18 185 85;
     --color-brand-hover: 15 162 74;
@@ -49,6 +53,8 @@
     --color-line: 222 227 213;
     --color-ink: 20 23 15;
     --color-ink-muted: 91 102 83;
+    --color-avatar: 18 22 13;
+
     /* No claro, um tom mais escuro do verde do logo (#0C8F40): o original
        não tem contraste como texto sobre branco. */
     --color-brand: 12 143 64;

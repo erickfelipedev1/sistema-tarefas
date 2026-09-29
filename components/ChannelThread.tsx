@@ -5,10 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Message } from "@/lib/types";
 import { channelKey, useNotifications } from "@/lib/notifications";
-import { copiarMensagem, deveAgruparComAnterior } from "@/lib/chat";
-import { Avatar } from "@/components/ui/Avatar";
-import { ChevronLeftIcon, CopyIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/icons";
-import EmojiPicker from "./EmojiPicker";
+import { ChevronLeftIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/icons";
+import ChatMensagens from "./ChatMensagens";
+import ChatComposer from "./ChatComposer";
 
 type SenderInfo = {
   name: string | null;
@@ -39,9 +38,7 @@ export default function ChannelThread({
   const [sending, setSending] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [busca, setBusca] = useState("");
-  const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { markAsRead, setOpenConversation } = useNotifications();
 
   useEffect(() => {
@@ -95,10 +92,9 @@ export default function ChannelThread({
     return messages.filter((m) => m.content.toLowerCase().includes(termo));
   }, [messages, busca]);
 
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault();
+  async function enviar() {
     const content = text.trim();
-    if (!content) return;
+    if (!content || sending) return;
     setSending(true);
     setText("");
 
@@ -113,41 +109,32 @@ export default function ChannelThread({
       setMessages((current) =>
         current.some((m) => m.id === data.id) ? current : [...current, data]
       );
-    }
-  }
-
-  function aoTeclar(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(e as unknown as React.FormEvent);
-    }
-  }
-
-  async function copiar(m: Message) {
-    const ok = await copiarMensagem(m.content);
-    if (ok) {
-      setCopiadoId(m.id);
-      setTimeout(() => setCopiadoId((atual) => (atual === m.id ? null : atual)), 1500);
+    } else {
+      // Não perde o que a pessoa escreveu se o envio falhar.
+      setText(content);
     }
   }
 
   return (
-    <div className="flex h-full flex-col bg-chat-bg">
-      <header className="flex items-center justify-between gap-2 border-b border-chat-border px-4 py-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
+    <div className="flex h-full flex-col bg-canvas">
+      <header className="flex items-center justify-between gap-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/chat"
-            className="rounded-md p-1 text-chat-muted hover:bg-chat-surface-hover hover:text-white md:hidden"
+            className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink md:hidden"
             aria-label="Voltar"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </Link>
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-avatar text-sm font-semibold text-white">
+            {privado ? <LockIcon className="h-4 w-4" /> : "#"}
+          </span>
           <div className="min-w-0">
-            <h1 className="flex items-center gap-1 truncate text-sm font-semibold text-white">
-              {privado ? <LockIcon className="h-3.5 w-3.5" /> : "#"}{" "}
+            <h1 className="truncate text-sm font-semibold text-ink">
+              {privado ? "" : "# "}
               {channelName}
             </h1>
-            <p className="truncate text-[11px] text-chat-muted">
+            <p className="truncate text-xs text-ink-muted">
               {privado ? "Privado · só membros veem" : "Aberto para toda a equipe"} · {totalMembros}{" "}
               {totalMembros === 1 ? "pessoa" : "pessoas"}
             </p>
@@ -159,29 +146,30 @@ export default function ChannelThread({
             if (buscaAberta) setBusca("");
           }}
           aria-label="Buscar nas mensagens"
-          className={`flex-shrink-0 rounded-md p-1.5 hover:bg-chat-surface-hover ${
-            buscaAberta ? "text-white" : "text-chat-muted"
+          aria-pressed={buscaAberta}
+          className={`flex-shrink-0 rounded-lg p-2 hover:bg-surface-hover ${
+            buscaAberta ? "text-ink" : "text-ink-muted"
           }`}
         >
-          <SearchIcon className="h-4 w-4" />
+          <SearchIcon className="h-[18px] w-[18px]" />
         </button>
       </header>
 
       {buscaAberta && (
-        <div className="border-b border-chat-border bg-chat-surface px-4 py-2 sm:px-6">
+        <div className="border-b border-line bg-surface px-4 py-2 sm:px-6">
           <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-chat-muted" />
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" />
             <input
               autoFocus
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={`Buscar em #${channelName}...`}
-              className="h-8 w-full rounded-lg border border-chat-border bg-chat-bg pl-8 pr-8 text-xs text-white placeholder-chat-muted focus:border-brand focus:outline-none"
+              className="h-9 w-full rounded-lg border border-line bg-canvas pl-8 pr-8 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
             />
             {busca && (
               <button
                 onClick={() => setBusca("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-chat-muted hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
                 aria-label="Limpar busca"
               >
                 <XIcon className="h-3.5 w-3.5" />
@@ -191,94 +179,32 @@ export default function ChannelThread({
         </div>
       )}
 
-      <div className="flex-1 space-y-0.5 overflow-y-auto px-4 py-4 sm:px-6">
-        {mensagensVisiveis.map((m, i) => {
-          const info = profilesById[m.sender_id];
-          const label = info?.name || info?.username || "Alguém";
-          const agrupada = deveAgruparComAnterior(m, mensagensVisiveis[i - 1]);
-          return (
-            <div
-              key={m.id}
-              className={`group flex items-start gap-3 rounded-lg px-2 py-1 hover:bg-white/[0.03] ${
-                agrupada ? "" : "mt-3"
-              }`}
-            >
-              <div className="w-8 flex-shrink-0">
-                {!agrupada && <Avatar name={label} src={info?.avatar_url} size="sm" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                {!agrupada && (
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-white">{label}</span>
-                    <span className="text-[11px] text-chat-muted">
-                      {new Date(m.created_at).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                )}
-                <p className="whitespace-pre-wrap break-words text-sm text-slate-200">
-                  {m.content}
-                </p>
-              </div>
-              <button
-                onClick={() => copiar(m)}
-                aria-label="Copiar mensagem"
-                className="relative flex-shrink-0 rounded-md p-1 text-chat-muted opacity-0 hover:bg-chat-surface-hover hover:text-white group-hover:opacity-100"
-              >
-                <CopyIcon className="h-3.5 w-3.5" />
-                {copiadoId === m.id && (
-                  <span className="absolute bottom-full right-0 mb-1 whitespace-nowrap rounded bg-chat-surface px-1.5 py-0.5 text-[10px] text-white shadow-dropdown">
-                    Copiado
-                  </span>
-                )}
-              </button>
-            </div>
-          );
-        })}
+      <div className="flex-1 overflow-y-auto px-4 py-2 sm:px-6">
+        <ChatMensagens
+          mensagens={mensagensVisiveis}
+          currentUserId={currentUserId}
+          remetentes={profilesById}
+        />
         {mensagensVisiveis.length === 0 && busca && (
-          <p className="py-6 text-center text-sm text-chat-muted">
+          <p className="py-6 text-center text-sm text-ink-muted">
             Nenhuma mensagem encontrada para &quot;{busca}&quot;.
           </p>
         )}
         {messages.length === 0 && !busca && (
-          <p className="py-6 text-center text-sm text-chat-muted">
+          <p className="py-10 text-center text-sm text-ink-muted">
             Nenhuma mensagem ainda neste canal. Comece a conversa!
           </p>
         )}
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="h-2" />
       </div>
 
-      <form
-        onSubmit={sendMessage}
-        className="flex items-end gap-2 border-t border-chat-border p-3 sm:p-4"
-      >
-        <div className="flex flex-1 items-end gap-1 rounded-xl border border-chat-border bg-chat-surface px-2 py-1.5 focus-within:border-brand">
-          <EmojiPicker
-            onSelect={(emoji) => {
-              setText((atual) => `${atual}${emoji}`);
-              textareaRef.current?.focus();
-            }}
-          />
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={aoTeclar}
-            rows={1}
-            placeholder={`Mensagem em #${channelName}`}
-            className="max-h-32 flex-1 resize-none bg-transparent px-1 py-1 text-sm text-white placeholder-chat-muted focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={sending || !text.trim()}
-          className="h-9 rounded-lg bg-brand px-4 text-sm font-medium text-navy hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Enviar
-        </button>
-      </form>
+      <ChatComposer
+        texto={text}
+        setTexto={setText}
+        enviar={enviar}
+        enviando={sending}
+        placeholder={`Mensagem em #${channelName}`}
+      />
     </div>
   );
 }
