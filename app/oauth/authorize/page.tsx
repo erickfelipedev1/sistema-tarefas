@@ -6,7 +6,7 @@ import { Logo } from "@/components/ui/Logo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Autorizar acesso · NowHub" };
+export const metadata = { title: "Autorizar acesso · d.hub" };
 
 type Params = Record<string, string | undefined>;
 
@@ -53,7 +53,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pa
     <Cartao>
       <h1 className="text-xl font-semibold text-slate-900">Conectar {cliente.nome}</h1>
       <p className="mt-2 text-sm text-slate-600">
-        <strong>{cliente.nome}</strong> quer acessar o NowHub em nome de{" "}
+        <strong>{cliente.nome}</strong> quer acessar o d.hub em nome de{" "}
         <strong>{quem}</strong>. Ele vai poder ver seus clientes e tarefas, criar e editar
         tarefas e comentar — tudo registrado no seu nome.
       </p>
@@ -77,7 +77,7 @@ function Cartao({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <Logo tamanho="sm" corNow="#15191A" className="mb-5" />
+        <Logo tamanho="sm" className="mb-5" />
         {children}
       </div>
     </main>

@@ -159,7 +159,7 @@ export default function Sidebar({
   return (
     <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <Logo tamanho="md" corNow="#FFFFFF" />
+        <Logo tamanho="md" />
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4 scrollbar-thin">
@@ -238,7 +238,8 @@ export default function Sidebar({
           title="Meu perfil"
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 -m-1 hover:bg-white/5"
         >
-          <Avatar name={userName || userLabel} src={avatarUrl} size="md" />
+          {/* O menu é sempre escuro: usa o tom de avatar do tema escuro. */}
+          <Avatar name={userName || userLabel} src={avatarUrl} size="md" className="!bg-[#56684A]" />
           <div className="flex-1 overflow-hidden">
             <p className="truncate text-sm font-medium text-white">
               {userName || userLabel}

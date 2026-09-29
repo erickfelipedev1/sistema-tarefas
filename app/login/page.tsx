@@ -85,7 +85,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="mb-1">
-          <Logo tamanho="md" corNow="#15191A" />
+          <Logo tamanho="md" />
         </h1>
         <p className="mb-5 text-xs text-slate-500">Central de tarefas, clientes e demandas.</p>
         <p className="mb-6 text-sm text-slate-500">

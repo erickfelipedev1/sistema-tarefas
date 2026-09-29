@@ -2,7 +2,7 @@ import { randomBytes, createHash } from "crypto";
 import { createAdminClient } from "./supabase/admin";
 
 // Tokens pessoais pra cada pessoa conectar a própria IA (Claude Desktop,
-// Claude Code etc.) ao NowHub — ver app/api/mcp/route.ts e
+// Claude Code etc.) ao d.hub — ver app/api/mcp/route.ts e
 // components/PersonalAiTokens.tsx. O token bruto (ex: "now_9f3a...") só
 // existe no momento em que é criado; daí pra frente só guardamos o hash
 // dele (sha256), do mesmo jeito que uma senha — se o banco vazar, ninguém

@@ -10,7 +10,7 @@ import { sairCliente } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Solicitações · NowHub" };
+export const metadata = { title: "Solicitações · d.hub" };
 
 type Tom = "neutral" | "brand" | "success" | "warning" | "danger";
 
@@ -45,7 +45,7 @@ export default async function ClientePage() {
     <main className="mx-auto min-h-screen max-w-2xl bg-canvas px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Logo tamanho="sm" corNow="rgb(var(--color-ink))" className="mb-4" />
+          <Logo tamanho="sm" className="mb-4" />
           <p className="text-xs font-medium text-ink-muted">{sessao.projectName}</p>
           <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-ink">
             Solicitações

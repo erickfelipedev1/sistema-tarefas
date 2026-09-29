@@ -50,7 +50,7 @@ export default function AppShell({
         >
           <MenuIcon className="h-5 w-5" />
         </button>
-        <Logo tamanho="sm" corNow="rgb(var(--color-ink))" />
+        <Logo tamanho="sm" />
       </div>
 
       <div className="hidden lg:flex">

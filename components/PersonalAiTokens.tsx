@@ -13,7 +13,7 @@ const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
 // Tela onde cada pessoa gera/revoga o próprio token pra conectar a IA dela
-// (Claude Desktop, Claude Code etc.) ao NowHub via MCP — depois de
+// (Claude Desktop, Claude Code etc.) ao d.hub via MCP — depois de
 // conectado, pedir "cria uma tarefa no projeto X" pra IA já cria de
 // verdade aqui, em nome de quem gerou o token (ver app/api/[transport]/
 // route.ts).
@@ -99,7 +99,7 @@ export default function PersonalAiTokens({
           <h1 className="text-lg font-semibold text-ink">Integração com IA</h1>
         </div>
         <p className="mt-1 text-sm text-ink-muted">
-          Conecte sua própria IA (Claude, ChatGPT etc.) ao NowHub. Depois de
+          Conecte sua própria IA (Claude, ChatGPT etc.) ao d.hub. Depois de
           conectada, você pode pedir coisas como &quot;cria
           uma tarefa no projeto X&quot; ou &quot;quais são minhas tarefas hoje&quot; e ela
           faz de verdade no sistema, em seu nome.
@@ -109,7 +109,7 @@ export default function PersonalAiTokens({
       <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <p className="text-sm font-semibold text-ink">ChatGPT</p>
         <p className="mt-0.5 text-xs text-ink-muted">
-          O ChatGPT não usa token: ele pede pra você entrar no NowHub e
+          O ChatGPT não usa token: ele pede pra você entrar no d.hub e
           autorizar. Precisa de plano Plus, Pro, Business ou superior, no site
           (chatgpt.com).
         </p>

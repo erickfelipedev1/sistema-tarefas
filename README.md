@@ -1,4 +1,4 @@
-# NowHub
+# d.hub
 
 Três peças do sistema "tipo Notion" que a chefe pediu, já no mesmo
 projeto, com o mesmo login:
@@ -88,7 +88,7 @@ ela e a tarefa já é criada de verdade, em nome de quem pediu.
    e nas Environment Variables da Vercel (produção).
 3. Rode `npm install` de novo (esse recurso usa duas bibliotecas novas:
    `mcp-handler` e `@modelcontextprotocol/sdk`).
-4. Depois de publicado, cada pessoa entra no próprio NowHub, vai em
+4. Depois de publicado, cada pessoa entra no próprio d.hub, vai em
    **Integração com IA** (menu lateral) e gera um token pessoal — a tela
    já mostra o comando/endereço certo pra colar no Claude Desktop ou
    Claude Code.

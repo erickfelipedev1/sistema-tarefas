@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  /* Tema escuro (padrão) — quase preto com o verde do logo NowHub de
+  /* Tema escuro (padrão) — quase preto com o verde-limão do logo d.hub de
      destaque. Valores em "R G B" (sem vírgula) pra
      funcionar com o formato rgb(var(--x) / <alpha-value>) do Tailwind,
      que permite usar opacidade (ex: bg-brand/10) mesmo vindo de variável. */
@@ -18,10 +18,10 @@
        aparecer sobre o fundo escuro. */
     --color-avatar: 86 104 74;
 
-    /* Verde da marca NowHub (o mesmo do logo, #12B955). */
-    --color-brand: 18 185 85;
-    --color-brand-hover: 15 162 74;
-    --color-brand-light: 12 45 26;
+    /* Verde-limão da marca d.hub (tom do meio do degradê do logo). */
+    --color-brand: 181 229 80;
+    --color-brand-hover: 163 212 63;
+    --color-brand-light: 31 42 16;
     --color-success: 52 211 153;
     --color-success-light: 18 35 24;
     --color-warning: 242 179 61;
@@ -44,8 +44,8 @@
   }
 
   /* Tema claro — fundo branco/cinza bem claro, texto quase-preto, e o
-     verde da marca fica um tom mais escuro (o do logo não tem contraste
-     suficiente como texto sobre fundo claro). */
+     verde da marca fica um oliva mais escuro (o limão do logo não tem
+     contraste suficiente como texto sobre fundo claro). */
   :root[data-theme="light"] {
     --color-canvas: 246 248 243;
     --color-surface: 255 255 255;
@@ -55,11 +55,11 @@
     --color-ink-muted: 91 102 83;
     --color-avatar: 18 22 13;
 
-    /* No claro, um tom mais escuro do verde do logo (#0C8F40): o original
-       não tem contraste como texto sobre branco. */
-    --color-brand: 12 143 64;
-    --color-brand-hover: 10 122 55;
-    --color-brand-light: 232 247 237;
+    /* No claro, um oliva do mesmo verde (#5A8A10): o limão do logo não tem
+       contraste como texto sobre branco. */
+    --color-brand: 90 138 16;
+    --color-brand-hover: 76 117 12;
+    --color-brand-light: 238 246 220;
     --color-success: 15 122 76;
     --color-success-light: 225 245 234;
     --color-warning: 154 102 8;

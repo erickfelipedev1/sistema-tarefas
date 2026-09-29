@@ -9,16 +9,16 @@ const inter = Inter({
   display: "swap",
 });
 
-// Fonte só do nome no logo (components/ui/Logo.tsx).
+// Fonte só do logo "d.hub" (components/ui/Logo.tsx): "d" negrito, ".hub" fino.
 const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["800"],
+  weight: ["300", "700"],
   variable: "--font-logo",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "NowHub",
+  title: "d.hub",
   description: "Central de tarefas, clientes e demandas.",
   other: { google: "notranslate" },
 };
