@@ -59,11 +59,14 @@ export default function TrocarSenha() {
     }
 
     const { error } = await supabase.auth.updateUser({ password: nova });
-    setSalvando(false);
     if (error) {
+      setSalvando(false);
       setErro(`Não deu pra trocar a senha: ${error.message}`);
       return;
     }
+    // Trocou a senha: não precisa mais da troca obrigatória (migration 0037).
+    await supabase.from("profiles").update({ precisa_trocar_senha: false }).eq("id", user.id);
+    setSalvando(false);
 
     setAtual("");
     setNova("");

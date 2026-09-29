@@ -81,15 +81,28 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && !isOnboardingRoute && !isLoginRoute && !isPublicRoute && !isApiRoute) {
+    // "*" em vez de listar colunas: precisa_trocar_senha só existe depois da
+    // migration 0037, e sem ela esta consulta não pode falhar (senão todo
+    // mundo cairia no onboarding).
     const { data: profile } = await supabase
       .from("profiles")
-      .select("name")
+      .select("*")
       .eq("id", user.id)
       .maybeSingle();
 
     if (!profile?.name) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    // Senha padrão: só libera o sistema depois de criar uma senha nova.
+    const isTrocarSenhaRoute = pathname.startsWith("/trocar-senha");
+    if (profile.precisa_trocar_senha === true && !isTrocarSenhaRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/trocar-senha";
+      url.search = "";
+      url.searchParams.set("next", pathname + request.nextUrl.search);
       return NextResponse.redirect(url);
     }
   }
