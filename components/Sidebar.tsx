@@ -160,7 +160,7 @@ export default function Sidebar({
           N
         </span>
         <span className="text-sm font-semibold tracking-tight text-white">
-          Now Organiza
+          NowHub
         </span>
       </div>
 

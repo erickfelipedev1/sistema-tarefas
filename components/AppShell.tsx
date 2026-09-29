@@ -46,7 +46,7 @@ export default function AppShell({
         >
           <MenuIcon className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold text-ink">Now Organiza</span>
+        <span className="text-sm font-semibold text-ink">NowHub</span>
       </div>
 
       <div className="hidden lg:flex">

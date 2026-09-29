@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Now Organiza",
+  title: "NowHub",
   description: "Sistema de organização da empresa",
 };
 

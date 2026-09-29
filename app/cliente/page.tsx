@@ -9,7 +9,7 @@ import { sairCliente } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Solicitações · Now Organiza" };
+export const metadata = { title: "Solicitações · NowHub" };
 
 type Tom = "neutral" | "brand" | "success" | "warning" | "danger";
 

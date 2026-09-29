@@ -4,7 +4,7 @@ import ClientLoginForm from "./ClientLoginForm";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Solicitações · Now Organiza" };
+export const metadata = { title: "Solicitações · NowHub" };
 
 // Login do cliente. O link que a equipe manda já vem com o usuário
 // preenchido (?u=usuario) — o cliente só digita a senha.

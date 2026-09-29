@@ -5,7 +5,7 @@ import AuthorizeButtons from "./AuthorizeButtons";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Autorizar acesso · Now Organiza" };
+export const metadata = { title: "Autorizar acesso · NowHub" };
 
 type Params = Record<string, string | undefined>;
 
@@ -52,7 +52,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pa
     <Cartao>
       <h1 className="text-xl font-semibold text-slate-900">Conectar {cliente.nome}</h1>
       <p className="mt-2 text-sm text-slate-600">
-        <strong>{cliente.nome}</strong> quer acessar o Now Organiza em nome de{" "}
+        <strong>{cliente.nome}</strong> quer acessar o NowHub em nome de{" "}
         <strong>{quem}</strong>. Ele vai poder ver seus clientes e tarefas, criar e editar
         tarefas e comentar — tudo registrado no seu nome.
       </p>

@@ -13,7 +13,7 @@ const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
 // Tela onde cada pessoa gera/revoga o próprio token pra conectar a IA dela
-// (Claude Desktop, Claude Code etc.) ao Now Organiza via MCP — depois de
+// (Claude Desktop, Claude Code etc.) ao NowHub via MCP — depois de
 // conectado, pedir "cria uma tarefa no projeto X" pra IA já cria de
 // verdade aqui, em nome de quem gerou o token (ver app/api/[transport]/
 // route.ts).
@@ -109,7 +109,7 @@ export default function PersonalAiTokens({
       <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <p className="text-sm font-semibold text-ink">ChatGPT</p>
         <p className="mt-0.5 text-xs text-ink-muted">
-          O ChatGPT não usa token: ele pede pra você entrar no Now Organiza e
+          O ChatGPT não usa token: ele pede pra você entrar no NowHub e
           autorizar. Precisa de plano Plus, Pro, Business ou superior, no site
           (chatgpt.com).
         </p>
@@ -157,7 +157,7 @@ export default function PersonalAiTokens({
               <strong className="text-ink">Claude Code:</strong> no terminal,
               rode{" "}
               <code className="rounded bg-surface px-1.5 py-0.5 text-ink">
-                claude mcp add --transport http now-organiza {urlDoServidor} --header
+                claude mcp add --transport http nowhub {urlDoServidor} --header
                 &quot;Authorization: Bearer {tokenRecemCriado}&quot;
               </code>
             </p>

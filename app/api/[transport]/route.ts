@@ -16,7 +16,7 @@ import {
 } from "@/lib/mcp-server-helpers";
 import type { TaskStatus } from "@/lib/types";
 
-// Servidor MCP do Now Organiza — cada pessoa do time gera um token pessoal
+// Servidor MCP do NowHub — cada pessoa do time gera um token pessoal
 // em "Integração com IA" (components/PersonalAiTokens.tsx) e conecta a
 // própria IA (Claude Desktop, Claude Code etc.) nessa URL, com esse token
 // no cabeçalho Authorization. Daí em diante, pedir pra IA "cria uma tarefa
@@ -58,7 +58,7 @@ const handler = createMcpHandler(
       "now_listar_projetos",
       {
         title: "Listar projetos",
-        description: `Lista os projetos do Now Organiza que essa pessoa enxerga (os que ela criou, os públicos, e aqueles onde ela tem alguma tarefa).
+        description: `Lista os projetos do NowHub que essa pessoa enxerga (os que ela criou, os públicos, e aqueles onde ela tem alguma tarefa).
 
 Use isso pra descobrir o nome exato de um projeto antes de criar uma tarefa nele, ou quando alguém perguntar "quais projetos eu tenho".
 
@@ -108,7 +108,7 @@ Retorna: lista de projetos (nome e id).`,
       "now_criar_tarefa",
       {
         title: "Criar tarefa",
-        description: `Cria uma tarefa de verdade no Now Organiza (aparece na hora no quadro/calendário/wiki de quem for responsável).
+        description: `Cria uma tarefa de verdade no NowHub (aparece na hora no quadro/calendário/wiki de quem for responsável).
 
 Args:
   - titulo (string, obrigatório): nome da tarefa.
@@ -230,7 +230,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
       "now_listar_tarefas",
       {
         title: "Listar tarefas",
-        description: `Lista tarefas do Now Organiza, com filtros opcionais.
+        description: `Lista tarefas do NowHub, com filtros opcionais.
 
 Args:
   - projeto (string, opcional): nome do projeto pra filtrar. Sem isso, lista as tarefas "Geral" (sem projeto) dessa pessoa.
