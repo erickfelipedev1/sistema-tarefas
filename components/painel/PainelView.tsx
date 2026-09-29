@@ -21,6 +21,7 @@ export default function PainelView({
   eficiencia,
   pessoaNome,
   pessoaAvatar,
+  pessoaCargo,
   caixaDeEntrada,
   periodoChave,
   periodos,
@@ -37,6 +38,7 @@ export default function PainelView({
   eficiencia: Eficiencia;
   pessoaNome: string;
   pessoaAvatar: string | null;
+  pessoaCargo: string | null;
   caixaDeEntrada: ItemCaixaDeEntrada[];
   periodoChave: string;
   periodos: { valor: string; rotulo: string }[];
@@ -77,7 +79,7 @@ export default function PainelView({
           <Avatar name={pessoaNome} src={pessoaAvatar} size="md" className="!h-16 !w-16 !text-xl" />
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-ink">{pessoaNome}</p>
-            <p className="mt-0.5 text-sm text-ink-muted">Tarefas, demandas e entregas.</p>
+            <p className="mt-0.5 text-sm text-ink-muted">{pessoaCargo || "Tarefas, demandas e entregas."}</p>
             <p className="text-sm font-medium text-brand">Sua eficiência nos últimos {rotuloPeriodo}.</p>
           </div>
         </div>

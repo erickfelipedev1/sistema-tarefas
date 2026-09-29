@@ -68,6 +68,7 @@ export default function Sidebar({
   currentUserId,
   verTudo = false,
   userLabel,
+  userCargo,
   userName,
   avatarUrl,
   initialProjects,
@@ -78,6 +79,7 @@ export default function Sidebar({
   // projeto de todo mundo assim que é criado.
   verTudo?: boolean;
   userLabel: string;
+  userCargo: string | null;
   userName: string | null;
   avatarUrl: string | null;
   initialProjects: Project[];
@@ -241,8 +243,11 @@ export default function Sidebar({
             <p className="truncate text-sm font-medium text-white">
               {userName || userLabel}
             </p>
-            {userName && userLabel && (
-              <p className="truncate text-xs text-slate-500">{userLabel}</p>
+            {userCargo ? (
+              <p className="truncate text-xs text-slate-400">{userCargo}</p>
+            ) : (
+              userName &&
+              userLabel && <p className="truncate text-xs text-slate-500">{userLabel}</p>
             )}
           </div>
         </Link>

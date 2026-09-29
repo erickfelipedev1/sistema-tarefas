@@ -25,6 +25,14 @@ export default async function AppLayout({
   const userLabel =
     (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
 
+  // Cargo vem da migration 0034 — consulta à parte pra, sem ela, o menu
+  // continuar mostrando nome e foto normalmente.
+  const { data: comCargo } = await supabase
+    .from("profiles")
+    .select("cargo")
+    .eq("id", user.id)
+    .maybeSingle();
+
   // Mesmo filtro individual da tela de Projetos: só os que eu criei, ou
   // onde eu tenho pelo menos uma tarefa — exceto pra quem tem "ve_tudo"
   // (hoje só a Emily), que enxerga todos os projetos no menu.
@@ -70,6 +78,7 @@ export default async function AppLayout({
         userLabel={userLabel}
         userName={profile?.name ?? null}
         avatarUrl={profile?.avatar_url ?? null}
+        userCargo={(comCargo?.cargo as string | null | undefined) ?? null}
         initialProjects={projects ?? []}
       >
         {children}

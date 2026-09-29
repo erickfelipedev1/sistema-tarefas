@@ -15,6 +15,7 @@ export default function AppShell({
   verTudo = false,
   userLabel,
   userName,
+  userCargo,
   avatarUrl,
   initialProjects,
 }: {
@@ -23,6 +24,7 @@ export default function AppShell({
   verTudo?: boolean;
   userLabel: string;
   userName: string | null;
+  userCargo: string | null;
   avatarUrl: string | null;
   initialProjects: Project[];
 }) {
@@ -33,6 +35,7 @@ export default function AppShell({
     verTudo,
     userLabel,
     userName,
+    userCargo,
     avatarUrl,
     initialProjects,
   };

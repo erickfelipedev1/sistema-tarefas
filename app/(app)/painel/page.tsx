@@ -49,6 +49,12 @@ export default async function PainelPage({
     supabase.from("projects").select("id, name"),
   ]);
   const pessoa = (perfis ?? []).find((p) => p.id === pessoaId);
+  // Cargo (migration 0034) à parte, pra não derrubar a lista de perfis sem ela.
+  const { data: comCargo } = await supabase
+    .from("profiles")
+    .select("cargo")
+    .eq("id", pessoaId)
+    .maybeSingle();
 
   // completed_at vem da migration 0033 — sem ela, o painel ainda abre, só
   // sem as métricas de prazo/tempo.
@@ -110,6 +116,7 @@ export default async function PainelPage({
       eficiencia={eficiencia}
       pessoaNome={pessoa?.name || pessoa?.username || "—"}
       pessoaAvatar={pessoa?.avatar_url ?? null}
+      pessoaCargo={(comCargo?.cargo as string | null | undefined) ?? null}
       caixaDeEntrada={caixaDeEntrada}
       periodoChave={chave}
       periodos={Object.entries(PERIODOS).map(([valor, p]) => ({ valor, rotulo: p.rotulo }))}
