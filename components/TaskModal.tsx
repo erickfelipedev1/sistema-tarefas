@@ -43,6 +43,7 @@ export default function TaskModal({
   currentUserLabel,
   getNextPosition,
   initialDueDate,
+  initialDueTime,
   onClose,
   onCreated,
   onUpdated,
@@ -57,6 +58,8 @@ export default function TaskModal({
   // Pré-preenche o prazo ao criar (ex: clicou num dia específico do
   // calendário). Ignorado quando já existe uma tarefa (edição).
   initialDueDate?: string | null;
+  // Idem pro horário ("HH:MM") — ex: clicou num horário na visão Semana/Dia.
+  initialDueTime?: string | null;
   onClose: () => void;
   onCreated: (task: Task) => void;
   onUpdated: (task: Task) => void;
@@ -70,7 +73,7 @@ export default function TaskModal({
   const [description, setDescription] = useState(task?.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "todo");
   const [dueDate, setDueDate] = useState(task?.due_date ?? initialDueDate ?? "");
-  const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) ?? "");
+  const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) ?? initialDueTime ?? "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule>(
     task?.repeat_rule ?? "none"
   );
