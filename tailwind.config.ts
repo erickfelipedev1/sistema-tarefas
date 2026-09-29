@@ -26,6 +26,7 @@ const config: Config = {
           DEFAULT: "rgb(var(--color-brand) / <alpha-value>)",
           hover: "rgb(var(--color-brand-hover) / <alpha-value>)",
           light: "rgb(var(--color-brand-light) / <alpha-value>)",
+          forte: "rgb(var(--color-brand-forte) / <alpha-value>)",
         },
         canvas: "rgb(var(--color-canvas) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",

@@ -51,7 +51,7 @@ export function ActivityTimeline({
               <div className="space-y-2.5 border-l border-line pl-3.5">
                 {grupo.itens.map((item) => (
                   <div key={item.id} className="relative">
-                    <span className="absolute -left-[18px] top-1.5 h-1.5 w-1.5 rounded-full bg-brand" />
+                    <span className="absolute -left-[18px] top-1.5 h-1.5 w-1.5 rounded-full bg-brand-forte" />
                     <p className="text-sm text-ink">{item.body}</p>
                     <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-muted">
                       <ClockIcon className="h-3 w-3" />

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 type Tone = "brand" | "warning" | "danger" | "success";
 
 const toneStyles: Record<Tone, string> = {
-  brand: "bg-brand-light text-brand",
+  brand: "bg-brand-light text-brand-forte",
   warning: "bg-warning-light text-warning",
   danger: "bg-danger-light text-danger",
   success: "bg-success-light text-success",

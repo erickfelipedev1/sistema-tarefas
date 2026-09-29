@@ -386,7 +386,7 @@ function ProjectCard({
         </p>
 
         {project.is_public && (
-          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-medium text-brand">
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-medium text-brand-forte">
             <GlobeIcon className="h-3 w-3" />
             Público
           </span>
@@ -405,7 +405,7 @@ function ProjectCard({
           <span className="text-xs text-ink-muted">
             {formatarRelativo(project.created_at)}
           </span>
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-brand">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-forte">
             Abrir cliente
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </span>

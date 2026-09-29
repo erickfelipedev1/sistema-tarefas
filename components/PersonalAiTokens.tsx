@@ -95,7 +95,7 @@ export default function PersonalAiTokens({
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2">
-          <SparklesIcon className="h-5 w-5 text-brand" />
+          <SparklesIcon className="h-5 w-5 text-brand-forte" />
           <h1 className="text-lg font-semibold text-ink">Integração com IA</h1>
         </div>
         <p className="mt-1 text-sm text-ink-muted">

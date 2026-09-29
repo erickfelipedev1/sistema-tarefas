@@ -26,7 +26,7 @@ export function ProjectTeamCard({ team }: { team: ProjectTeamMember[] }) {
         <div className="mt-3 space-y-2.5">
           {team.slice(0, 4).map((pessoa) => (
             <div key={pessoa.id} className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-xs font-semibold text-brand">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-light text-xs font-semibold text-brand-forte">
                 {pessoa.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

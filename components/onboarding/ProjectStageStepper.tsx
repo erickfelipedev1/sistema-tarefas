@@ -46,7 +46,7 @@ export function ProjectStageStepper({
           <div className="mt-3 flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-hover">
               <div
-                className="h-full rounded-full bg-brand transition-all"
+                className="h-full rounded-full bg-brand-forte transition-all"
                 style={{ width: `${progressoPercentual}%` }}
               />
             </div>
@@ -122,7 +122,7 @@ export function ProjectStageStepper({
                 {i < etapas.length - 1 && (
                   <div
                     className={`mx-1.5 mt-[-18px] h-px flex-1 ${
-                      etapa.estado === "done" ? "bg-brand" : "bg-line"
+                      etapa.estado === "done" ? "bg-brand-forte" : "bg-line"
                     }`}
                   />
                 )}
@@ -137,10 +137,10 @@ export function ProjectStageStepper({
 
 function EtapaIcone({ estado }: { estado: EstadoEtapa }) {
   if (estado === "done") {
-    return <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-brand" />;
+    return <CheckCircleIcon className="h-5 w-5 flex-shrink-0 text-brand-forte" />;
   }
   if (estado === "current") {
-    return <CircleDotIcon className="h-5 w-5 flex-shrink-0 text-brand" />;
+    return <CircleDotIcon className="h-5 w-5 flex-shrink-0 text-brand-forte" />;
   }
   return (
     <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 border-line" />

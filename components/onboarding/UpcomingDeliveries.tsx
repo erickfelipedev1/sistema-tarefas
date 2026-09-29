@@ -31,7 +31,7 @@ export function UpcomingDeliveries({
         </div>
         <button
           onClick={() => irParaAba("calendario")}
-          className="inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand hover:underline"
+          className="inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand-forte hover:underline"
         >
           Ver calendário
           <ChevronRightIcon className="h-3 w-3" />

@@ -314,7 +314,7 @@ export default function InvoicesManager({
                       {" · "}
                       <button
                         onClick={() => abrirAnexo(fatura)}
-                        className="font-medium text-brand hover:underline"
+                        className="font-medium text-brand-forte hover:underline"
                       >
                         Ver anexo
                       </button>

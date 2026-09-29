@@ -490,7 +490,7 @@ export default function CalendarView({
                     </div>
 
                     {tarefasDoDia.length === 0 && (
-                      <span className="pointer-events-none absolute bottom-1.5 left-1.5 text-[10px] font-medium text-brand opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="pointer-events-none absolute bottom-1.5 left-1.5 text-[10px] font-medium text-brand-forte opacity-0 transition-opacity group-hover:opacity-100">
                         + Adicionar
                       </span>
                     )}

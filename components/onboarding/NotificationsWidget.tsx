@@ -153,7 +153,7 @@ function ListaNotificacoes({
         const Icone = ICONE_POR_TIPO[n.type] ?? BellIcon;
         return (
           <div key={n.id} className="flex items-start gap-2.5 rounded-xl px-2.5 py-2 hover:bg-surface-hover">
-            <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-brand-light text-brand">
+            <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-brand-light text-brand-forte">
               <Icone className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0">

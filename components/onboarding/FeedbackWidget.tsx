@@ -63,7 +63,7 @@ export function FeedbackWidget({
             <svg
               viewBox="0 0 24 24"
               className={`h-6 w-6 ${
-                estrela <= (hover || nota) ? "fill-brand text-brand" : "fill-none text-ink-muted"
+                estrela <= (hover || nota) ? "fill-brand text-brand-forte" : "fill-none text-ink-muted"
               }`}
               stroke="currentColor"
               strokeWidth={1.5}

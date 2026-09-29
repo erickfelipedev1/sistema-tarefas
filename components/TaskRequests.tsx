@@ -496,7 +496,7 @@ export default function TaskRequests({
                     href={driveUrl.trim()}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-shrink-0 text-xs font-medium text-brand hover:underline"
+                    className="flex-shrink-0 text-xs font-medium text-brand-forte hover:underline"
                   >
                     Abrir link
                   </a>
@@ -567,7 +567,7 @@ export default function TaskRequests({
                   {req.status === "accepted" && req.task_id && (
                     <Link
                       href={req.project_id ? `/projetos/${req.project_id}` : "/board"}
-                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-forte hover:underline"
                     >
                       Ver tarefa →
                     </Link>

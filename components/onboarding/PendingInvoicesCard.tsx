@@ -52,7 +52,7 @@ export function PendingInvoicesCard({ invoices }: { invoices: PublicInvoice[] })
 
       <button
         onClick={() => irParaAba("faturas")}
-        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-forte hover:underline"
       >
         Ver todas as faturas
         <ChevronRightIcon className="h-3 w-3" />

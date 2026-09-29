@@ -346,7 +346,7 @@ export default function DriveBrowser({
               onClick={() => entrarNaPasta(pasta)}
               className="flex flex-1 items-center gap-2.5 text-left text-sm font-medium text-ink"
             >
-              <FolderIcon className="h-4 w-4 flex-shrink-0 text-brand" />
+              <FolderIcon className="h-4 w-4 flex-shrink-0 text-brand-forte" />
               {pasta.name}
             </button>
             <button

@@ -273,7 +273,7 @@ function LinhaConversa({
             {titulo}
           </span>
           {quando && (
-            <span className={`flex-shrink-0 text-[11px] ${destaque ? "font-medium text-brand" : "text-ink-muted"}`}>
+            <span className={`flex-shrink-0 text-[11px] ${destaque ? "font-medium text-brand-forte" : "text-ink-muted"}`}>
               {rotuloHoraLista(quando)}
             </span>
           )}

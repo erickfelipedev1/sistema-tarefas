@@ -360,13 +360,13 @@ export default function TaskModal({
                     return (
                       <span
                         key={id}
-                        className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-xs font-medium text-brand"
+                        className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-xs font-medium text-brand-forte"
                       >
                         {p?.name || p?.username || "?"}
                         <button
                           type="button"
                           onClick={() => removerResponsavel(id)}
-                          className="text-brand/60 hover:text-brand"
+                          className="text-brand-forte/60 hover:text-brand-forte"
                         >
                           ✕
                         </button>

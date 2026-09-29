@@ -81,7 +81,7 @@ export function ProjectProgressPanel({ data }: { data: ProjectProgress }) {
                     STATUS_TONE[task.status] === "success"
                       ? "bg-success-light text-success"
                       : STATUS_TONE[task.status] === "brand"
-                      ? "bg-brand-light text-brand"
+                      ? "bg-brand-light text-brand-forte"
                       : "bg-surface-hover text-ink-muted"
                   }`}
                 >

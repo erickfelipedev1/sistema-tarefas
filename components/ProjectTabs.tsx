@@ -50,7 +50,7 @@ export default function ProjectTabs({
               onClick={() => setAba(item.key)}
               className={`flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 ativa
-                  ? "border-brand text-brand"
+                  ? "border-brand text-brand-forte"
                   : "border-transparent text-ink-muted hover:text-ink"
               }`}
             >

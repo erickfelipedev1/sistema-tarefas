@@ -18,10 +18,15 @@
        aparecer sobre o fundo escuro. */
     --color-avatar: 86 104 74;
 
-    /* Verde-limão da marca d.hub (tom do meio do degradê do logo). */
-    --color-brand: 181 229 80;
-    --color-brand-hover: 163 212 63;
+    /* Verde-limão da marca d.hub — o mesmo do logo (#AEDF55, meio do
+       degradê). "brand" é pra preenchimentos com texto escuro por cima
+       (botões, selos). "brand-forte" é pra texto e marcações em verde:
+       no escuro é o mesmo limão; no claro vira oliva, porque limão sobre
+       branco não dá pra ler. */
+    --color-brand: 174 223 85;
+    --color-brand-hover: 158 208 70;
     --color-brand-light: 31 42 16;
+    --color-brand-forte: 174 223 85;
     --color-success: 52 211 153;
     --color-success-light: 18 35 24;
     --color-warning: 242 179 61;
@@ -44,8 +49,8 @@
   }
 
   /* Tema claro — fundo branco/cinza bem claro, texto quase-preto, e o
-     verde da marca fica um oliva mais escuro (o limão do logo não tem
-     contraste suficiente como texto sobre fundo claro). */
+     texto em verde fica oliva (o limão do logo não tem contraste
+     suficiente como texto sobre fundo claro). */
   :root[data-theme="light"] {
     --color-canvas: 246 248 243;
     --color-surface: 255 255 255;
@@ -55,11 +60,12 @@
     --color-ink-muted: 91 102 83;
     --color-avatar: 18 22 13;
 
-    /* No claro, um oliva do mesmo verde (#5A8A10): o limão do logo não tem
-       contraste como texto sobre branco. */
-    --color-brand: 90 138 16;
-    --color-brand-hover: 76 117 12;
-    --color-brand-light: 238 246 220;
+    /* Botões e selos no mesmo limão do logo; texto e marcações em oliva
+       (#4C750C), que tem contraste sobre branco e sobre o selo claro. */
+    --color-brand: 174 223 85;
+    --color-brand-hover: 158 208 70;
+    --color-brand-light: 241 249 223;
+    --color-brand-forte: 76 117 12;
     --color-success: 15 122 76;
     --color-success-light: 225 245 234;
     --color-warning: 154 102 8;

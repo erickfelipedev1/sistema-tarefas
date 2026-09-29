@@ -26,7 +26,7 @@ export default function ProjectFeedbackList({ feedback }: { feedback: FeedbackRo
                     key={n}
                     viewBox="0 0 24 24"
                     className={`h-3.5 w-3.5 ${
-                      n <= item.rating ? "fill-brand text-brand" : "fill-none text-line"
+                      n <= item.rating ? "fill-brand text-brand-forte" : "fill-none text-line"
                     }`}
                     stroke="currentColor"
                     strokeWidth={1.5}

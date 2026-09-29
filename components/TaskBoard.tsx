@@ -29,7 +29,7 @@ import {
 } from "./ui/icons";
 
 const COLUNAS: { key: TaskStatus; label: string; dot: string }[] = [
-  { key: "todo", label: "A Fazer", dot: "bg-brand" },
+  { key: "todo", label: "A Fazer", dot: "bg-brand-forte" },
   { key: "doing", label: "Em Andamento", dot: "bg-warning" },
   { key: "done", label: "Concluído", dot: "bg-success" },
   { key: "cancelled", label: "Cancelada", dot: "bg-slate-400" },
@@ -619,7 +619,7 @@ export default function TaskBoard({
 
       {showHeader && tasks.length === 0 && (
         <div className="mt-5 flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-surface px-6 py-7 text-center">
-          <SparklesIcon className="h-5 w-5 text-brand" />
+          <SparklesIcon className="h-5 w-5 text-brand-forte" />
           <p className="text-sm font-medium text-ink">Seu dia está livre ✨</p>
           <p className="text-xs text-ink-muted">
             Crie uma tarefa para começar a organizar seu trabalho.

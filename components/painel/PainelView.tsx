@@ -80,12 +80,12 @@ export default function PainelView({
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-ink">{pessoaNome}</p>
             <p className="mt-0.5 text-sm text-ink-muted">{pessoaCargo || "Tarefas, demandas e entregas."}</p>
-            <p className="text-sm font-medium text-brand">Sua eficiência nos últimos {rotuloPeriodo}.</p>
+            <p className="text-sm font-medium text-brand-forte">Sua eficiência nos últimos {rotuloPeriodo}.</p>
           </div>
         </div>
 
         <div className="flex justify-center lg:px-6">
-          <MeiaLua valor={eficiencia.geral.eficiencia} cor="rgb(var(--color-brand))" rotulo="Eficiência" />
+          <MeiaLua valor={eficiencia.geral.eficiencia} cor="rgb(var(--color-brand-forte))" rotulo="Eficiência" />
         </div>
 
         <div className="grid grid-cols-3 gap-2 lg:px-6">
@@ -157,7 +157,7 @@ export default function PainelView({
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-surface-hover">
                     <div
-                      className="h-full rounded-full bg-brand"
+                      className="h-full rounded-full bg-brand-forte"
                       style={{ width: `${(c.total / maiorCliente) * 100}%` }}
                     />
                   </div>
@@ -239,7 +239,7 @@ function ListaTarefas({
             <li key={t.id}>
               <Link
                 href={t.project_id ? `/projetos/${t.project_id}` : "/board"}
-                className="flex items-center justify-between gap-3 py-2 hover:text-brand"
+                className="flex items-center justify-between gap-3 py-2 hover:text-brand-forte"
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm text-ink">{t.title}</span>
@@ -295,7 +295,7 @@ function CaixaDeEntrada({
         <p className="text-sm font-semibold text-ink">
           Caixa de entrada <span className="font-normal text-ink-muted">({itens.length})</span>
         </p>
-        <Link href="/solicitacoes" className="text-xs font-medium text-brand hover:underline">
+        <Link href="/solicitacoes" className="text-xs font-medium text-brand-forte hover:underline">
           Ver solicitações →
         </Link>
       </div>
@@ -314,12 +314,12 @@ function CaixaDeEntrada({
               <li key={t.id}>
                 <Link
                   href={t.project_id ? `/projetos/${t.project_id}` : "/board"}
-                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 hover:text-brand"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 hover:text-brand-forte"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       {item.nova && (
-                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-brand-forte" aria-hidden="true" />
                       )}
                       <span className="truncate text-sm font-medium text-ink">{t.title}</span>
                     </span>
@@ -382,7 +382,7 @@ function CartaoEficiencia({
     { rotulo: "Tarefas", cor: "var(--viz-tarefas)", bloco: eficiencia.tarefas },
     { rotulo: "Demandas", cor: "var(--viz-demandas)", bloco: eficiencia.demandas },
   ];
-  const total = { rotulo: "Total", cor: "rgb(var(--color-brand))", bloco: eficiencia.geral };
+  const total = { rotulo: "Total", cor: "rgb(var(--color-brand-forte))", bloco: eficiencia.geral };
 
   return (
     <section className="rounded-2xl border border-line bg-surface p-5">

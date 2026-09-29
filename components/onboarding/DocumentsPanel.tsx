@@ -54,7 +54,7 @@ export function DocumentsPanel({
                 className="group overflow-hidden rounded-2xl border border-line bg-surface"
               >
                 <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3.5 py-3 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
-                  <FolderIcon className="h-4 w-4 flex-shrink-0 text-brand" />
+                  <FolderIcon className="h-4 w-4 flex-shrink-0 text-brand-forte" />
                   {pasta.name}
                   <span className="ml-auto flex-shrink-0 text-xs font-normal text-ink-muted">
                     {arquivosDaPasta.length}{" "}

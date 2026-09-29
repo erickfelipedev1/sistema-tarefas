@@ -105,7 +105,7 @@ export function ProjectOverviewPanel({
                   .getElementById("comunicacao-do-projeto")
                   ?.scrollIntoView({ behavior: "smooth", block: "center" })
               }
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand-forte hover:underline"
             >
               <MessageCircleIcon className="h-3.5 w-3.5" />
               Entrar em contato

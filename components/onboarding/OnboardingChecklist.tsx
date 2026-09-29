@@ -28,7 +28,7 @@ export function OnboardingChecklist({ items }: { items: ProjectChecklistItem[] }
 
       <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-hover">
         <div
-          className="h-full rounded-full bg-brand transition-all"
+          className="h-full rounded-full bg-brand-forte transition-all"
           style={{ width: `${(concluidos / items.length) * 100}%` }}
         />
       </div>
@@ -44,9 +44,9 @@ export function OnboardingChecklist({ items }: { items: ProjectChecklistItem[] }
               }`}
             >
               {item.done ? (
-                <CheckCircleIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
+                <CheckCircleIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-forte" />
               ) : atual ? (
-                <ChevronRightIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand" />
+                <ChevronRightIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-forte" />
               ) : (
                 <span className="mt-1 flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full border-2 border-line" />
               )}

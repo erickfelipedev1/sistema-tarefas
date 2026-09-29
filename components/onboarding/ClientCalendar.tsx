@@ -20,7 +20,7 @@ const MAX_EVENTOS_VISIVEIS = 3;
 // no resto da Visão geral, em vez de inventar uma paleta nova.
 const COR_STATUS: Record<TaskStatus, string> = {
   todo: "bg-ink-muted",
-  doing: "bg-brand",
+  doing: "bg-brand-forte",
   done: "bg-success",
   cancelled: "bg-ink-muted",
 };

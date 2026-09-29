@@ -79,7 +79,7 @@ export default async function WikiDocPage({
                   <span className="text-ink-muted">·</span>
                   <Link
                     href="/board"
-                    className="text-ink-muted hover:text-brand"
+                    className="text-ink-muted hover:text-brand-forte"
                   >
                     📋 Tarefa: {tarefaVinculada.title}
                   </Link>
