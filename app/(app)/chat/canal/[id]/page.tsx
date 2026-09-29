@@ -17,7 +17,7 @@ export default async function ChannelPage({
 
   const { data: channel } = await supabase
     .from("channels")
-    .select("id, name")
+    .select("*")
     .eq("id", channelId)
     .single();
 
@@ -31,6 +31,13 @@ export default async function ChannelPage({
       .order("created_at", { ascending: true }),
     supabase.from("profiles").select("id, name, username, avatar_url"),
   ]);
+
+  // Canal privado (migration 0035): quem não é membro nem chega aqui — o
+  // RLS não devolve o canal e cai no notFound acima.
+  const privado = !!channel.is_private;
+  const { data: membros } = privado
+    ? await supabase.from("channel_members").select("profile_id").eq("channel_id", channelId)
+    : { data: null };
 
   const profilesById = Object.fromEntries(
     (allProfiles ?? []).map((p) => [
@@ -46,7 +53,8 @@ export default async function ChannelPage({
       currentUserId={user.id}
       initialMessages={messages ?? []}
       profilesById={profilesById}
-      totalMembros={(allProfiles ?? []).length}
+      totalMembros={privado ? (membros ?? []).length : (allProfiles ?? []).length}
+      privado={privado}
     />
   );
 }

@@ -325,6 +325,8 @@ export interface Channel {
   id: string;
   name: string;
   created_at: string;
+  // Canal privado: só os membros (channel_members) veem — migration 0035.
+  is_private?: boolean;
 }
 
 export interface Message {

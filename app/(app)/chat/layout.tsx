@@ -17,7 +17,9 @@ export default async function ChatLayout({
 
   const [{ data: channels }, { data: profiles }, { data: mensagensRecentes }] =
     await Promise.all([
-      supabase.from("channels").select("id, name, created_at").order("name"),
+      // "*" em vez de listar colunas: is_private só existe depois da
+      // migration 0035, e a lista não pode quebrar antes dela.
+      supabase.from("channels").select("*").order("name"),
       supabase
         .from("profiles")
         .select("id, username, name, avatar_url")

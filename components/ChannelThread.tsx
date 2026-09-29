@@ -7,7 +7,7 @@ import type { Message } from "@/lib/types";
 import { channelKey, useNotifications } from "@/lib/notifications";
 import { copiarMensagem, deveAgruparComAnterior } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
-import { ChevronLeftIcon, CopyIcon, SearchIcon, XIcon } from "@/components/ui/icons";
+import { ChevronLeftIcon, CopyIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import EmojiPicker from "./EmojiPicker";
 
 type SenderInfo = {
@@ -23,6 +23,7 @@ export default function ChannelThread({
   initialMessages,
   profilesById,
   totalMembros,
+  privado = false,
 }: {
   channelId: string;
   channelName: string;
@@ -30,6 +31,7 @@ export default function ChannelThread({
   initialMessages: Message[];
   profilesById: Record<string, SenderInfo>;
   totalMembros: number;
+  privado?: boolean;
 }) {
   const supabase = createClient();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -141,9 +143,12 @@ export default function ChannelThread({
             <ChevronLeftIcon className="h-5 w-5" />
           </Link>
           <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold text-white"># {channelName}</h1>
+            <h1 className="flex items-center gap-1 truncate text-sm font-semibold text-white">
+              {privado ? <LockIcon className="h-3.5 w-3.5" /> : "#"}{" "}
+              {channelName}
+            </h1>
             <p className="truncate text-[11px] text-chat-muted">
-              Aberto para toda a equipe · {totalMembros}{" "}
+              {privado ? "Privado · só membros veem" : "Aberto para toda a equipe"} · {totalMembros}{" "}
               {totalMembros === 1 ? "pessoa" : "pessoas"}
             </p>
           </div>

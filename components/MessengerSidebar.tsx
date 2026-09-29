@@ -7,7 +7,7 @@ import type { Channel, Profile } from "@/lib/types";
 import { channelKey, dmKey, useNotifications } from "@/lib/notifications";
 import { previewMensagem } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
-import { PlusIcon, SearchIcon } from "@/components/ui/icons";
+import { LockIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
 import { useChatUI } from "./ChatUIContext";
 import { useClickOutside } from "@/lib/useClickOutside";
 
@@ -149,7 +149,17 @@ export default function MessengerSidebar({
                         : "text-slate-300"
                     }`}
                   >
-                    # {c.name}
+                    {c.is_private ? (
+                      <LockIcon
+                        className="mr-1 inline h-3 w-3 -translate-y-px"
+                        role="img"
+                        aria-hidden={false}
+                        aria-label="Canal privado"
+                      />
+                    ) : (
+                      "# "
+                    )}
+                    {c.name}
                   </span>
                   {!active && unread > 0 && (
                     <span className="flex h-4 min-w-4 flex-shrink-0 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-navy">
