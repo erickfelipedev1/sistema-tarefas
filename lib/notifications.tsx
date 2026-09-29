@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Message, Task } from "@/lib/types";
+import { prepararSom, tocarSomNotificacao } from "@/lib/som";
 
 export function dmKey(otherUserId: string) {
   return `dm:${otherUserId}`;
@@ -193,6 +194,20 @@ export default function NotificationsProvider({
     []
   );
 
+  // Destrava o áudio no primeiro clique/tecla (regra dos navegadores) pra o
+  // som de notificação poder tocar depois, mesmo com a aba em segundo plano.
+  useEffect(() => {
+    function destravar() {
+      prepararSom();
+    }
+    window.addEventListener("pointerdown", destravar);
+    window.addEventListener("keydown", destravar);
+    return () => {
+      window.removeEventListener("pointerdown", destravar);
+      window.removeEventListener("keydown", destravar);
+    };
+  }, []);
+
   // Presença online: cada aba aberta "se marca presente" num canal
   // compartilhado (sem precisar de nenhuma tabela nova no banco). Fica
   // "ausente" quando a aba vai pra segundo plano, e "offline" assim que a
@@ -254,14 +269,19 @@ export default function NotificationsProvider({
           if (!nova.assigned_to.includes(currentUserId)) return;
           if (nova.created_by === currentUserId) return;
 
+          tocarSomNotificacao();
+
           if (
             typeof window !== "undefined" &&
             "Notification" in window &&
             Notification.permission === "granted"
           ) {
             try {
+              // silent: o som é o do próprio sistema (tocarSomNotificacao),
+              // pra não tocar dois sons juntos.
               const notificacao = new Notification("Nova tarefa atribuída a você", {
                 body: nova.title,
+                silent: true,
               });
               notificacao.onclick = () => {
                 window.focus();
@@ -301,6 +321,8 @@ export default function NotificationsProvider({
             [key]: (atual[key] ?? 0) + 1,
           }));
 
+          tocarSomNotificacao();
+
           if (
             typeof window !== "undefined" &&
             "Notification" in window &&
@@ -315,6 +337,7 @@ export default function NotificationsProvider({
             try {
               const notificacao = new Notification(titulo, {
                 body: nova.content,
+                silent: true,
               });
               notificacao.onclick = () => {
                 window.focus();
