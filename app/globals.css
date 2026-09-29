@@ -24,6 +24,15 @@
     --color-danger: 240 85 90;
     --color-danger-light: 43 20 20;
 
+    /* Cores dos gráficos do Painel (validadas pra daltonismo — ver
+       components/painel). Status: atrasadas/abertas/realizadas;
+       categorias: tarefas/demandas. */
+    --viz-atrasadas: #E5484D;
+    --viz-abertas: #D4891A;
+    --viz-realizadas: #23A66C;
+    --viz-tarefas: #2E8AE6;
+    --viz-demandas: #D95C9E;
+
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
     --shadow-card-hover: 0 14px 28px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.3);
     --shadow-dropdown: 0 16px 40px rgba(0, 0, 0, 0.55);
@@ -48,6 +57,12 @@
     --color-warning-light: 251 240 220;
     --color-danger: 196 42 48;
     --color-danger-light: 251 228 228;
+
+    --viz-atrasadas: #C42A30;
+    --viz-abertas: #C27400;
+    --viz-realizadas: #0F7A4C;
+    --viz-tarefas: #0B6FD6;
+    --viz-demandas: #B8338F;
 
     --shadow-card: 0 1px 2px rgba(20, 23, 15, 0.08), 0 1px 1px rgba(20, 23, 15, 0.04);
     --shadow-card-hover: 0 14px 28px rgba(20, 23, 15, 0.14), 0 4px 10px rgba(20, 23, 15, 0.08);

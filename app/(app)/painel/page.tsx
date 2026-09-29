@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { podeVerTudo } from "@/lib/permissions";
 import {
+  calcularEficiencia,
   calcularPainel,
   montarCaixaDeEntrada,
   type PedidoRecebido,
@@ -44,7 +45,7 @@ export default async function PainelPage({
   const pessoaId = verTudo && searchParams.pessoa ? searchParams.pessoa : user.id;
 
   const [{ data: perfis }, { data: projetos }] = await Promise.all([
-    supabase.from("profiles").select("id, name, username, email").order("name"),
+    supabase.from("profiles").select("id, name, username, email, avatar_url").order("name"),
     supabase.from("projects").select("id, name"),
   ]);
   const pessoa = (perfis ?? []).find((p) => p.id === pessoaId);
@@ -76,6 +77,11 @@ export default async function PainelPage({
     .from("task_requests")
     .select("task_id, requested_by_label, urgency, demand_type, client_login_id")
     .eq("requested_to", pessoaId);
+  const eficiencia = calcularEficiencia(
+    tarefas,
+    new Set((pedidos ?? []).map((p) => p.task_id).filter(Boolean) as string[]),
+    { dias: periodo.dias }
+  );
   const caixaDeEntrada = montarCaixaDeEntrada(
     tarefas,
     (pedidos ?? []) as PedidoRecebido[],
@@ -101,6 +107,9 @@ export default async function PainelPage({
   return (
     <PainelView
       painel={painel}
+      eficiencia={eficiencia}
+      pessoaNome={pessoa?.name || pessoa?.username || "—"}
+      pessoaAvatar={pessoa?.avatar_url ?? null}
       caixaDeEntrada={caixaDeEntrada}
       periodoChave={chave}
       periodos={Object.entries(PERIODOS).map(([valor, p]) => ({ valor, rotulo: p.rotulo }))}

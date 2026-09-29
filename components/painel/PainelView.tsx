@@ -1,14 +1,26 @@
 import Link from "next/link";
-import type { ItemCaixaDeEntrada, Painel, TarefaMetrica } from "@/lib/painel";
+import { diaSP } from "@/lib/painel";
+import type {
+  BlocoEficiencia,
+  Eficiencia,
+  ItemCaixaDeEntrada,
+  Painel,
+  TarefaMetrica,
+} from "@/lib/painel";
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import PainelFiltros from "./PainelFiltros";
 import GraficoSemanas from "./GraficoSemanas";
+import { AneisConcentricos, Anel, MeiaLua } from "./Medidores";
 
 // Parte visual do Painel — recebe tudo já calculado (ver
 // app/(app)/painel/page.tsx), sem buscar nada.
 export default function PainelView({
   painel,
+  eficiencia,
+  pessoaNome,
+  pessoaAvatar,
   caixaDeEntrada,
   periodoChave,
   periodos,
@@ -22,6 +34,9 @@ export default function PainelView({
   nomesProjetos,
 }: {
   painel: Painel;
+  eficiencia: Eficiencia;
+  pessoaNome: string;
+  pessoaAvatar: string | null;
   caixaDeEntrada: ItemCaixaDeEntrada[];
   periodoChave: string;
   periodos: { valor: string; rotulo: string }[];
@@ -56,68 +71,67 @@ export default function PainelView({
         </p>
       )}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="flex flex-col rounded-2xl border border-line bg-surface p-5 col-span-2 lg:row-span-2">
-          <p className="text-xs font-medium text-ink-muted">Entregas no prazo</p>
-          {painel.taxaNoPrazo === null ? (
-            <>
-              <p className="mt-2 text-5xl font-semibold tracking-tight text-ink">—</p>
-              <p className="mt-2 text-sm text-ink-muted">
-                Nenhuma tarefa com prazo concluída nos últimos {rotuloPeriodo}.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="mt-2 text-5xl font-semibold tracking-tight text-ink">
-                {Math.round(painel.taxaNoPrazo * 100)}%
-              </p>
-              <p className="mt-2 text-sm text-ink-muted">
-                {painel.noPrazo} de {painel.comPrazo}{" "}
-                {painel.comPrazo === 1 ? "tarefa com prazo foi entregue" : "tarefas com prazo foram entregues"}{" "}
-                até a data combinada.
-              </p>
-              <div
-                className="mt-4 h-2 overflow-hidden rounded-full bg-surface-hover lg:mt-auto"
-                role="img"
-                aria-label={`${Math.round(painel.taxaNoPrazo * 100)}% no prazo`}
-              >
-                <div
-                  className="h-full rounded-full bg-brand"
-                  style={{ width: `${painel.taxaNoPrazo * 100}%` }}
-                />
-              </div>
-            </>
-          )}
+      {/* Faixa do topo: quem é, eficiência geral e a divisão das atividades */}
+      <section className="grid items-center gap-6 rounded-2xl border border-line bg-surface p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1.4fr)_minmax(0,0.9fr)] lg:gap-0 lg:divide-x lg:divide-line">
+        <div className="flex items-center gap-4 lg:pr-6">
+          <Avatar name={pessoaNome} src={pessoaAvatar} size="md" className="!h-16 !w-16 !text-xl" />
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-ink">{pessoaNome}</p>
+            <p className="mt-0.5 text-sm text-ink-muted">Tarefas, demandas e entregas.</p>
+            <p className="text-sm font-medium text-brand">Sua eficiência nos últimos {rotuloPeriodo}.</p>
+          </div>
         </div>
 
-        <Tile
-          rotulo="Concluídas"
-          valor={String(painel.concluidas)}
-          detalhe={
-            variacao === 0
-              ? "igual ao período anterior"
-              : `${variacao > 0 ? "▲" : "▼"} ${Math.abs(variacao)} vs período anterior`
-          }
-        />
-        <Tile
-          rotulo="Tempo médio de entrega"
-          valor={formatarDuracao(painel.tempoMedioDias)}
-          detalhe="da criação à conclusão"
-        />
-        <Tile
-          rotulo="Em aberto"
-          valor={String(painel.abertas)}
-          detalhe={`${painel.emAndamento} em andamento`}
-        />
-        <Tile
-          rotulo="Atrasadas"
-          valor={String(painel.atrasadas.length)}
-          detalhe={painel.atrasadas.length ? "prazo já passou" : "nada atrasado"}
-          alerta={painel.atrasadas.length > 0}
-        />
+        <div className="flex justify-center lg:px-6">
+          <MeiaLua valor={eficiencia.geral.eficiencia} cor="rgb(var(--color-brand))" rotulo="Eficiência" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 lg:px-6">
+          <Anel
+            rotulo="Atrasadas"
+            cor="var(--viz-atrasadas)"
+            quantidade={eficiencia.geral.atrasadas}
+            valor={parte(eficiencia.geral.atrasadas, eficiencia.geral.total)}
+          />
+          <Anel
+            rotulo="Abertas"
+            cor="var(--viz-abertas)"
+            quantidade={eficiencia.geral.abertas}
+            valor={parte(eficiencia.geral.abertas, eficiencia.geral.total)}
+          />
+          <Anel
+            rotulo="Realizadas"
+            cor="var(--viz-realizadas)"
+            quantidade={eficiencia.geral.realizadas}
+            valor={parte(eficiencia.geral.realizadas, eficiencia.geral.total)}
+          />
+        </div>
+
+        <dl className="grid grid-cols-[1fr_auto] gap-y-1 text-sm lg:pl-6">
+          <dt className="col-span-2 mb-1 text-sm font-semibold text-ink">Atividades</dt>
+          <dt className="text-ink-muted">Atrasadas</dt>
+          <dd className="text-right font-semibold text-ink">{eficiencia.geral.atrasadas}</dd>
+          <dt className="text-ink-muted">Realizadas</dt>
+          <dd className="text-right font-semibold text-ink">{eficiencia.geral.realizadas}</dd>
+          <dt className="text-ink-muted">Abertas</dt>
+          <dd className="text-right font-semibold text-ink">{eficiencia.geral.abertas}</dd>
+          <dt className="border-t border-line pt-1 text-ink-muted">Total</dt>
+          <dd className="border-t border-line pt-1 text-right font-semibold text-ink">
+            {eficiencia.geral.total}
+          </dd>
+        </dl>
       </section>
 
-      <CaixaDeEntrada itens={caixaDeEntrada} nomeDe={nomeDe} />
+      <section className="mt-3 grid gap-3 lg:grid-cols-3">
+        <CartaoEficiencia
+          eficiencia={eficiencia}
+          taxaNoPrazo={painel.taxaNoPrazo}
+          tempoMedio={formatarDuracao(painel.tempoMedioDias)}
+          concluidas={painel.concluidas}
+          variacao={variacao}
+        />
+        <CaixaDeEntrada itens={caixaDeEntrada} nomeDe={nomeDe} className="lg:col-span-2" />
+      </section>
 
       <section className="mt-3 grid gap-3 lg:grid-cols-3">
         <div className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
@@ -197,28 +211,6 @@ function formatarPrazo(dia: string) {
   return `${d}/${mes}/${ano}`;
 }
 
-function Tile({
-  rotulo,
-  valor,
-  detalhe,
-  alerta,
-}: {
-  rotulo: string;
-  valor: string;
-  detalhe: string;
-  alerta?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
-      <p className="text-xs font-medium text-ink-muted">{rotulo}</p>
-      <p className={`mt-2 text-3xl font-semibold tracking-tight ${alerta ? "text-danger" : "text-ink"}`}>
-        {valor}
-      </p>
-      <p className="mt-1 text-xs text-ink-muted">{detalhe}</p>
-    </div>
-  );
-}
-
 function ListaTarefas({
   titulo,
   vazio,
@@ -287,13 +279,16 @@ const MAX_CAIXA = 8;
 function CaixaDeEntrada({
   itens,
   nomeDe,
+  className = "",
 }: {
   itens: ItemCaixaDeEntrada[];
   nomeDe: (id: string | null) => string;
+  className?: string;
 }) {
   const novas = itens.filter((i) => i.nova).length;
+  const hoje = diaSP(new Date());
   return (
-    <section className="mt-3 rounded-2xl border border-line bg-surface p-5">
+    <section className={`rounded-2xl border border-line bg-surface p-5 ${className}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-ink">
           Caixa de entrada <span className="font-normal text-ink-muted">({itens.length})</span>
@@ -337,7 +332,12 @@ function CaixaDeEntrada({
                       <Badge tone={TOM_URGENCIA[item.urgencia] ?? "neutral"}>{item.urgencia}</Badge>
                     )}
                     {t.due_date && (
-                      <span className="text-xs text-ink-muted">até {formatarPrazo(t.due_date)}</span>
+                      <span
+                        className={`text-xs ${t.due_date < hoje ? "font-medium text-danger" : "text-ink-muted"}`}
+                      >
+                        {t.due_date < hoje ? "venceu " : "até "}
+                        {formatarPrazo(t.due_date)}
+                      </span>
                     )}
                   </span>
                 </Link>
@@ -349,6 +349,124 @@ function CaixaDeEntrada({
       {itens.length > MAX_CAIXA && (
         <p className="mt-2 text-xs text-ink-muted">e mais {itens.length - MAX_CAIXA}.</p>
       )}
+    </section>
+  );
+}
+
+function parte(n: number, total: number) {
+  return total ? n / total : null;
+}
+
+function pctTexto(valor: number | null) {
+  return valor === null ? "—" : `${Math.round(valor * 100)}%`;
+}
+
+// Cartão "Eficiência": anéis concêntricos (Total, Tarefas e Demandas),
+// barras com o percentual de cada um e o detalhe por categoria.
+function CartaoEficiencia({
+  eficiencia,
+  taxaNoPrazo,
+  tempoMedio,
+  concluidas,
+  variacao,
+}: {
+  eficiencia: Eficiencia;
+  taxaNoPrazo: number | null;
+  tempoMedio: string;
+  concluidas: number;
+  variacao: number;
+}) {
+  const categorias: { rotulo: string; cor: string; bloco: BlocoEficiencia }[] = [
+    { rotulo: "Tarefas", cor: "var(--viz-tarefas)", bloco: eficiencia.tarefas },
+    { rotulo: "Demandas", cor: "var(--viz-demandas)", bloco: eficiencia.demandas },
+  ];
+  const total = { rotulo: "Total", cor: "rgb(var(--color-brand))", bloco: eficiencia.geral };
+
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-5">
+      <p className="text-sm font-semibold text-ink">Eficiência</p>
+      <p className="mt-0.5 text-xs text-ink-muted">
+        Atividades em dia: nem atrasadas, nem entregues depois do prazo
+      </p>
+
+      <div className="mt-4 flex justify-center">
+        <AneisConcentricos
+          rotuloCentro="Total"
+          valorCentro={eficiencia.geral.eficiencia}
+          aneis={[total, ...categorias].map((c) => ({
+            rotulo: c.rotulo,
+            cor: c.cor,
+            valor: c.bloco.eficiencia,
+          }))}
+        />
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {[...categorias, total].map((c) => (
+          <div key={c.rotulo}>
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-medium text-ink">
+                <span className="h-2 w-2 rounded-full" style={{ background: c.cor }} aria-hidden="true" />
+                {c.rotulo}
+              </span>
+              <span className="font-semibold text-ink">{pctTexto(c.bloco.eficiencia)}</span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-surface-hover">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${(c.bloco.eficiencia ?? 0) * 100}%`, background: c.cor }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {categorias.map((c) => (
+          <div key={c.rotulo} className="rounded-xl border border-line">
+            <p className="border-b border-line py-1.5 text-center text-xs font-semibold text-ink">
+              {c.rotulo}
+            </p>
+            <dl className="px-2 py-1 text-xs">
+              {(
+                [
+                  ["Atrasadas", c.bloco.atrasadas],
+                  ["Em progresso", c.bloco.emProgresso],
+                  ["Realizadas", c.bloco.realizadas],
+                  ["Total", c.bloco.total],
+                ] as const
+              ).map(([rotulo, n]) => (
+                <div key={rotulo} className="flex justify-between py-0.5">
+                  <dt className="text-ink-muted">{rotulo}</dt>
+                  <dd className="font-medium text-ink">{n}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-3 text-xs">
+        <div>
+          <dt className="text-ink-muted">Entregas no prazo</dt>
+          <dd className="font-semibold text-ink">{pctTexto(taxaNoPrazo)}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-muted">Tempo médio de entrega</dt>
+          <dd className="font-semibold text-ink">{tempoMedio}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-ink-muted">Concluídas no período</dt>
+          <dd className="font-semibold text-ink">
+            {concluidas}{" "}
+            <span className="font-normal text-ink-muted">
+              {variacao === 0
+                ? "(igual ao período anterior)"
+                : `(${variacao > 0 ? "▲" : "▼"} ${Math.abs(variacao)} vs período anterior)`}
+            </span>
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }

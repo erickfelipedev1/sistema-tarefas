@@ -181,3 +181,64 @@ export function montarCaixaDeEntrada(
     .filter((i): i is ItemCaixaDeEntrada => i !== null)
     .sort((a, b) => b.tarefa.created_at.localeCompare(a.tarefa.created_at));
 }
+
+// ---------- Eficiência (visão "velocímetro" do topo do Painel) ----------
+
+export interface BlocoEficiencia {
+  atrasadas: number; // abertas com prazo vencido
+  abertas: number; // abertas dentro do prazo (ou sem prazo)
+  emProgresso: number; // abertas com status "doing"
+  realizadas: number; // concluídas no período
+  entreguesComAtraso: number; // das realizadas, concluídas depois do prazo
+  total: number; // atrasadas + abertas + realizadas
+  eficiencia: number | null; // 0..1 — null quando não há nada
+}
+
+export interface Eficiencia {
+  geral: BlocoEficiencia;
+  tarefas: BlocoEficiencia; // criadas no dia a dia
+  demandas: BlocoEficiencia; // vieram de Solicitações (equipe ou cliente)
+}
+
+function blocoVazio(): BlocoEficiencia {
+  return { atrasadas: 0, abertas: 0, emProgresso: 0, realizadas: 0, entreguesComAtraso: 0, total: 0, eficiencia: null };
+}
+
+// Eficiência = parte das atividades que está "em dia": nem atrasada agora,
+// nem entregue depois do prazo. Conta o que está aberto hoje + o que foi
+// concluído no período. Canceladas e concluídas sem data ficam de fora.
+export function calcularEficiencia(
+  tarefas: TarefaMetrica[],
+  idsDeDemandas: Set<string>,
+  { dias, agora = new Date() }: { dias: number; agora?: Date }
+): Eficiencia {
+  const hoje = diaSP(agora);
+  const inicio = somarDias(hoje, -(dias - 1));
+  const geral = blocoVazio();
+  const tarefasB = blocoVazio();
+  const demandasB = blocoVazio();
+
+  for (const t of tarefas) {
+    const blocos = [geral, idsDeDemandas.has(t.id) ? demandasB : tarefasB];
+    const aberta = t.status === "todo" || t.status === "doing";
+    const realizada = t.status === "done" && !!t.completed_at && diaSP(t.completed_at) >= inicio;
+    if (!aberta && !realizada) continue;
+
+    for (const b of blocos) {
+      b.total += 1;
+      if (aberta) {
+        if (t.status === "doing") b.emProgresso += 1;
+        if (t.due_date && t.due_date < hoje) b.atrasadas += 1;
+        else b.abertas += 1;
+      } else {
+        b.realizadas += 1;
+        if (t.due_date && diaSP(t.completed_at!) > t.due_date) b.entreguesComAtraso += 1;
+      }
+    }
+  }
+
+  for (const b of [geral, tarefasB, demandasB]) {
+    b.eficiencia = b.total ? (b.total - b.atrasadas - b.entreguesComAtraso) / b.total : null;
+  }
+  return { geral, tarefas: tarefasB, demandas: demandasB };
+}
