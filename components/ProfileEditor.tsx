@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
 import { PageHeader } from "./ui/PageHeader";
+import TrocarSenha from "./TrocarSenha";
 
 const MAX_NAME = 50;
 const MAX_CARGO = 60;
@@ -127,7 +128,7 @@ export default function ProfileEditor({
 
   return (
     <div>
-      <PageHeader title="Meu perfil" subtitle="Como a equipe te vê no sistema." />
+      <PageHeader title="Meu perfil" subtitle="Como a equipe te vê no sistema, e sua senha." />
 
       <div className="space-y-4">
         <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
@@ -213,6 +214,8 @@ export default function ProfileEditor({
         {sucesso && (
           <p className="rounded-lg bg-success-light px-3 py-2 text-sm text-success">{sucesso}</p>
         )}
+
+        <TrocarSenha />
       </div>
     </div>
   );
