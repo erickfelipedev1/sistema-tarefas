@@ -20,6 +20,7 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "NowHub",
   description: "Central de tarefas, clientes e demandas.",
+  other: { google: "notranslate" },
 };
 
 export default function RootLayout({
@@ -28,7 +29,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${outfit.variable}`} data-theme="dark">
+    // translate="no": o sistema já é em português, e o tradutor automático
+    // do Chrome estragava abreviações (ex: "DOM/QUA/SEX" do calendário
+    // virando "CASA/TAMBÉM/SEXO").
+    <html
+      lang="pt-BR"
+      translate="no"
+      className={`${inter.variable} ${outfit.variable}`}
+      data-theme="dark"
+    >
       <head>
         {/* Aplica o tema salvo antes do React hidratar, pra não piscar o
             tema errado por uma fração de segundo. */}
