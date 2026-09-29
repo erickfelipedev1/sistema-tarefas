@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { podeVerTudo } from "@/lib/permissions";
-import { calcularPainel, type TarefaMetrica } from "@/lib/painel";
+import {
+  calcularPainel,
+  montarCaixaDeEntrada,
+  type PedidoRecebido,
+  type TarefaMetrica,
+} from "@/lib/painel";
 import PainelView from "@/components/painel/PainelView";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +18,7 @@ const PERIODOS = {
 } as const;
 type ChavePeriodo = keyof typeof PERIODOS;
 
-const COLUNAS = "id, title, status, due_date, created_at, project_id";
+const COLUNAS = "id, title, status, due_date, created_at, project_id, created_by, created_by_label";
 
 // Painel de eficiência: as métricas de entrega de quem está logado (ou, pra
 // quem tem "ve_tudo", de qualquer pessoa da equipe). Conta as tarefas em
@@ -64,6 +69,19 @@ export default async function PainelPage({
 
   const painel = calcularPainel(tarefas, { dias: periodo.dias, semanas: periodo.semanas });
 
+  // Caixa de entrada: pedidos recebidos em Solicitações + tarefas que outra
+  // pessoa atribuiu (ver montarCaixaDeEntrada). client_login_id vem da
+  // migration 0032.
+  const { data: pedidos } = await supabase
+    .from("task_requests")
+    .select("task_id, requested_by_label, urgency, demand_type, client_login_id")
+    .eq("requested_to", pessoaId);
+  const caixaDeEntrada = montarCaixaDeEntrada(
+    tarefas,
+    (pedidos ?? []) as PedidoRecebido[],
+    pessoaId
+  );
+
   // Horas lançadas nas tarefas (task_hours guarda quem lançou pelo rótulo).
   const rotulos = [pessoa?.username, pessoa?.email].filter(Boolean) as string[];
   const desde = new Date(Date.now() - periodo.dias * 24 * 60 * 60 * 1000).toISOString();
@@ -83,6 +101,7 @@ export default async function PainelPage({
   return (
     <PainelView
       painel={painel}
+      caixaDeEntrada={caixaDeEntrada}
       periodoChave={chave}
       periodos={Object.entries(PERIODOS).map(([valor, p]) => ({ valor, rotulo: p.rotulo }))}
       rotuloPeriodo={periodo.rotulo}

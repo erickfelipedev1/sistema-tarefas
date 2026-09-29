@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { Painel, TarefaMetrica } from "@/lib/painel";
+import type { ItemCaixaDeEntrada, Painel, TarefaMetrica } from "@/lib/painel";
+import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import PainelFiltros from "./PainelFiltros";
 import GraficoSemanas from "./GraficoSemanas";
@@ -8,6 +9,7 @@ import GraficoSemanas from "./GraficoSemanas";
 // app/(app)/painel/page.tsx), sem buscar nada.
 export default function PainelView({
   painel,
+  caixaDeEntrada,
   periodoChave,
   periodos,
   rotuloPeriodo,
@@ -20,6 +22,7 @@ export default function PainelView({
   nomesProjetos,
 }: {
   painel: Painel;
+  caixaDeEntrada: ItemCaixaDeEntrada[];
   periodoChave: string;
   periodos: { valor: string; rotulo: string }[];
   rotuloPeriodo: string;
@@ -113,6 +116,8 @@ export default function PainelView({
           alerta={painel.atrasadas.length > 0}
         />
       </section>
+
+      <CaixaDeEntrada itens={caixaDeEntrada} nomeDe={nomeDe} />
 
       <section className="mt-3 grid gap-3 lg:grid-cols-3">
         <div className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
@@ -260,5 +265,90 @@ function ListaTarefas({
         <p className="mt-2 text-xs text-ink-muted">e mais {tarefas.length - 8}.</p>
       )}
     </div>
+  );
+}
+
+const TOM_URGENCIA: Record<string, "neutral" | "brand" | "warning" | "danger"> = {
+  Baixa: "neutral",
+  Média: "brand",
+  Alta: "warning",
+  Urgente: "danger",
+};
+
+function descreverOrigem(item: ItemCaixaDeEntrada) {
+  const quem = item.deQuem ?? "alguém";
+  if (item.origem === "cliente") return `Pedido do cliente · ${quem.replace(/ \(cliente\)$/, "")}`;
+  if (item.origem === "solicitacao") return `Solicitação de ${quem}`;
+  return `Atribuída por ${quem}`;
+}
+
+const MAX_CAIXA = 8;
+
+function CaixaDeEntrada({
+  itens,
+  nomeDe,
+}: {
+  itens: ItemCaixaDeEntrada[];
+  nomeDe: (id: string | null) => string;
+}) {
+  const novas = itens.filter((i) => i.nova).length;
+  return (
+    <section className="mt-3 rounded-2xl border border-line bg-surface p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-ink">
+          Caixa de entrada <span className="font-normal text-ink-muted">({itens.length})</span>
+        </p>
+        <Link href="/solicitacoes" className="text-xs font-medium text-brand hover:underline">
+          Ver solicitações →
+        </Link>
+      </div>
+      <p className="mt-0.5 text-xs text-ink-muted">
+        Tarefas e demandas que chegaram pra você e ainda não foram iniciadas
+        {novas > 0 && ` · ${novas} nova${novas === 1 ? "" : "s"}`}
+      </p>
+
+      {itens.length === 0 ? (
+        <p className="mt-4 text-sm text-ink-muted">Nada esperando por você. 🎉</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line">
+          {itens.slice(0, MAX_CAIXA).map((item) => {
+            const t = item.tarefa;
+            return (
+              <li key={t.id}>
+                <Link
+                  href={t.project_id ? `/projetos/${t.project_id}` : "/board"}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 hover:text-brand"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      {item.nova && (
+                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                      )}
+                      <span className="truncate text-sm font-medium text-ink">{t.title}</span>
+                    </span>
+                    <span className="block truncate text-xs text-ink-muted">
+                      {descreverOrigem(item)} · {nomeDe(t.project_id)}
+                      {item.tipo && ` · ${item.tipo}`}
+                    </span>
+                  </span>
+                  <span className="flex flex-shrink-0 items-center gap-1.5">
+                    {item.nova && <Badge tone="brand">Nova</Badge>}
+                    {item.urgencia && (
+                      <Badge tone={TOM_URGENCIA[item.urgencia] ?? "neutral"}>{item.urgencia}</Badge>
+                    )}
+                    {t.due_date && (
+                      <span className="text-xs text-ink-muted">até {formatarPrazo(t.due_date)}</span>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {itens.length > MAX_CAIXA && (
+        <p className="mt-2 text-xs text-ink-muted">e mais {itens.length - MAX_CAIXA}.</p>
+      )}
+    </section>
   );
 }

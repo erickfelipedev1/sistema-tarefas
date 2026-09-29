@@ -10,6 +10,8 @@ export interface TarefaMetrica {
   created_at: string;
   completed_at: string | null;
   project_id: string | null;
+  created_by?: string | null;
+  created_by_label?: string | null;
 }
 
 const FUSO = "America/Sao_Paulo";
@@ -120,4 +122,62 @@ export function calcularPainel(
     porSemana,
     porCliente,
   };
+}
+
+// ---------- Caixa de entrada ----------
+
+export interface PedidoRecebido {
+  task_id: string | null;
+  requested_by_label: string | null;
+  urgency: string | null;
+  demand_type: string | null;
+  client_login_id: string | null;
+}
+
+export interface ItemCaixaDeEntrada {
+  tarefa: TarefaMetrica;
+  origem: "cliente" | "solicitacao" | "atribuida";
+  deQuem: string | null;
+  urgencia: string | null;
+  tipo: string | null;
+  nova: boolean; // chegou nas últimas 48h
+}
+
+// O que chegou pra pessoa e ela ainda não começou (status "todo"): pedidos
+// recebidos em Solicitações (da equipe ou de clientes) e tarefas que outra
+// pessoa criou e atribuiu a ela. Tarefas que ela criou pra si mesma não
+// entram. Mais recentes primeiro.
+export function montarCaixaDeEntrada(
+  tarefas: TarefaMetrica[],
+  pedidos: PedidoRecebido[],
+  pessoaId: string,
+  agora = new Date()
+): ItemCaixaDeEntrada[] {
+  const pedidoPorTarefa = new Map(
+    pedidos.filter((p) => p.task_id).map((p) => [p.task_id as string, p])
+  );
+  const limiteNova = agora.getTime() - 2 * DIA_MS;
+
+  return tarefas
+    .filter((t) => t.status === "todo")
+    .map((t): ItemCaixaDeEntrada | null => {
+      const pedido = pedidoPorTarefa.get(t.id);
+      const nova = new Date(t.created_at).getTime() >= limiteNova;
+      if (pedido) {
+        return {
+          tarefa: t,
+          origem: pedido.client_login_id ? "cliente" : "solicitacao",
+          deQuem: pedido.requested_by_label,
+          urgencia: pedido.urgency,
+          tipo: pedido.demand_type,
+          nova,
+        };
+      }
+      if (t.created_by && t.created_by !== pessoaId) {
+        return { tarefa: t, origem: "atribuida", deQuem: t.created_by_label ?? null, urgencia: null, tipo: null, nova };
+      }
+      return null;
+    })
+    .filter((i): i is ItemCaixaDeEntrada => i !== null)
+    .sort((a, b) => b.tarefa.created_at.localeCompare(a.tarefa.created_at));
 }
