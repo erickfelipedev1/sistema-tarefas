@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
@@ -116,9 +116,13 @@ export default function Sidebar({
 
   // Mantém a lista de projetos do menu sincronizada em tempo real (por
   // exemplo, quando um projeto novo é criado na tela de Projetos).
+  // No celular existem duas Sidebars ao mesmo tempo (a fixa, escondida, e a
+  // do menu aberto) — cada uma precisa do próprio canal, senão o Supabase
+  // devolve o canal já inscrito e o .on() quebra a tela.
+  const idCanal = useId();
   useEffect(() => {
     const channel = supabase
-      .channel("sidebar-projects-realtime")
+      .channel(`sidebar-projects-realtime-${idCanal}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "projects" },
@@ -173,7 +177,7 @@ export default function Sidebar({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUserId, verTudo]);
+  }, [currentUserId, verTudo, idCanal]);
 
   return (
     <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
