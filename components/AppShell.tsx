@@ -78,7 +78,7 @@ export default function AppShell({
         </div>
       )}
 
-      <div className="min-h-screen flex-1 pt-14 lg:pt-0">{children}</div>
+      <div className="min-h-screen min-w-0 flex-1 pt-14 lg:pt-0">{children}</div>
     </div>
   );
 }

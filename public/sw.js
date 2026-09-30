@@ -3,7 +3,7 @@
 // - Notificações push: mostra a notificação e, ao tocar, abre a conversa/tarefa.
 // Não guarda cache de dados: o sistema é todo online (Supabase).
 
-const CACHE = "dhub-v1";
+const CACHE = "dhub-v2";
 const OFFLINE = "/offline.html";
 const ESTATICOS = [OFFLINE, "/icon-192.png"];
 
@@ -48,9 +48,11 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((janelas) => {
-      // Com o d.hub aberto e em foco, o aviso e o som de dentro do sistema
-      // já cuidam disso — não duplica.
-      if (janelas.some((j) => j.focused)) return;
+      // Com o d.hub aberto e na tela, o aviso e o som de dentro do sistema
+      // já cuidam disso — não duplica. (O iPhone às vezes marca o app em
+      // segundo plano como "focused", por isso confere também se está visível.)
+      const naTela = janelas.some((j) => j.focused && j.visibilityState === "visible");
+      if (naTela && !dados.forcar) return;
       return self.registration.showNotification(dados.titulo || "d.hub", {
         body: dados.corpo || "",
         icon: "/icon-192.png",

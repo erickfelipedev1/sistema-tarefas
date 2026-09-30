@@ -120,3 +120,21 @@ export async function avisarTarefaAtribuida(taskId: string, apenas?: string[]) {
   if (!temRelacao) return;
   await avisarTarefaParaResponsaveis(taskId, user.id, apenas);
 }
+
+// Botão "Testar notificação": manda um aviso pra todos os aparelhos de quem
+// clicou e devolve o que aconteceu (pra achar o problema sem adivinhar).
+export async function testarPush(): Promise<string> {
+  const user = await usuarioAtual();
+  if (!user) return "Sessão expirada. Entre de novo.";
+  const r = await enviarPush([user.id], {
+    titulo: "d.hub",
+    corpo: "Notificação de teste — está funcionando neste aparelho.",
+    url: "/painel",
+    tag: "teste",
+    forcar: true,
+  });
+  if (!r.configurado) return "O servidor está sem as chaves de notificação (VAPID) configuradas.";
+  if (r.inscricoes === 0) return "Nenhum aparelho seu está inscrito. Toque em \"Ativar notificações\" primeiro.";
+  if (r.falhas.length === 0) return `Enviado pra ${r.enviados} aparelho(s). Deve chegar em alguns segundos.`;
+  return `Enviados: ${r.enviados} de ${r.inscricoes}. Falhas: ${r.falhas.join(" | ")}`;
+}

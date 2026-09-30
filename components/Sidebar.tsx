@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import { Avatar } from "./ui/Avatar";
 import { Logo } from "./ui/Logo";
+import { ehIphoneForaDoApp } from "@/lib/push-client";
+import { testarPush } from "@/lib/actions/push";
 import {
   BarChartIcon,
   BellIcon,
@@ -110,6 +112,11 @@ export default function Sidebar({
       window.removeEventListener("appinstalled", aoInstalar);
     };
   }, []);
+  const [iphoneForaDoApp, setIphoneForaDoApp] = useState(false);
+  useEffect(() => setIphoneForaDoApp(ehIphoneForaDoApp()), []);
+  const [testando, setTestando] = useState(false);
+  const podeAtivarPush =
+    pushAtivo === false && notificationPermission !== "denied" && notificationPermission !== "unsupported";
   const { theme, toggleTheme } = useTheme();
 
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -243,10 +250,7 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {(pedidoInstalacao ||
-        (pushAtivo === false &&
-          notificationPermission !== "denied" &&
-          notificationPermission !== "unsupported")) && (
+      {(pedidoInstalacao || iphoneForaDoApp || podeAtivarPush || pushAtivo === true) && (
         <div className="space-y-1.5 px-3 pb-2">
           {pedidoInstalacao && (
             <button
@@ -260,9 +264,7 @@ export default function Sidebar({
               Instalar o app
             </button>
           )}
-          {pushAtivo === false &&
-            notificationPermission !== "denied" &&
-            notificationPermission !== "unsupported" && (
+          {podeAtivarPush && (
               <button
                 onClick={requestNotificationPermission}
                 className="flex w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
@@ -271,6 +273,30 @@ export default function Sidebar({
                 Ativar notificações
               </button>
             )}
+          {iphoneForaDoApp && (
+            <p className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-400">
+              📲 Pra receber notificações no iPhone: Compartilhar → <b>Adicionar à Tela de Início</b> e abra pelo ícone.
+            </p>
+          )}
+          {pushAtivo === true && (
+            <button
+              disabled={testando}
+              onClick={async () => {
+                setTestando(true);
+                try {
+                  window.alert(await testarPush());
+                } catch (e) {
+                  window.alert(`Erro no teste: ${(e as Error)?.message ?? e}`);
+                } finally {
+                  setTestando(false);
+                }
+              }}
+              className="flex w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200 disabled:opacity-60"
+            >
+              <BellIcon className="h-3.5 w-3.5 flex-shrink-0" />
+              {testando ? "Enviando teste…" : "Testar notificação"}
+            </button>
+          )}
         </div>
       )}
 

@@ -59,7 +59,7 @@ export default function PainelView({
   const variacao = painel.concluidas - painel.concluidasAnterior;
 
   return (
-    <main className="mx-auto max-w-[1100px] px-6 py-8">
+    <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader title="Painel" subtitle={subtitulo} />
 
       <PainelFiltros

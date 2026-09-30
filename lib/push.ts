@@ -11,6 +11,15 @@ export type AvisoPush = {
   url: string;
   // Notificações com a mesma tag substituem a anterior (ex: mesma conversa).
   tag?: string;
+  // Mostra mesmo com o d.hub aberto na tela (usado no teste).
+  forcar?: boolean;
+};
+
+export type RelatorioPush = {
+  configurado: boolean;
+  inscricoes: number;
+  enviados: number;
+  falhas: string[];
 };
 
 let configurado = false;
@@ -24,9 +33,10 @@ function configurar() {
   return true;
 }
 
-export async function enviarPush(profileIds: string[], aviso: AvisoPush) {
+export async function enviarPush(profileIds: string[], aviso: AvisoPush): Promise<RelatorioPush> {
+  const relatorio: RelatorioPush = { configurado: configurar(), inscricoes: 0, enviados: 0, falhas: [] };
   const ids = Array.from(new Set(profileIds)).filter(Boolean);
-  if (ids.length === 0 || !configurar()) return;
+  if (ids.length === 0 || !relatorio.configurado) return relatorio;
 
   const admin = createAdminClient();
   const { data: inscricoes } = await admin
@@ -39,6 +49,7 @@ export async function enviarPush(profileIds: string[], aviso: AvisoPush) {
     corpo: aviso.corpo.length > 140 ? `${aviso.corpo.slice(0, 139)}…` : aviso.corpo,
   });
 
+  relatorio.inscricoes = inscricoes?.length ?? 0;
   const mortas: string[] = [];
   await Promise.all(
     (inscricoes ?? []).map(async (s) => {
@@ -46,16 +57,28 @@ export async function enviarPush(profileIds: string[], aviso: AvisoPush) {
         await webpush.sendNotification(
           { endpoint: s.endpoint as string, keys: { p256dh: s.p256dh as string, auth: s.auth as string } },
           corpo,
-          { TTL: 60 * 60 * 24 }
+          { TTL: 60 * 60 * 24, urgency: "high" }
         );
+        relatorio.enviados++;
       } catch (e) {
         // 404/410 = aparelho desinscrito ou app removido: limpa.
-        const status = (e as { statusCode?: number }).statusCode;
+        const erro = e as { statusCode?: number; body?: string; message?: string };
+        const status = erro.statusCode;
         if (status === 404 || status === 410) mortas.push(s.id as string);
+        const host = (() => {
+          try {
+            return new URL(s.endpoint as string).host;
+          } catch {
+            return "?";
+          }
+        })();
+        relatorio.falhas.push(`${host}: ${status ?? ""} ${(erro.body || erro.message || "").slice(0, 200)}`.trim());
+        console.error("Push falhou", host, status, erro.body || erro.message);
       }
     })
   );
   if (mortas.length) await admin.from("push_subscriptions").delete().in("id", mortas);
+  return relatorio;
 }
 
 // Avisa os responsáveis de uma tarefa (menos o autor). Só servidor: usado

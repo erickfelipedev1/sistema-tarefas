@@ -467,7 +467,7 @@ export default function TaskBoard({
         </Button>
       )}
 
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin xl:grid xl:grid-cols-4 xl:overflow-visible">
+      <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 scrollbar-thin sm:mx-0 sm:snap-none sm:px-0 xl:grid xl:grid-cols-4 xl:overflow-visible">
         {COLUNAS.map((coluna) => {
           const tarefasDaColuna = tasksVisiveis.filter(
             (t) => t.status === coluna.key
@@ -478,7 +478,7 @@ export default function TaskBoard({
               onDragOver={(e) => handleColumnDragOver(e, coluna.key)}
               onDragLeave={() => handleColumnDragLeave(coluna.key)}
               onDrop={(e) => handleDrop(e, coluna.key)}
-              className={`min-w-[270px] flex-shrink-0 rounded-2xl p-1.5 transition-colors xl:min-w-0 ${
+              className={`w-[85%] flex-shrink-0 snap-start rounded-2xl p-1.5 transition-colors sm:w-auto sm:min-w-[270px] xl:min-w-0 ${
                 dragOverCol === coluna.key ? "bg-brand/5 ring-2 ring-brand/30" : ""
               }`}
             >

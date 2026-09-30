@@ -96,12 +96,15 @@ export default function NotificationsProvider({
 
   // Pede permissão e inscreve o aparelho nas notificações no celular.
   const requestNotificationPermission = useCallback(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (typeof window === "undefined") return;
     ativarPushNoAparelho().then((resultado) => {
-      setPermission(Notification.permission);
-      if (resultado === "ok") {
+      if ("Notification" in window) setPermission(Notification.permission);
+      if (resultado.status === "ok") {
         pushAtivoRef.current = true;
         setPushAtivo(true);
+        window.alert("Notificações ativadas neste aparelho. Use \"Testar notificação\" no menu pra conferir.");
+      } else {
+        window.alert(resultado.motivo);
       }
     });
   }, []);
