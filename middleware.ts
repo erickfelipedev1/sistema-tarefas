@@ -31,13 +31,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims confere o token localmente quando o projeto usa chave
+  // assimétrica (sem ida ao Supabase); senão cai no getUser. Também renova a
+  // sessão vencida.
+  const { data: claims } = await supabase.auth.getClaims();
+  const user = claims?.claims?.sub ? { id: claims.claims.sub as string } : null;
 
   const { pathname } = request.nextUrl;
   const isLoginRoute = pathname.startsWith("/login");
-  const isOnboardingRoute = pathname.startsWith("/onboarding");
   // Página pública de progresso do projeto (link que o cliente recebe) —
   // não passa por login, o acesso é controlado pelo token na própria URL.
   // Área do cliente (/cliente) tem login próprio (lib/client-auth.ts), sem
@@ -89,7 +90,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && !isOnboardingRoute && !isLoginRoute && !isPublicRoute && !isApiRoute) {
+  // Nas telas do sistema (app/(app)) o nome e a senha padrão são conferidos
+  // no layout, que já lê o perfil — aqui sobrou só a tela de autorizar a IA,
+  // que fica fora desse layout. Economiza uma consulta em toda navegação.
+  if (user && pathname.startsWith("/oauth/authorize")) {
     // "*" em vez de listar colunas: precisa_trocar_senha só existe depois da
     // migration 0037, e sem ela esta consulta não pode falhar (senão todo
     // mundo cairia no onboarding).

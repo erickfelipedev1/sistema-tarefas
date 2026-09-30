@@ -1,12 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import CalendarView from "@/components/CalendarView";
 import { podeVerTudo } from "@/lib/permissions";
 
 export default async function CalendarioPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   // Calendário individual: só mostra as tarefas que eu criei ou que foram
   // atribuídas a mim — exceto pra quem tem "ve_tudo" (hoje só a Emily), que

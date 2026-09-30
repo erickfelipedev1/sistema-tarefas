@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import { podeVerTudo } from "@/lib/permissions";
 import { getMinhasPaginas } from "@/lib/wiki";
 import PageEditor from "@/components/PageEditor";
@@ -13,7 +13,7 @@ export default async function WikiDocPage({
   params: { id: string };
 }) {
   const { id } = params;
-  const supabase = await createClient();
+  const supabase = await clienteDaRequisicao();
 
   const { data: page } = await supabase
     .from("pages")
@@ -23,9 +23,7 @@ export default async function WikiDocPage({
 
   if (!page) notFound();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await usuarioAtual();
 
   const { data: tarefaVinculada } = await supabase
     .from("tasks")

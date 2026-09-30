@@ -1,5 +1,5 @@
 import { textoDaMensagem } from "@/lib/chat";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import ChatShell from "@/components/ChatShell";
 import type {
   ConversaCanalPreview,
@@ -11,10 +11,8 @@ export default async function ChatLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   const [{ data: channels }, { data: profiles }, { data: mensagensRecentes }] =
     await Promise.all([

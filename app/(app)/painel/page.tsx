@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import { podeVerTudo } from "@/lib/permissions";
 import {
   calcularEficiencia,
@@ -30,10 +30,8 @@ export default async function PainelPage({
 }: {
   searchParams: { periodo?: string; pessoa?: string };
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
   if (!user) redirect("/login");
 
   const chave: ChavePeriodo =

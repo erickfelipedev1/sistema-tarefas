@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import ChannelThread from "@/components/ChannelThread";
 
 export default async function ChannelPage({
@@ -8,10 +8,8 @@ export default async function ChannelPage({
   params: { id: string };
 }) {
   const channelId = params.id;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   if (!user) notFound();
 

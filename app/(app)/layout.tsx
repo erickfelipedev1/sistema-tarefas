@@ -1,42 +1,33 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, perfilAtual, usuarioAtual } from "@/lib/sessao";
 import AppShell from "@/components/AppShell";
 import NotificationsProvider from "@/lib/notifications";
-import { podeVerTudo } from "@/lib/permissions";
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name, avatar_url")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Uma consulta só pro perfil (nome, foto, cargo, ve_tudo, senha padrão).
+  const profile = await perfilAtual();
+
+  // Portões que antes rodavam no middleware em toda requisição: sem nome →
+  // onboarding; senha padrão → trocar a senha antes de usar o sistema.
+  if (!profile?.name) redirect("/onboarding");
+  if (profile.precisa_trocar_senha === true) redirect("/trocar-senha");
 
   const userLabel =
     (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
 
-  // Cargo vem da migration 0034 — consulta à parte pra, sem ela, o menu
-  // continuar mostrando nome e foto normalmente.
-  const { data: comCargo } = await supabase
-    .from("profiles")
-    .select("cargo")
-    .eq("id", user.id)
-    .maybeSingle();
-
   // Mesmo filtro individual da tela de Projetos: só os que eu criei, ou
   // onde eu tenho pelo menos uma tarefa — exceto pra quem tem "ve_tudo"
   // (hoje só a Emily), que enxerga todos os projetos no menu.
-  const verTudo = await podeVerTudo(supabase, user.id);
+  const verTudo = profile.ve_tudo === true;
 
   let projects;
   if (verTudo) {
@@ -76,9 +67,9 @@ export default async function AppLayout({
         currentUserId={user.id}
         verTudo={verTudo}
         userLabel={userLabel}
-        userName={profile?.name ?? null}
-        avatarUrl={profile?.avatar_url ?? null}
-        userCargo={(comCargo?.cargo as string | null | undefined) ?? null}
+        userName={(profile.name as string | null) ?? null}
+        avatarUrl={(profile.avatar_url as string | null) ?? null}
+        userCargo={(profile.cargo as string | null | undefined) ?? null}
         initialProjects={projects ?? []}
       >
         {children}

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import ChatThread from "@/components/ChatThread";
 
 export default async function DmPage({
@@ -8,10 +8,8 @@ export default async function DmPage({
   params: { id: string };
 }) {
   const otherUserId = params.id;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   if (!user) notFound();
 

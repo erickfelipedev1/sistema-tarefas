@@ -1,12 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import ProjectsList from "@/components/ProjectsList";
 import { podeVerTudo } from "@/lib/permissions";
 
 export default async function ProjetosPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   const currentUserLabel =
     (user?.user_metadata?.username as string | undefined) ?? user?.email ?? "";

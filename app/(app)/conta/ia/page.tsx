@@ -1,13 +1,11 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import PersonalAiTokens from "@/components/PersonalAiTokens";
 import type { PersonalApiToken } from "@/lib/types";
 
 export default async function IntegracaoIaPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   if (!user) redirect("/login");
 

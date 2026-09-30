@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import TaskBoard from "@/components/TaskBoard";
 import NewPageButton from "@/components/NewPageButton";
 import ShareProjectLink from "@/components/ShareProjectLink";
@@ -24,7 +24,7 @@ export default async function ProjetoPage({
   params: { id: string };
 }) {
   const { id } = params;
-  const supabase = await createClient();
+  const supabase = await clienteDaRequisicao();
 
   const { data: project } = await supabase
     .from("projects")
@@ -34,9 +34,7 @@ export default async function ProjetoPage({
 
   if (!project) notFound();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await usuarioAtual();
 
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??

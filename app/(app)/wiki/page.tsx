@@ -1,14 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import { podeVerTudo } from "@/lib/permissions";
 import { getMinhasPaginas } from "@/lib/wiki";
 import WikiSidebar from "@/components/WikiSidebar";
 import WikiPagesPanel from "@/components/WikiPagesPanel";
 
 export default async function WikiListPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   // Wiki individual: só entram páginas que eu criei, ou que estão ligadas a
   // uma tarefa minha (criada por mim ou atribuída a mim) — exceto pra quem

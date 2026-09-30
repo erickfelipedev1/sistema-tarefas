@@ -1,12 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import TaskBoard from "@/components/TaskBoard";
 import { podeVerTudo } from "@/lib/permissions";
 
 export default async function BoardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await clienteDaRequisicao();
+  const user = await usuarioAtual();
 
   // Quadro principal é individual: só entram as tarefas que eu criei ou que
   // foram atribuídas a mim — exceto pra quem tem "ve_tudo" (hoje só a
@@ -15,26 +13,18 @@ export default async function BoardPage() {
   // app/(app)/projetos/[id]/page.tsx).
   const verTudo = await podeVerTudo(supabase, user?.id);
 
-  const { data: tasks } = verTudo
-    ? await supabase
-        .from("tasks")
-        .select("*")
-        .order("position", { ascending: true })
-    : await supabase
-        .from("tasks")
-        .select("*")
-        .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
-        .order("position", { ascending: true });
-
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("*")
-    .order("name", { ascending: true });
-
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, username, name, avatar_url")
-    .order("name", { ascending: true });
+  // As três consultas saem juntas, em vez de uma esperando a outra.
+  const [{ data: tasks }, { data: projects }, { data: profiles }] = await Promise.all([
+    verTudo
+      ? supabase.from("tasks").select("*").order("position", { ascending: true })
+      : supabase
+          .from("tasks")
+          .select("*")
+          .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
+          .order("position", { ascending: true }),
+    supabase.from("projects").select("*").order("name", { ascending: true }),
+    supabase.from("profiles").select("id, username, name, avatar_url").order("name", { ascending: true }),
+  ]);
 
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??
