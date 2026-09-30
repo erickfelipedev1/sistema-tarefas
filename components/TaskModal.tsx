@@ -24,6 +24,7 @@ import {
   syncComentariosWiki,
   syncHorasWiki,
 } from "@/lib/task-wiki-sync";
+import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 
 type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas";
 
@@ -86,8 +87,18 @@ export default function TaskModal({
   );
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Quanto tem em cada aba (checklist, comentários...) — aparece no menu.
+  const [resumo, setResumo] = useState<ResumoTarefa>(resumoVazio());
 
   const isNovo = !current;
+
+  // Recarrega ao abrir e a cada troca de aba (a pessoa pode ter mexido
+  // no checklist/comentários na aba anterior).
+  useEffect(() => {
+    if (!current) return;
+    carregarResumos(supabase, [current.id]).then((m) => setResumo(m[current.id] ?? resumoVazio()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, aba]);
 
   // Impede o scroll da página por trás enquanto o modal está aberto.
   useEffect(() => {
@@ -267,6 +278,20 @@ export default function TaskModal({
                   className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 />
               </div>
+
+              {current && (
+                <ResumoDaTarefa
+                  taskId={current.id}
+                  pageId={current.page_id}
+                  resumo={resumo}
+                  onAbrir={setAba}
+                  onMudou={() =>
+                    carregarResumos(supabase, [current.id]).then((m) =>
+                      setResumo(m[current.id] ?? resumoVazio())
+                    )
+                  }
+                />
+              )}
 
               <div>
                 <label className="mb-2 block text-xs font-medium text-ink-muted">
@@ -516,7 +541,7 @@ export default function TaskModal({
               key={item.key}
               disabled={item.key !== "detalhes" && isNovo}
               onClick={() => setAba(item.key)}
-              className={`flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium disabled:cursor-not-allowed disabled:opacity-30 ${
+              className={`flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium md:flex-none disabled:cursor-not-allowed disabled:opacity-30 ${
                 aba === item.key
                   ? "bg-brand text-navy"
                   : "text-ink-muted hover:bg-surface-hover"
@@ -524,6 +549,15 @@ export default function TaskModal({
             >
               <span>{item.icone}</span>
               <span className="hidden md:inline">{item.label}</span>
+              {!isNovo && contadorDaAba(item.key, resumo) && (
+                <span
+                  className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                    aba === item.key ? "bg-navy/15 text-navy" : "bg-surface-hover text-ink"
+                  }`}
+                >
+                  {contadorDaAba(item.key, resumo)}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1090,6 +1124,138 @@ function HorasTab({
           <p className="text-xs text-ink-muted">Nenhum lançamento ainda.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+function contadorDaAba(aba: Aba, r: ResumoTarefa): string | null {
+  if (aba === "checklist" && r.checklistTotal) return `${r.checklistFeitos}/${r.checklistTotal}`;
+  if (aba === "comentarios" && r.comentarios) return String(r.comentarios);
+  if (aba === "anexos" && r.anexos) return String(r.anexos);
+  if (aba === "horas" && r.horas) return formatarHoras(r.horas);
+  return null;
+}
+
+// Resumo na aba Detalhes (a que abre primeiro): mostra o checklist — dá pra
+// marcar os itens daqui mesmo —, os últimos comentários e os anexos, pra
+// ninguém precisar abrir aba por aba pra descobrir o que a tarefa tem.
+function ResumoDaTarefa({
+  taskId,
+  pageId,
+  resumo,
+  onAbrir,
+  onMudou,
+}: {
+  taskId: string;
+  pageId: string | null;
+  resumo: ResumoTarefa;
+  onAbrir: (aba: Aba) => void;
+  onMudou: () => void;
+}) {
+  const supabase = createClient();
+  const [itens, setItens] = useState<ChecklistItem[]>([]);
+  const [comentarios, setComentarios] = useState<TaskComment[]>([]);
+  const [anexos, setAnexos] = useState<TaskAttachment[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+    Promise.all([
+      supabase.from("task_checklist_items").select("*").eq("task_id", taskId).order("position"),
+      supabase
+        .from("task_comments")
+        .select("*")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: false })
+        .limit(2),
+      supabase.from("task_attachments").select("*").eq("task_id", taskId).order("created_at"),
+    ]).then(([c, m, a]) => {
+      if (!ativo) return;
+      setItens((c.data as ChecklistItem[]) ?? []);
+      setComentarios(((m.data as TaskComment[]) ?? []).reverse());
+      setAnexos((a.data as TaskAttachment[]) ?? []);
+    });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId]);
+
+  async function alternar(item: ChecklistItem) {
+    const proximos = itens.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i));
+    setItens(proximos);
+    await supabase.from("task_checklist_items").update({ done: !item.done }).eq("id", item.id);
+    syncChecklistWiki(supabase, pageId, proximos).catch(() => {});
+    onMudou();
+  }
+
+  if (itens.length === 0 && comentarios.length === 0 && anexos.length === 0) return null;
+
+  const feitos = itens.filter((i) => i.done).length;
+
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-canvas p-3">
+      {itens.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink">
+              ✅ Checklist <span className="font-normal text-ink-muted">({feitos}/{itens.length})</span>
+            </span>
+            <button type="button" onClick={() => onAbrir("checklist")} className="text-xs font-medium text-brand-forte hover:underline">
+              Editar
+            </button>
+          </div>
+          <div className="mb-2 h-1 overflow-hidden rounded-full bg-surface-hover">
+            <div className="h-full rounded-full bg-brand-forte" style={{ width: `${(feitos / itens.length) * 100}%` }} />
+          </div>
+          <ul className="space-y-1">
+            {itens.map((item) => (
+              <li key={item.id}>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" checked={item.done} onChange={() => alternar(item)} />
+                  <span className={item.done ? "text-ink-muted line-through" : "text-ink"}>{item.title}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {comentarios.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink">
+              💬 Comentários <span className="font-normal text-ink-muted">({resumo.comentarios || comentarios.length})</span>
+            </span>
+            <button type="button" onClick={() => onAbrir("comentarios")} className="text-xs font-medium text-brand-forte hover:underline">
+              Ver todos
+            </button>
+          </div>
+          <ul className="space-y-1.5">
+            {comentarios.map((c) => (
+              <li key={c.id} className="rounded-lg bg-surface px-2.5 py-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-muted">{c.created_by_label ?? "Alguém"}: </span>
+                <span className="whitespace-pre-wrap break-words text-ink">{c.content}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {anexos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-semibold text-ink">📎 Anexos:</span>
+          {anexos.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onAbrir("anexos")}
+              className="max-w-[200px] truncate rounded-full border border-line bg-surface px-2 py-0.5 text-xs text-ink hover:border-brand"
+            >
+              {a.file_name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

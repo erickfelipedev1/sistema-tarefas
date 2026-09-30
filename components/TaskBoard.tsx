@@ -15,6 +15,7 @@ import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { StatTile } from "./ui/StatTile";
+import { carregarResumos, formatarHoras, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -86,6 +87,21 @@ export default function TaskBoard({
   const [tarefaEditando, setTarefaEditando] = useState<Task | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroResponsavel, setFiltroResponsavel] = useState("");
+  // Checklist/comentários/anexos de cada cartão (✅ 2/5 · 💬 3 · 📎 1).
+  const [resumos, setResumos] = useState<Record<string, ResumoTarefa>>({});
+  const idsDasTarefas = useMemo(() => tasks.map((t) => t.id).sort().join(","), [tasks]);
+
+  useEffect(() => {
+    if (!idsDasTarefas) return;
+    let ativo = true;
+    carregarResumos(supabase, idsDasTarefas.split(",")).then((m) => {
+      if (ativo) setResumos(m);
+    });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsDasTarefas]);
 
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
@@ -182,8 +198,15 @@ export default function TaskBoard({
   }
 
   function fecharModal() {
+    // A pessoa pode ter mexido no checklist/comentários: atualiza o cartão.
+    const aberta = tarefaEditando?.id;
     setModalAberto(false);
     setTarefaEditando(null);
+    if (aberta) {
+      carregarResumos(supabase, [aberta]).then((m) =>
+        setResumos((atual) => ({ ...atual, ...m }))
+      );
+    }
   }
 
   function handleCreated(nova: Task) {
@@ -556,6 +579,10 @@ export default function TaskBoard({
                         </div>
                       )}
 
+                      {temConteudo(resumos[task.id]) && (
+                        <IndicadoresTarefa resumo={resumos[task.id]} />
+                      )}
+
                       <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5">
                         <div className="flex items-center gap-1">
                           <button
@@ -644,6 +671,40 @@ export default function TaskBoard({
           onUpdated={handleUpdated}
           onDeleted={handleDeleted}
         />
+      )}
+    </div>
+  );
+}
+
+// Linha do cartão que avisa o que a tarefa tem além da descrição.
+function IndicadoresTarefa({ resumo }: { resumo: ResumoTarefa }) {
+  const completo = resumo.checklistTotal > 0 && resumo.checklistFeitos === resumo.checklistTotal;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
+      {resumo.checklistTotal > 0 && (
+        <span
+          title="Checklist"
+          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 ${
+            completo ? "bg-success-light font-medium text-success" : "bg-surface-hover"
+          }`}
+        >
+          ✅ {resumo.checklistFeitos}/{resumo.checklistTotal}
+        </span>
+      )}
+      {resumo.comentarios > 0 && (
+        <span title="Comentários" className="inline-flex items-center gap-1 rounded-md bg-surface-hover px-1.5 py-0.5">
+          💬 {resumo.comentarios}
+        </span>
+      )}
+      {resumo.anexos > 0 && (
+        <span title="Anexos" className="inline-flex items-center gap-1 rounded-md bg-surface-hover px-1.5 py-0.5">
+          📎 {resumo.anexos}
+        </span>
+      )}
+      {resumo.horas > 0 && (
+        <span title="Horas registradas" className="inline-flex items-center gap-1 rounded-md bg-surface-hover px-1.5 py-0.5">
+          ⏱️ {formatarHoras(resumo.horas)}
+        </span>
       )}
     </div>
   );
