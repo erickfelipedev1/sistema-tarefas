@@ -11,6 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { Message, Task } from "@/lib/types";
 import { prepararSom, tocarSomNotificacao } from "@/lib/som";
+import { ativarPushNoAparelho, pushAtivoNoAparelho } from "@/lib/push-client";
 import { textoDaMensagem } from "@/lib/chat";
 
 export function dmKey(otherUserId: string) {
@@ -30,6 +31,9 @@ type NotificationsContextValue = {
   setOpenConversation: (conversationKey: string | null) => void;
   notificationPermission: NotificationPermission | "unsupported";
   requestNotificationPermission: () => void;
+  // Este aparelho está inscrito nas notificações no celular (Web Push)?
+  // null = ainda verificando.
+  pushAtivo: boolean | null;
   // Quem está online agora (e se está "ausente" — aba em segundo plano),
   // via Supabase Realtime Presence. Quem não aparece aqui está offline.
   presenceByUserId: Record<string, PresenceStatus>;
@@ -69,6 +73,8 @@ export default function NotificationsProvider({
 
   // Guardados em ref (não em state) porque só são lidos dentro do listener
   // do realtime, que é montado uma única vez.
+  const [pushAtivo, setPushAtivo] = useState<boolean | null>(null);
+  const pushAtivoRef = useRef(false);
   const openConversationRef = useRef<string | null>(null);
   const profilesByIdRef = useRef<Record<string, string>>({});
   const channelsByIdRef = useRef<Record<string, string>>({});
@@ -81,11 +87,23 @@ export default function NotificationsProvider({
     setPermission(Notification.permission);
   }, []);
 
+  useEffect(() => {
+    pushAtivoNoAparelho().then((ativo) => {
+      pushAtivoRef.current = ativo;
+      setPushAtivo(ativo);
+    });
+  }, []);
+
+  // Pede permissão e inscreve o aparelho nas notificações no celular.
   const requestNotificationPermission = useCallback(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    Notification.requestPermission().then((resultado) =>
-      setPermission(resultado)
-    );
+    ativarPushNoAparelho().then((resultado) => {
+      setPermission(Notification.permission);
+      if (resultado === "ok") {
+        pushAtivoRef.current = true;
+        setPushAtivo(true);
+      }
+    });
   }, []);
 
   // Estado inicial: quantas mensagens não lidas já existem em cada conversa.
@@ -275,7 +293,9 @@ export default function NotificationsProvider({
           if (
             typeof window !== "undefined" &&
             "Notification" in window &&
-            Notification.permission === "granted"
+            Notification.permission === "granted" &&
+            // Com o push ativo, quem mostra é o service worker — não duplica.
+            !pushAtivoRef.current
           ) {
             try {
               // silent: o som é o do próprio sistema (tocarSomNotificacao),
@@ -327,7 +347,9 @@ export default function NotificationsProvider({
           if (
             typeof window !== "undefined" &&
             "Notification" in window &&
-            Notification.permission === "granted"
+            Notification.permission === "granted" &&
+            // Com o push ativo, quem mostra é o service worker — não duplica.
+            !pushAtivoRef.current
           ) {
             const remetente =
               profilesByIdRef.current[nova.sender_id] || "Alguém";
@@ -375,6 +397,7 @@ export default function NotificationsProvider({
         setOpenConversation,
         notificationPermission: permission,
         requestNotificationPermission,
+        pushAtivo,
         presenceByUserId,
       }}
     >

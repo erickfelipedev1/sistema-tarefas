@@ -9,6 +9,7 @@ import { ChevronLeftIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/ic
 import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
 import { enviarAnexo, pastaDoCanal, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
+import { avisarMensagemNova } from "@/lib/actions/push";
 
 type SenderInfo = {
   name: string | null;
@@ -175,6 +176,7 @@ export default function ChannelThread({
     setMessages((current) =>
       current.some((m) => m.id === data.id) ? current : [...current, data]
     );
+    avisarMensagemNova(data.id).catch(() => {});
     return true;
   }
 

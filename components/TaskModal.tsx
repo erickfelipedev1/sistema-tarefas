@@ -25,6 +25,7 @@ import {
   syncHorasWiki,
 } from "@/lib/task-wiki-sync";
 import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
+import { avisarTarefaAtribuida } from "@/lib/actions/push";
 
 type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas";
 
@@ -167,6 +168,8 @@ export default function TaskModal({
 
     setCurrent(tarefaFinal);
     onCreated(tarefaFinal);
+    // Notificação no celular dos responsáveis (menos quem criou).
+    avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
   }
 
   async function salvarCampo(campos: Partial<Task>) {
@@ -190,7 +193,12 @@ export default function TaskModal({
     if (!id || assignedTo.includes(id)) return;
     const proximos = [...assignedTo, id];
     setAssignedTo(proximos);
-    if (!isNovo) salvarCampo({ assigned_to: proximos });
+    if (!isNovo && current) {
+      const tarefaId = current.id;
+      salvarCampo({ assigned_to: proximos }).then(() =>
+        avisarTarefaAtribuida(tarefaId, [id]).catch(() => {})
+      );
+    }
   }
 
   function removerResponsavel(id: string) {

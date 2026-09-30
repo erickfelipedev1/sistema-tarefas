@@ -59,6 +59,15 @@ export async function middleware(request: NextRequest) {
     pathname === "/oauth/register";
   if (isOAuthMachineRoute) return response;
 
+  // Arquivos do PWA (manifesto, service worker, tela offline) abrem sem login.
+  if (
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/offline.html"
+  ) {
+    return response;
+  }
+
   if (!user && !isLoginRoute && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

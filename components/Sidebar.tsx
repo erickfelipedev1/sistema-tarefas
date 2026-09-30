@@ -91,8 +91,25 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const supabase = createClient();
-  const { totalUnread, notificationPermission, requestNotificationPermission } =
+  const { totalUnread, notificationPermission, requestNotificationPermission, pushAtivo } =
     useNotifications();
+  // Botão "Instalar o app" (Chrome/Android/Edge avisam quando dá pra instalar).
+  const [pedidoInstalacao, setPedidoInstalacao] = useState<Event & { prompt?: () => Promise<void> } | null>(null);
+  useEffect(() => {
+    function aoPoderInstalar(e: Event) {
+      e.preventDefault();
+      setPedidoInstalacao(e);
+    }
+    function aoInstalar() {
+      setPedidoInstalacao(null);
+    }
+    window.addEventListener("beforeinstallprompt", aoPoderInstalar);
+    window.addEventListener("appinstalled", aoInstalar);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", aoPoderInstalar);
+      window.removeEventListener("appinstalled", aoInstalar);
+    };
+  }, []);
   const { theme, toggleTheme } = useTheme();
 
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -222,15 +239,34 @@ export default function Sidebar({
         ))}
       </nav>
 
-      {notificationPermission === "default" && (
-        <div className="px-3 pb-2">
-          <button
-            onClick={requestNotificationPermission}
-            className="flex w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
-          >
-            <BellIcon className="h-3.5 w-3.5 flex-shrink-0" />
-            Ativar notificações de mensagem
-          </button>
+      {(pedidoInstalacao ||
+        (pushAtivo === false &&
+          notificationPermission !== "denied" &&
+          notificationPermission !== "unsupported")) && (
+        <div className="space-y-1.5 px-3 pb-2">
+          {pedidoInstalacao && (
+            <button
+              onClick={async () => {
+                await pedidoInstalacao.prompt?.();
+                setPedidoInstalacao(null);
+              }}
+              className="flex w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
+            >
+              <span aria-hidden="true">📲</span>
+              Instalar o app
+            </button>
+          )}
+          {pushAtivo === false &&
+            notificationPermission !== "denied" &&
+            notificationPermission !== "unsupported" && (
+              <button
+                onClick={requestNotificationPermission}
+                className="flex w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-400 hover:bg-white/5 hover:text-slate-200"
+              >
+                <BellIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                Ativar notificações
+              </button>
+            )}
         </div>
       )}
 

@@ -1,0 +1,122 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { avisarTarefaParaResponsaveis, enviarPush } from "@/lib/push";
+import { textoDaMensagem } from "@/lib/chat";
+
+// Server Actions das notificações no celular. Quem chama é o navegador
+// logado: salvar/remover a inscrição do aparelho e avisar os destinatários
+// depois de mandar mensagem ou criar tarefa.
+
+async function usuarioAtual() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function salvarInscricaoPush(inscricao: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent?: string;
+}): Promise<{ ok: true } | { erro: string }> {
+  const user = await usuarioAtual();
+  if (!user) return { erro: "Sessão expirada." };
+  if (!inscricao?.endpoint?.startsWith("https://") || !inscricao.keys?.p256dh || !inscricao.keys?.auth) {
+    return { erro: "Inscrição inválida." };
+  }
+  const admin = createAdminClient();
+  const { error } = await admin.from("push_subscriptions").upsert(
+    {
+      profile_id: user.id,
+      endpoint: inscricao.endpoint,
+      p256dh: inscricao.keys.p256dh,
+      auth: inscricao.keys.auth,
+      user_agent: inscricao.userAgent?.slice(0, 300) ?? null,
+    },
+    { onConflict: "endpoint" }
+  );
+  if (error) return { erro: `Não deu pra ativar: ${error.message}` };
+  return { ok: true };
+}
+
+export async function removerInscricaoPush(endpoint: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  await createAdminClient().from("push_subscriptions").delete().eq("endpoint", endpoint).eq("profile_id", user.id);
+}
+
+// Depois de mandar uma mensagem: avisa quem deve receber (DM: a outra
+// pessoa; canal: os membros, ou todo mundo se o canal é aberto).
+export async function avisarMensagemNova(messageId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const { data: m } = await admin
+    .from("messages")
+    .select("id, sender_id, recipient_id, channel_id, content, attachment_name")
+    .eq("id", messageId)
+    .maybeSingle();
+  // Só quem mandou pode disparar o aviso da própria mensagem.
+  if (!m || m.sender_id !== user.id) return;
+
+  const { data: remetente } = await admin
+    .from("profiles")
+    .select("name, username")
+    .eq("id", user.id)
+    .maybeSingle();
+  const nome = remetente?.name || remetente?.username || "Alguém";
+  const texto = textoDaMensagem({ content: m.content ?? "", attachment_name: m.attachment_name });
+
+  if (m.recipient_id) {
+    await enviarPush([m.recipient_id as string], {
+      titulo: nome,
+      corpo: texto,
+      url: `/chat/dm/${user.id}`,
+      tag: `dm-${user.id}`,
+    });
+    return;
+  }
+
+  if (m.channel_id) {
+    const { data: canal } = await admin
+      .from("channels")
+      .select("*")
+      .eq("id", m.channel_id)
+      .maybeSingle();
+    if (!canal) return;
+    let destinatarios: string[];
+    if (canal.is_private) {
+      const { data: membros } = await admin.from("channel_members").select("profile_id").eq("channel_id", canal.id);
+      destinatarios = (membros ?? []).map((x) => x.profile_id as string);
+    } else {
+      const { data: todos } = await admin.from("profiles").select("id");
+      destinatarios = (todos ?? []).map((x) => x.id as string);
+    }
+    await enviarPush(
+      destinatarios.filter((id) => id !== user.id),
+      { titulo: `#${canal.name} · ${nome}`, corpo: texto, url: `/chat/canal/${canal.id}`, tag: `canal-${canal.id}` }
+    );
+  }
+}
+
+// Depois de criar (ou atribuir) uma tarefa pela tela: avisa os
+// responsáveis, menos quem fez a ação.
+export async function avisarTarefaAtribuida(taskId: string, apenas?: string[]) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  // Só dispara quem tem relação com a tarefa (criou, é responsável ou vê
+  // tudo) — pra ninguém usar isso pra mandar aviso em nome dos outros.
+  const admin = createAdminClient();
+  const [{ data: t }, { data: perfil }] = await Promise.all([
+    admin.from("tasks").select("created_by, assigned_to").eq("id", taskId).maybeSingle(),
+    admin.from("profiles").select("ve_tudo").eq("id", user.id).maybeSingle(),
+  ]);
+  if (!t) return;
+  const temRelacao =
+    t.created_by === user.id || ((t.assigned_to as string[]) ?? []).includes(user.id) || !!perfil?.ve_tudo;
+  if (!temRelacao) return;
+  await avisarTarefaParaResponsaveis(taskId, user.id, apenas);
+}

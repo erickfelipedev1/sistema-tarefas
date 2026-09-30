@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
+import PwaSetup from "@/components/PwaSetup";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,6 +22,14 @@ export const metadata: Metadata = {
   title: "d.hub",
   description: "Central de tarefas, clientes e demandas.",
   other: { google: "notranslate" },
+  // iPhone: abre em tela cheia quando instalado na tela de início.
+  appleWebApp: { capable: true, title: "d.hub", statusBarStyle: "black" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0A0D08",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -45,6 +54,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
         <ThemeProvider>{children}</ThemeProvider>
+        <PwaSetup />
       </body>
     </html>
   );

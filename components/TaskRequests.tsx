@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskRequest } from "@/lib/types";
 import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
 import { formatarDataHora } from "@/lib/format";
+import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
@@ -246,6 +247,7 @@ export default function TaskRequests({
     }
 
     let tarefaFinal = novaTarefa as Task;
+    avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
 
     // Cria a página da Wiki dessa tarefa na hora, igual acontece quando a
     // tarefa é criada pelo quadro normal.

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0A0D08" />
+    <title>Sem conexão · d.hub</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0A0D08; color: #F3F6EF;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { min-height: 100%; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 12px; padding: 24px; text-align: center; }
+      img { width: 72px; height: 72px; border-radius: 16px; }
+      h1 { font-size: 20px; margin: 8px 0 0; }
+      p { margin: 0; color: #93A08C; font-size: 15px; max-width: 320px; }
+      button { margin-top: 12px; background: #AEDF55; color: #12160D; border: 0; border-radius: 10px;
+        padding: 12px 20px; font-size: 15px; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" alt="" />
+      <h1>Sem conexão</h1>
+      <p>O d.hub precisa de internet. Confira sua conexão e tente de novo.</p>
+      <button onclick="location.reload()">Tentar de novo</button>
+    </main>
+  </body>
+</html>

@@ -11,6 +11,7 @@ import { ChevronLeftIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
 import { enviarAnexo, pastaDaDm, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
+import { avisarMensagemNova } from "@/lib/actions/push";
 
 export default function ChatThread({
   currentUserId,
@@ -171,6 +172,7 @@ export default function ChatThread({
     setMessages((current) =>
       current.some((m) => m.id === data.id) ? current : [...current, data]
     );
+    avisarMensagemNova(data.id).catch(() => {});
     return true;
   }
 

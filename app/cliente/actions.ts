@@ -11,6 +11,7 @@ import {
   normalizarUsuarioCliente,
 } from "@/lib/client-auth";
 import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
+import { avisarTarefaParaResponsaveis } from "@/lib/push";
 import type { Profile, Project, Task } from "@/lib/types";
 
 // Server Actions da área do cliente (/cliente). Tudo roda com a service_role
@@ -134,6 +135,7 @@ export async function enviarSolicitacaoCliente(
   }
 
   const tarefa = novaTarefa as Task;
+  await avisarTarefaParaResponsaveis(tarefa.id, null).catch(() => {});
   const { data: perfis } = await admin
     .from("profiles")
     .select("id, username, name, avatar_url");

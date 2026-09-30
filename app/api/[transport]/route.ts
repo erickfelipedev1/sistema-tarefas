@@ -2,6 +2,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { avisarTarefaParaResponsaveis } from "@/lib/push";
 import { verificarTokenPessoal, type PerfilAutenticado } from "@/lib/mcp-tokens";
 import { podeVerTudo } from "@/lib/permissions";
 import {
@@ -273,6 +274,8 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
               ],
             };
           }
+
+          await avisarTarefaParaResponsaveis(tarefa.id, perfil.profileId).catch(() => {});
 
           const itensChecklist = (checklist ?? []).map((t) => t.trim()).filter(Boolean);
           if (itensChecklist.length > 0) {
