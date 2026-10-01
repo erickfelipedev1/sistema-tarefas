@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { DriveFile, DriveFolder } from "@/lib/types";
@@ -225,15 +226,13 @@ export default function DriveBrowser({
     setEnviando(true);
 
     const prefixo = owned ? currentUserId : projectId ?? "geral";
-    const caminhoArquivo = `${prefixo}/${folderId ?? "raiz"}/${Date.now()}-${arquivo.name}`;
+    const caminhoArquivo = `${prefixo}/${folderId ?? "raiz"}/${Date.now()}-${nomeSeguro(arquivo.name)}`;
     const { error: erroUpload } = await supabase.storage
       .from(bucket)
       .upload(caminhoArquivo, arquivo);
 
     if (erroUpload) {
-      window.alert(
-        "Não consegui enviar o arquivo. Confere se as migrations 0014_drive.sql e 0015_drive_private.sql já foram rodadas no Supabase."
-      );
+      window.alert(`Não consegui enviar o arquivo: ${erroUpload.message}`);
       setEnviando(false);
       e.target.value = "";
       return;
@@ -261,6 +260,10 @@ export default function DriveBrowser({
           a.file_name.localeCompare(b.file_name)
         )
       );
+    } else {
+      // O arquivo subiu mas o registro não — tira do storage pra não sobrar lixo.
+      await supabase.storage.from(bucket).remove([caminhoArquivo]);
+      window.alert(`Não consegui salvar o arquivo: ${error?.message ?? "erro desconhecido"}`);
     }
   }
 

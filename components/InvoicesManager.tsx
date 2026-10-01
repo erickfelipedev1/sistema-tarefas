@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -132,15 +133,13 @@ export default function InvoicesManager({
 
     let filePath: string | null = null;
     if (arquivo) {
-      const caminho = `${projectId}/${Date.now()}-${arquivo.name}`;
+      const caminho = `${projectId}/${Date.now()}-${nomeSeguro(arquivo.name)}`;
       const { error: erroUpload } = await supabase.storage
         .from("invoices")
         .upload(caminho, arquivo);
       if (erroUpload) {
         setSalvando(false);
-        setErroEnvio(
-          "Não deu pra enviar o anexo. Confere se a migration 0029_client_invoices.sql já foi rodada no Supabase."
-        );
+        setErroEnvio(`Não deu pra enviar o anexo: ${erroUpload.message}`);
         return;
       }
       filePath = caminho;

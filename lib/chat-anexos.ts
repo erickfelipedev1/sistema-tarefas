@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { nomeSeguro } from "@/lib/nome-arquivo";
 import { LIMITE_ANEXO_MB } from "@/lib/chat";
 
 // Envio de anexo do chat pro bucket privado "chat-files" (migration 0036).
@@ -12,15 +13,6 @@ export function pastaDoCanal(channelId: string) {
   return `canal/${channelId}`;
 }
 
-function nomeSeguro(nome: string) {
-  const limpo = nome
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(-80);
-  return limpo || "arquivo";
-}
 
 export type AnexoEnviado = {
   attachment_path: string;

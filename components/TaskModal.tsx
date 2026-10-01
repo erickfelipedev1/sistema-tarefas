@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -788,15 +789,13 @@ function AnexosTab({
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
     setEnviando(true);
-    const caminho = `${taskId}/${Date.now()}-${arquivo.name}`;
+    const caminho = `${taskId}/${Date.now()}-${nomeSeguro(arquivo.name)}`;
     const { error: erroUpload } = await supabase.storage
       .from("task-attachments")
       .upload(caminho, arquivo);
 
     if (erroUpload) {
-      window.alert(
-        "Não consegui enviar o arquivo. Confere se a migration 0013_task_details.sql já foi rodada (ela cria o bucket de anexos)."
-      );
+      window.alert(`Não consegui enviar o arquivo: ${erroUpload.message}`);
       setEnviando(false);
       e.target.value = "";
       return;
