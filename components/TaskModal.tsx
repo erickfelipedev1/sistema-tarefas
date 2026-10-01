@@ -1,5 +1,6 @@
 "use client";
 
+import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -74,6 +75,9 @@ export default function TaskModal({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
+  // Descrição salva aparece como texto (com links clicáveis); clicar fora de
+  // um link abre a edição.
+  const [editandoDescricao, setEditandoDescricao] = useState(false);
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "todo");
   const [dueDate, setDueDate] = useState(task?.due_date ?? initialDueDate ?? "");
   const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) ?? initialDueTime ?? "");
@@ -275,17 +279,31 @@ export default function TaskModal({
                 <label className="mb-1 block text-xs font-medium text-ink-muted">
                   Descrição
                 </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  onBlur={() =>
-                    !isNovo &&
-                    salvarCampo({ description: description.trim() || null })
-                  }
-                  rows={4}
-                  placeholder="Detalhes da tarefa..."
-                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
-                />
+                {!isNovo && !editandoDescricao && description.trim() ? (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    title="Clique pra editar"
+                    onClick={() => setEditandoDescricao(true)}
+                    onKeyDown={(e) => e.key === "Enter" && setEditandoDescricao(true)}
+                    className="max-h-64 min-h-[5.5rem] w-full cursor-text overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink hover:border-ink-muted/40"
+                  >
+                    <TextoComLinks texto={description} />
+                  </div>
+                ) : (
+                  <textarea
+                    value={description}
+                    autoFocus={editandoDescricao}
+                    onChange={(e) => setDescription(e.target.value)}
+                    onBlur={() => {
+                      setEditandoDescricao(false);
+                      if (!isNovo) salvarCampo({ description: description.trim() || null });
+                    }}
+                    rows={4}
+                    placeholder="Detalhes da tarefa..."
+                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                  />
+                )}
               </div>
 
               {current && (
@@ -958,7 +976,7 @@ function ComentariosTab({
       <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
         {comentarios.map((c) => (
           <div key={c.id} className="rounded-lg bg-canvas px-3 py-2">
-            <p className="text-sm text-ink">{c.content}</p>
+            <p className="whitespace-pre-wrap break-words text-sm text-ink"><TextoComLinks texto={c.content} /></p>
             <p className="mt-1 text-[10px] text-ink-muted">
               {c.created_by_label ?? "Alguém"} ·{" "}
               {new Date(c.created_at).toLocaleString("pt-BR")}
@@ -1241,7 +1259,7 @@ function ResumoDaTarefa({
             {comentarios.map((c) => (
               <li key={c.id} className="rounded-lg bg-surface px-2.5 py-1.5 text-sm">
                 <span className="text-xs font-medium text-ink-muted">{c.created_by_label ?? "Alguém"}: </span>
-                <span className="whitespace-pre-wrap break-words text-ink">{c.content}</span>
+                <span className="whitespace-pre-wrap break-words text-ink"><TextoComLinks texto={c.content} /></span>
               </li>
             ))}
           </ul>

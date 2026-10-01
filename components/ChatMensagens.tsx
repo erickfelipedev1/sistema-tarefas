@@ -1,5 +1,6 @@
 "use client";
 
+import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import { Fragment, useEffect, useState } from "react";
 import type { Message } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
@@ -114,7 +115,11 @@ export default function ChatMensagens({
                       tamanho={m.attachment_size ?? null}
                     />
                   )}
-                  {m.content && <span className="whitespace-pre-wrap break-words">{m.content}</span>}
+                  {m.content && (
+                    <span className="whitespace-pre-wrap break-words">
+                      <TextoComLinks texto={m.content} corDoLink="text-current" />
+                    </span>
+                  )}
                   <span className="float-right ml-3 mt-1.5 inline-flex translate-y-0.5 items-center gap-0.5 text-[10px] leading-none text-ink-muted">
                     {horaCurta(m.created_at)}
                     {minha && <Checks estado={estadoDe(m)} />}
