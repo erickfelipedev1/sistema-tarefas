@@ -79,6 +79,12 @@ export default function TaskModal({
   // um link abre a edição.
   const [editandoDescricao, setEditandoDescricao] = useState(false);
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "todo");
+  // Período: tarefa nova começa hoje (ou no dia escolhido no calendário, se
+  // for antes de hoje) e termina na entrega.
+  const hojeLocal = new Date().toLocaleDateString("en-CA");
+  const [startDate, setStartDate] = useState(
+    task ? task.start_date ?? "" : initialDueDate && initialDueDate < hojeLocal ? initialDueDate : hojeLocal
+  );
   const [dueDate, setDueDate] = useState(task?.due_date ?? initialDueDate ?? "");
   const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) ?? initialDueTime ?? "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule>(
@@ -120,6 +126,14 @@ export default function TaskModal({
       setErro("Dá um nome pra tarefa antes de criar.");
       return;
     }
+    if (!startDate || !dueDate) {
+      setErro("Toda tarefa precisa de período: preencha o início e a entrega.");
+      return;
+    }
+    if (startDate > dueDate) {
+      setErro("O início não pode ser depois da entrega.");
+      return;
+    }
     setSaving(true);
     setErro(null);
 
@@ -130,6 +144,7 @@ export default function TaskModal({
         description: description.trim() || null,
         status,
         position: getNextPosition(status),
+        start_date: startDate || null,
         due_date: dueDate || null,
         due_time: dueTime || null,
         repeat_rule: repeatRule,
@@ -143,7 +158,11 @@ export default function TaskModal({
 
     setSaving(false);
     if (error || !data) {
-      setErro("Não deu pra criar a tarefa. Confere se a migration 0013_task_details.sql já foi rodada no Supabase.");
+      setErro(
+        error?.message.includes("start_date")
+          ? "Pra criar tarefa com período, rode a migration 0040_tarefa_periodo.sql no Supabase."
+          : `Não deu pra criar a tarefa: ${error?.message ?? "erro desconhecido"}`
+      );
       return;
     }
 
@@ -348,14 +367,42 @@ export default function TaskModal({
               <div className="flex flex-wrap gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-ink-muted">
-                    Data
+                    Início{isNovo && <span className="text-danger"> *</span>}
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    max={dueDate || undefined}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v && dueDate && v > dueDate) {
+                        setErro("O início não pode ser depois da entrega.");
+                        return;
+                      }
+                      setErro(null);
+                      setStartDate(v);
+                      if (!isNovo) salvarCampo({ start_date: v || null });
+                    }}
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-ink-muted">
+                    Entrega{isNovo && <span className="text-danger"> *</span>}
                   </label>
                   <input
                     type="date"
                     value={dueDate}
+                    min={startDate || undefined}
                     onChange={(e) => {
-                      setDueDate(e.target.value);
-                      if (!isNovo) salvarCampo({ due_date: e.target.value || null });
+                      const v = e.target.value;
+                      if (v && startDate && v < startDate) {
+                        setErro("A entrega não pode ser antes do início.");
+                        return;
+                      }
+                      setErro(null);
+                      setDueDate(v);
+                      if (!isNovo) salvarCampo({ due_date: v || null });
                     }}
                     className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   />

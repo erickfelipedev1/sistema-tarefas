@@ -98,7 +98,14 @@ export function buildTaskSummaryBlocks(
 
   blocos.push(
     linha(PREFIXO_RESUMO, "status", "Status", statusLabel),
-    linha(PREFIXO_RESUMO, "data", "Data", formatarData(task.due_date)),
+    linha(
+      PREFIXO_RESUMO,
+      "data",
+      task.start_date ? "Período" : "Data",
+      task.start_date && task.due_date
+        ? `${formatarData(task.start_date)} → ${formatarData(task.due_date)}`
+        : formatarData(task.due_date)
+    ),
     linha(
       PREFIXO_RESUMO,
       "horario",

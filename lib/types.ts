@@ -8,6 +8,9 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   position: number;
+  // Período (migration 0040): início → entrega. Tarefas antigas podem não
+  // ter início.
+  start_date?: string | null;
   due_date: string | null;
   due_time: string | null;
   repeat_rule: RepeatRule;

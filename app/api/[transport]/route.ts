@@ -184,7 +184,8 @@ Args:
   - checklist (lista de textos, opcional): itens do checklist da tarefa, um por posição (ex: ["Definir o texto", "Montar a arte", "Aprovar com o cliente"]). Sempre que a pessoa pedir checklist, passos, etapas ou itens pra marcar, use ESTE campo — eles vão pra aba "Checklist" da tarefa, onde dá pra marcar cada um como feito.
   - projeto (string, opcional): nome do projeto (ou parte dele). Se não informar, a tarefa entra em "Geral", sem projeto. Use now_listar_projetos se não souber o nome exato.
   - status (string, opcional): um de "todo" (a fazer, padrão), "doing" (em andamento), "done" (concluída), "cancelled" (cancelada).
-  - data_prazo (string, opcional): data no formato AAAA-MM-DD.
+  - data_inicio (string, opcional): início do período, no formato AAAA-MM-DD. Se informar o prazo sem o início, a tarefa começa hoje.
+  - data_prazo (string, opcional): data de entrega (fim do período), no formato AAAA-MM-DD.
   - responsavel (string, opcional): nome de quem deve ficar responsável. Aceita "eu"/"mim" pra atribuir a quem pediu a tarefa. Se não informar, a tarefa fica sem responsável.
 
 Retorna: confirmação com o título, projeto e link da tarefa criada.
@@ -211,11 +212,16 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
             .enum(["todo", "doing", "done", "cancelled"])
             .optional()
             .describe('Status inicial (padrão: "todo").'),
+          data_inicio: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD")
+            .optional()
+            .describe("Início do período, AAAA-MM-DD (opcional; sem ele, começa hoje)."),
           data_prazo: z
             .string()
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD")
             .optional()
-            .describe("Data no formato AAAA-MM-DD (opcional)."),
+            .describe("Data de entrega (fim do período), AAAA-MM-DD (opcional)."),
           responsavel: z
             .string()
             .max(200)
@@ -229,7 +235,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           openWorldHint: false,
         },
       },
-      async ({ titulo, descricao, checklist, projeto, status, data_prazo, responsavel }, extra) => {
+      async ({ titulo, descricao, checklist, projeto, status, data_inicio, data_prazo, responsavel }, extra) => {
         try {
           const perfil = perfilDoContexto(extra as ContextoFerramenta);
           const admin = createAdminClient();
@@ -247,6 +253,16 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           const statusFinal: TaskStatus = (status as TaskStatus) ?? "todo";
           const posicao = await proximaPosicao(admin, statusFinal);
 
+          // Período: sem início informado, começa hoje (horário de Brasília).
+          const inicioFinal =
+            data_inicio ?? (data_prazo ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }) : null);
+          if (inicioFinal && data_prazo && inicioFinal > data_prazo) {
+            return {
+              isError: true,
+              content: [{ type: "text", text: `O início (${inicioFinal}) não pode ser depois da entrega (${data_prazo}).` }],
+            };
+          }
+
           const { data: tarefa, error } = await admin
             .from("tasks")
             .insert({
@@ -254,6 +270,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
               description: descricao?.trim() || null,
               status: statusFinal,
               position: posicao,
+              start_date: inicioFinal,
               due_date: data_prazo || null,
               project_id: resolProjeto.projeto?.id ?? null,
               assigned_to: resolResp.ids,
@@ -530,7 +547,8 @@ Args:
   - tarefa (string, obrigatório): título (ou parte do título) da tarefa a editar.
   - novo_titulo (string, opcional): novo título da tarefa.
   - descricao (string, opcional): nova descrição (pode mandar vazio "" pra apagar a descrição). Não use a descrição pra checklist, comentários, horas ou anexos — cada um tem a própria ferramenta (now_adicionar_checklist, now_comentar_tarefa, now_registrar_horas, now_anexar_arquivo).
-  - data_prazo (string, opcional): nova data no formato AAAA-MM-DD. Pra tirar o prazo, mande "remover" ou "".
+  - data_inicio (string, opcional): novo início do período, no formato AAAA-MM-DD. Pra tirar, mande "remover" ou "".
+  - data_prazo (string, opcional): nova data de entrega no formato AAAA-MM-DD. Pra tirar o prazo, mande "remover" ou "".
   - responsavel (string, opcional): nome de quem deve ficar responsável (aceita "eu"/"mim", e substitui quem já estava). Pra tirar o responsável, mande "remover" ou "ninguém".
   - status (string, opcional): "todo", "doing", "done" ou "cancelled".
   - projeto (string, opcional): nome do projeto, só pra ajudar a achar a tarefa certa quando o título é ambíguo (não move a tarefa de projeto).
@@ -546,11 +564,16 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
             .max(5000)
             .optional()
             .describe('Nova descrição. Mande "" pra apagar.'),
+          data_inicio: z
+            .string()
+            .max(20)
+            .optional()
+            .describe('Novo início do período, AAAA-MM-DD. Mande "remover" ou "" pra tirar.'),
           data_prazo: z
             .string()
             .max(20)
             .optional()
-            .describe('Nova data no formato AAAA-MM-DD. Mande "remover" ou "" pra tirar o prazo.'),
+            .describe('Nova data de entrega no formato AAAA-MM-DD. Mande "remover" ou "" pra tirar o prazo.'),
           responsavel: z
             .string()
             .max(200)
@@ -567,7 +590,7 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
         },
       },
       async (
-        { tarefa, novo_titulo, descricao, data_prazo, responsavel, status, projeto },
+        { tarefa, novo_titulo, descricao, data_inicio, data_prazo, responsavel, status, projeto },
         extra
       ) => {
         try {
@@ -590,6 +613,22 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
           if (descricao !== undefined) {
             atualizacoes.description = descricao.trim() || null;
             resumo.push(descricao.trim() ? "descrição atualizada" : "descrição removida");
+          }
+
+          if (data_inicio !== undefined) {
+            const normalizado = data_inicio.trim().toLowerCase();
+            if (normalizado === "" || ["remover", "nenhuma", "sem data"].includes(normalizado)) {
+              atualizacoes.start_date = null;
+              resumo.push("início removido");
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(data_inicio.trim())) {
+              atualizacoes.start_date = data_inicio.trim();
+              resumo.push(`início → ${data_inicio.trim()}`);
+            } else {
+              return {
+                isError: true,
+                content: [{ type: "text", text: `Data de início inválida: "${data_inicio}". Use o formato AAAA-MM-DD, ou "remover".` }],
+              };
+            }
           }
 
           if (data_prazo !== undefined) {
@@ -639,7 +678,7 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
               content: [
                 {
                   type: "text",
-                  text: "Nada pra atualizar. Informe ao menos um campo: novo_titulo, descricao, data_prazo, responsavel ou status.",
+                  text: "Nada pra atualizar. Informe ao menos um campo: novo_titulo, descricao, data_inicio, data_prazo, responsavel ou status.",
                 },
               ],
             };

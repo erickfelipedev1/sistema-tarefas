@@ -123,6 +123,8 @@ export async function enviarSolicitacaoCliente(
       status: "todo",
       position: (ultimaTarefa?.position ?? 0) + 1,
       project_id: sessao.projectId,
+      // Período: do dia do pedido até o prazo pedido.
+      start_date: prazo ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }) : null,
       due_date: prazo,
       assigned_to: [destino],
       created_by_label: rotulo,

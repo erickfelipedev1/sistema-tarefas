@@ -101,7 +101,26 @@ function tituloDaVisao(visao: Visao, ref: Date) {
   return `${curto(ini)} – ${curto(fim)} de ${fim.getFullYear()}`;
 }
 
-function horaDaTarefa(t: Task): number | null {
+// Dias do período da tarefa (início → entrega), em "AAAA-MM-DD". Sem início,
+// só o dia da entrega. Limite de 120 dias pra um período errado não travar.
+function diasDoPeriodo(t: Task): string[] {
+  if (!t.due_date) return [];
+  if (!t.start_date || t.start_date >= t.due_date) return [t.due_date];
+  const dias: string[] = [];
+  const d = new Date(`${t.start_date}T12:00:00`);
+  const fim = new Date(`${t.due_date}T12:00:00`);
+  while (d <= fim && dias.length < 120) {
+    dias.push(d.toLocaleDateString("en-CA"));
+    d.setDate(d.getDate() + 1);
+  }
+  if (dias[dias.length - 1] !== t.due_date) dias.push(t.due_date);
+  return dias;
+}
+
+// Horário só conta no dia da entrega; nos outros dias do período a tarefa
+// aparece em "Dia todo".
+function horaDaTarefa(t: Task, dia?: string): number | null {
+  if (dia && dia !== t.due_date) return null;
   if (!t.due_time) return null;
   const h = Number(t.due_time.slice(0, 2));
   return Number.isFinite(h) ? h : null;
@@ -218,8 +237,10 @@ export default function CalendarView({
       ) {
         return;
       }
-      if (!mapa[t.due_date]) mapa[t.due_date] = [];
-      mapa[t.due_date].push(t);
+      for (const dia of diasDoPeriodo(t)) {
+        if (!mapa[dia]) mapa[dia] = [];
+        mapa[dia].push(t);
+      }
     });
     // Dentro do dia: sem horário primeiro, depois por horário.
     Object.values(mapa).forEach((lista) =>
@@ -470,6 +491,7 @@ export default function CalendarView({
                       {visiveis.map((task) => (
                         <ChipTarefa
                           key={task.id}
+                          dia={key}
                           task={task}
                           onAbrir={() => abrirEditar(task)}
                           onExcluir={(e) => handleDeleteTask(e, task)}
@@ -547,10 +569,12 @@ export default function CalendarView({
 
 function ChipTarefa({
   task,
+  dia,
   onAbrir,
   onExcluir,
 }: {
   task: Task;
+  dia?: string;
   onAbrir: () => void;
   onExcluir: (e: React.MouseEvent) => void;
 }) {
@@ -570,10 +594,16 @@ function ChipTarefa({
       >
         {task.title}
       </span>
-      {task.due_time && (
+      {dia && dia !== task.due_date ? (
         <span className="hidden flex-shrink-0 text-[10px] text-ink-muted sm:inline">
-          {task.due_time.slice(0, 5)}
+          até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}
         </span>
+      ) : (
+        task.due_time && (
+          <span className="hidden flex-shrink-0 text-[10px] text-ink-muted sm:inline">
+            {task.due_time.slice(0, 5)}
+          </span>
+        )
       )}
       <button
         onClick={onExcluir}
@@ -675,7 +705,7 @@ function GradeHoras({
           </div>
           {dias.map((d) => {
             const key = dateKey(d);
-            const semHora = (tasksPorDia[key] ?? []).filter((t) => horaDaTarefa(t) === null);
+            const semHora = (tasksPorDia[key] ?? []).filter((t) => horaDaTarefa(t, key) === null);
             return (
               <div
                 key={key}
@@ -684,9 +714,9 @@ function GradeHoras({
               >
                 {semHora.map((t) =>
                   detalhado ? (
-                    <CartaoTarefa key={t.id} task={t} projeto={t.project_id ? nomeProjeto.get(t.project_id) : null} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
+                    <CartaoTarefa dia={key} key={t.id} task={t} projeto={t.project_id ? nomeProjeto.get(t.project_id) : null} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
                   ) : (
-                    <ChipTarefa key={t.id} task={t} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
+                    <ChipTarefa dia={key} key={t.id} task={t} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
                   )
                 )}
               </div>
@@ -709,7 +739,7 @@ function GradeHoras({
                 </div>
                 {dias.map((d) => {
                   const key = dateKey(d);
-                  const naHora = (tasksPorDia[key] ?? []).filter((t) => horaDaTarefa(t) === h);
+                  const naHora = (tasksPorDia[key] ?? []).filter((t) => horaDaTarefa(t, key) === h);
                   return (
                     <div
                       key={`${key}-${h}`}
@@ -722,9 +752,9 @@ function GradeHoras({
                     >
                       {naHora.map((t) =>
                         detalhado ? (
-                          <CartaoTarefa key={t.id} task={t} projeto={t.project_id ? nomeProjeto.get(t.project_id) : null} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
+                          <CartaoTarefa dia={key} key={t.id} task={t} projeto={t.project_id ? nomeProjeto.get(t.project_id) : null} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
                         ) : (
-                          <ChipTarefa key={t.id} task={t} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
+                          <ChipTarefa dia={key} key={t.id} task={t} onAbrir={() => onAbrir(t)} onExcluir={(e) => onExcluir(e, t)} />
                         )
                       )}
                     </div>
@@ -760,11 +790,13 @@ function GradeHoras({
 // Na visão Dia sobra espaço: cartão com horário, título e cliente.
 function CartaoTarefa({
   task,
+  dia,
   projeto,
   onAbrir,
   onExcluir,
 }: {
   task: Task;
+  dia?: string;
   projeto: string | null | undefined;
   onAbrir: () => void;
   onExcluir: (e: React.MouseEvent) => void;
@@ -778,8 +810,10 @@ function CartaoTarefa({
       className="group/chip flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-2 py-1 hover:border-brand"
     >
       <span className={`h-2 w-2 flex-shrink-0 rounded-full ${corTarefa(task.color).dot}`} />
-      {task.due_time && (
-        <span className="flex-shrink-0 text-xs font-medium text-ink-muted">{task.due_time.slice(0, 5)}</span>
+      {dia && dia !== task.due_date ? (
+        <span className="flex-shrink-0 text-xs text-ink-muted">até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}</span>
+      ) : (
+        task.due_time && <span className="flex-shrink-0 text-xs font-medium text-ink-muted">{task.due_time.slice(0, 5)}</span>
       )}
       <span
         className={`min-w-0 flex-1 truncate text-sm ${

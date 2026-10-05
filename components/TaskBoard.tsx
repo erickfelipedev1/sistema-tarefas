@@ -567,6 +567,9 @@ export default function TaskBoard({
                               }`}
                             >
                               <CalendarIcon className="h-3 w-3" />
+                              {task.start_date && task.start_date !== task.due_date
+                                ? `${task.start_date.split("-").reverse().slice(0, 2).join("/")} → `
+                                : ""}
                               {task.due_date.split("-").reverse().join("/")}
                               {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
                             </span>

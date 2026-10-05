@@ -233,6 +233,8 @@ export default function TaskRequests({
         status: "todo",
         position: proximaPosicao,
         project_id: projectId || null,
+        // Período: começa no dia do pedido e vai até o prazo.
+        start_date: dueDate ? new Date().toLocaleDateString("en-CA") : null,
         due_date: dueDate || null,
         assigned_to: [requestedTo],
         created_by_label: currentUserLabel,
