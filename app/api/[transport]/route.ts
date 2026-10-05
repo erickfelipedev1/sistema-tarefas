@@ -763,11 +763,17 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
           }
 
           const alvo = candidatas[0];
-          const { error } = await admin.from("task_comments").insert({
+          const linha = {
             task_id: alvo.id,
             content: comentario.trim(),
             created_by_label: `${perfil.nome} (via IA)`,
-          });
+          };
+          // created_by (migration 0039) deixa o autor editar/excluir depois;
+          // sem a migration, grava sem ele.
+          let { error } = await admin.from("task_comments").insert({ ...linha, created_by: perfil.profileId });
+          if (error && error.message.includes("created_by")) {
+            ({ error } = await admin.from("task_comments").insert(linha));
+          }
 
           if (error) {
             return { isError: true, content: [{ type: "text", text: `Erro ao comentar: ${error.message}` }] };

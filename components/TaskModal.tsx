@@ -909,6 +909,30 @@ function ComentariosTab({
   const supabase = createClient();
   const [comentarios, setComentarios] = useState<TaskComment[]>([]);
   const [novoComentario, setNovoComentario] = useState("");
+  // Quem pode editar/excluir: o autor do comentário, ou líder (ve_tudo).
+  const [euId, setEuId] = useState<string | null>(null);
+  const [souLider, setSouLider] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [textoEditado, setTextoEditado] = useState("");
+
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || !ativo) return;
+      setEuId(user.id);
+      const { data: perfil } = await supabase.from("profiles").select("ve_tudo").eq("id", user.id).maybeSingle();
+      if (ativo) setSouLider(!!perfil?.ve_tudo);
+    })();
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const podeMexer = (c: TaskComment) => souLider || (!!euId && c.created_by === euId);
 
   useEffect(() => {
     let ativo = true;
@@ -934,6 +958,11 @@ function ComentariosTab({
               current.some((c) => c.id === novo.id) ? current : [...current, novo]
             );
           }
+          if (payload.eventType === "UPDATE") {
+            const novo = payload.new as TaskComment;
+            if (novo.task_id !== taskId) return;
+            setComentarios((current) => current.map((c) => (c.id === novo.id ? novo : c)));
+          }
           if (payload.eventType === "DELETE") {
             const id = (payload.old as TaskComment).id;
             setComentarios((current) => current.filter((c) => c.id !== id));
@@ -948,6 +977,53 @@ function ComentariosTab({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
+
+  async function salvarEdicao(c: TaskComment) {
+    const texto = textoEditado.trim();
+    if (!texto || texto === c.content) {
+      setEditandoId(null);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("task_comments")
+      .update({ content: texto, edited_at: new Date().toISOString() })
+      .eq("id", c.id)
+      .select()
+      .maybeSingle();
+    if (error || !data) {
+      window.alert(
+        error?.message.includes("edited_at")
+          ? "Pra editar comentários, rode a migration 0039_comentarios_editar_excluir.sql no Supabase."
+          : `Não deu pra editar: ${error?.message ?? "sem permissão pra esse comentário."}`
+      );
+      return;
+    }
+    setComentarios((cur) => cur.map((x) => (x.id === c.id ? (data as TaskComment) : x)));
+    setEditandoId(null);
+    sincronizarWiki();
+  }
+
+  // Relê a lista do banco antes de atualizar a Wiki — assim não perde um
+  // comentário que chegou de outra pessoa enquanto este era salvo.
+  async function sincronizarWiki() {
+    const { data } = await supabase
+      .from("task_comments")
+      .select("*")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: true });
+    if (data) syncComentariosWiki(supabase, pageId, data).catch(() => {});
+  }
+
+  async function excluir(c: TaskComment) {
+    if (!window.confirm("Excluir este comentário?")) return;
+    const { data, error } = await supabase.from("task_comments").delete().eq("id", c.id).select("id");
+    if (error || !data?.length) {
+      window.alert(`Não deu pra excluir: ${error?.message ?? "sem permissão pra esse comentário."}`);
+      return;
+    }
+    setComentarios((cur) => cur.filter((x) => x.id !== c.id));
+    sincronizarWiki();
+  }
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -975,12 +1051,55 @@ function ComentariosTab({
     <div>
       <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
         {comentarios.map((c) => (
-          <div key={c.id} className="rounded-lg bg-canvas px-3 py-2">
-            <p className="whitespace-pre-wrap break-words text-sm text-ink"><TextoComLinks texto={c.content} /></p>
-            <p className="mt-1 text-[10px] text-ink-muted">
-              {c.created_by_label ?? "Alguém"} ·{" "}
-              {new Date(c.created_at).toLocaleString("pt-BR")}
-            </p>
+          <div key={c.id} className="group rounded-lg bg-canvas px-3 py-2">
+            {editandoId === c.id ? (
+              <div>
+                <textarea
+                  value={textoEditado}
+                  autoFocus
+                  rows={3}
+                  onChange={(e) => setTextoEditado(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setEditandoId(null);
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) salvarEdicao(c);
+                  }}
+                  className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                />
+                <div className="mt-1.5 flex justify-end gap-2">
+                  <button type="button" onClick={() => setEditandoId(null)} className="rounded-md px-2.5 py-1 text-xs text-ink-muted hover:bg-surface-hover">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={() => salvarEdicao(c)} className="rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-navy hover:bg-brand-hover">
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="whitespace-pre-wrap break-words text-sm text-ink"><TextoComLinks texto={c.content} /></p>
+            )}
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="text-[10px] text-ink-muted">
+                {c.created_by_label ?? "Alguém"} · {new Date(c.created_at).toLocaleString("pt-BR")}
+                {c.edited_at && " · editado"}
+              </p>
+              {podeMexer(c) && editandoId !== c.id && (
+                <div className="flex gap-2 text-[11px] text-ink-muted">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditandoId(c.id);
+                      setTextoEditado(c.content);
+                    }}
+                    className="hover:text-ink hover:underline"
+                  >
+                    Editar
+                  </button>
+                  <button type="button" onClick={() => excluir(c)} className="hover:text-red-500 hover:underline">
+                    Excluir
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
         {comentarios.length === 0 && (

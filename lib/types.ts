@@ -37,6 +37,9 @@ export interface TaskComment {
   content: string;
   created_by_label: string | null;
   created_at: string;
+  // Migration 0039: autor e data da última edição.
+  created_by?: string | null;
+  edited_at?: string | null;
 }
 
 export interface TaskAttachment {
