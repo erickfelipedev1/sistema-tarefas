@@ -28,7 +28,7 @@ export default function NewPageButton({
 
     const label =
       (user?.user_metadata?.username as string | undefined) ??
-      user?.email ??
+      user?.email?.split("@")[0] ??
       null;
 
     const { data, error } = await supabase

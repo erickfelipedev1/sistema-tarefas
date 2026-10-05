@@ -19,7 +19,7 @@ async function rotuloDaEquipe(): Promise<string | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  return (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
+  return (user.user_metadata?.username as string | undefined) ?? user.email?.split("@")[0] ?? "";
 }
 
 function validarSenha(senha: string) {

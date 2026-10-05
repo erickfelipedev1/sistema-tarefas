@@ -27,17 +27,14 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setInfo(null);
 
     const usuario = normalizarUsername(username);
     if (!usernameValido(usuario)) {
@@ -50,35 +47,22 @@ export default function LoginPage() {
     const emailInterno = `${usuario}@${DOMINIO_INTERNO}`;
     setLoading(true);
 
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: emailInterno,
-        password,
-      });
-      setLoading(false);
-      if (error) {
-        setError(traduzErro(error.message));
-        return;
-      }
-      // ?next= vem do middleware (ex: tela de autorizar o ChatGPT). Só
-      // caminhos internos, pra não virar redirecionamento pra fora.
-      const next = new URLSearchParams(window.location.search).get("next");
-      router.push(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/board");
-      router.refresh();
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email: emailInterno,
-        password,
-        options: { data: { username: usuario } },
-      });
-      setLoading(false);
-      if (error) {
-        setError(traduzErro(error.message));
-        return;
-      }
-      setInfo("Conta criada! Já dá pra entrar com seu usuário e senha.");
-      setMode("login");
+    // Só login: contas novas são criadas pelo administrador (cadastro
+    // público fechado — ver Supabase > Authentication).
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailInterno,
+      password,
+    });
+    setLoading(false);
+    if (error) {
+      setError(traduzErro(error.message));
+      return;
     }
+    // ?next= vem do middleware (ex: tela de autorizar o ChatGPT). Só
+    // caminhos internos, pra não virar redirecionamento pra fora.
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.push(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/board");
+    router.refresh();
   }
 
   return (
@@ -89,9 +73,7 @@ export default function LoginPage() {
         </h1>
         <p className="mb-5 text-xs text-slate-500">Central de tarefas, clientes e demandas.</p>
         <p className="mb-6 text-sm text-slate-500">
-          {mode === "login"
-            ? "Entre com seu usuário e senha."
-            : "Escolha um usuário e senha para criar sua conta."}
+          Entre com seu usuário e senha.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,38 +113,19 @@ export default function LoginPage() {
               {error}
             </p>
           )}
-          {info && (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {info}
-            </p>
-          )}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {loading
-              ? "Aguarde..."
-              : mode === "login"
-              ? "Entrar"
-              : "Criar conta"}
+            {loading ? "Aguarde..." : "Entrar"}
           </button>
         </form>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode(mode === "login" ? "signup" : "login");
-            setError(null);
-            setInfo(null);
-          }}
-          className="mt-4 w-full text-center text-sm text-slate-500 hover:text-slate-700"
-        >
-          {mode === "login"
-            ? "Ainda não tem conta? Criar conta"
-            : "Já tem conta? Entrar"}
-        </button>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Não tem acesso? Peça seu usuário pra equipe.
+        </p>
       </div>
     </div>
   );
@@ -171,9 +134,6 @@ export default function LoginPage() {
 function traduzErro(mensagem: string) {
   if (mensagem.includes("Invalid login credentials")) {
     return "Usuário ou senha incorretos.";
-  }
-  if (mensagem.includes("User already registered")) {
-    return "Esse nome de usuário já está em uso.";
   }
   if (mensagem.includes("Password should be at least")) {
     return "A senha precisa ter pelo menos 6 caracteres.";

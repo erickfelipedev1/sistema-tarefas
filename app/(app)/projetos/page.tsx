@@ -7,7 +7,7 @@ export default async function ProjetosPage() {
   const user = await usuarioAtual();
 
   const currentUserLabel =
-    (user?.user_metadata?.username as string | undefined) ?? user?.email ?? "";
+    (user?.user_metadata?.username as string | undefined) ?? user?.email?.split("@")[0] ?? "";
 
   // Projetos individual: só entram projetos que eu criei, ou onde eu tenho
   // pelo menos uma tarefa (criada por mim ou atribuída a mim). Exceto pra

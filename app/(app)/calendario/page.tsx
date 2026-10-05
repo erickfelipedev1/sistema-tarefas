@@ -39,7 +39,7 @@ export default async function CalendarioPage() {
 
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??
-    user?.email ??
+    user?.email?.split("@")[0] ??
     "";
 
   return (

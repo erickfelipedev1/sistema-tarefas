@@ -9,7 +9,7 @@ export default async function SolicitacoesPage() {
   if (!user) redirect("/login");
 
   const userLabel =
-    (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
+    (user.user_metadata?.username as string | undefined) ?? user.email?.split("@")[0] ?? "";
 
   const [{ data: requests }, { data: profiles }, { data: projects }] =
     await Promise.all([

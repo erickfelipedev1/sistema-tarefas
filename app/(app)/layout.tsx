@@ -22,7 +22,7 @@ export default async function AppLayout({
   if (profile.precisa_trocar_senha === true) redirect("/trocar-senha");
 
   const userLabel =
-    (user.user_metadata?.username as string | undefined) ?? user.email ?? "";
+    (user.user_metadata?.username as string | undefined) ?? user.email?.split("@")[0] ?? "";
 
   // Mesmo filtro individual da tela de Projetos: só os que eu criei, ou
   // onde eu tenho pelo menos uma tarefa — exceto pra quem tem "ve_tudo"
