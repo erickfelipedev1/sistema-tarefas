@@ -1,5 +1,6 @@
 "use client";
 
+import { linkDoArquivo } from "@/lib/arquivos";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useState } from "react";
@@ -897,8 +898,7 @@ function AnexosTab({
   }
 
   function urlPublica(caminho: string) {
-    return supabase.storage.from("task-attachments").getPublicUrl(caminho).data
-      .publicUrl;
+    return linkDoArquivo("task-attachments", caminho);
   }
 
   return (

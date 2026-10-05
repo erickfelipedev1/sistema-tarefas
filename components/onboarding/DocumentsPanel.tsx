@@ -90,6 +90,20 @@ function DocumentRow({
 }) {
   const tipo = tipoArquivo(arquivo.file_name);
   const Icone = tipo.Icon;
+  // Sem link (falha ao gerar o link assinado): mostra o nome, sem abrir nada.
+  if (!arquivo.publicUrl) {
+    return (
+      <div
+        className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm text-ink-muted ${
+          nested ? "border-line bg-canvas" : "border-line bg-surface"
+        }`}
+      >
+        <Icone className="h-4 w-4 flex-shrink-0" />
+        <span className="flex-1 truncate">{arquivo.file_name}</span>
+        <span className="flex-shrink-0 text-xs">indisponível</span>
+      </div>
+    );
+  }
   return (
     <a
       href={arquivo.publicUrl}

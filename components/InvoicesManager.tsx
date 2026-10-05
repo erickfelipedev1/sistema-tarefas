@@ -1,5 +1,6 @@
 "use client";
 
+import { linkDoArquivo } from "@/lib/arquivos";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -221,8 +222,7 @@ export default function InvoicesManager({
 
   function abrirAnexo(fatura: Invoice) {
     if (!fatura.file_path) return;
-    const { data } = supabase.storage.from("invoices").getPublicUrl(fatura.file_path);
-    window.open(data.publicUrl, "_blank");
+    window.open(linkDoArquivo("invoices", fatura.file_path), "_blank");
   }
 
   return (

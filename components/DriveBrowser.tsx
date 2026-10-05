@@ -1,5 +1,6 @@
 "use client";
 
+import { linkDoArquivo } from "@/lib/arquivos";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -289,8 +290,7 @@ export default function DriveBrowser({
       }
       window.open(data.signedUrl, "_blank");
     } else {
-      const { data } = supabase.storage.from(bucket).getPublicUrl(arquivo.file_path);
-      window.open(data.publicUrl, "_blank");
+      window.open(linkDoArquivo("drive-files", arquivo.file_path), "_blank");
     }
   }
 

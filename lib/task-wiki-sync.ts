@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { linkDoArquivo } from "@/lib/arquivos";
 import type {
   ChecklistItem,
   Profile,
@@ -139,7 +140,7 @@ export function buildChecklistBlocks(items: ChecklistItem[]) {
 }
 
 // Anexos: um link clicável por arquivo, apontando pro mesmo arquivo que já
-// tá no Storage (bucket público de anexos de tarefa).
+// tá no Storage — pela rota protegida /arquivos (só abre logado).
 export function buildAnexosBlocks(
   supabase: SupabaseClient,
   attachments: TaskAttachment[]
@@ -148,16 +149,13 @@ export function buildAnexosBlocks(
   return [
     heading(PREFIXO_ANEXOS, "📎 Anexos"),
     ...attachments.map((anexo) => {
-      const { data } = supabase.storage
-        .from("task-attachments")
-        .getPublicUrl(anexo.file_path);
       return {
         id: `${PREFIXO_ANEXOS}${anexo.id}`,
         type: "paragraph",
         content: [
           {
             type: "link",
-            href: data.publicUrl,
+            href: linkDoArquivo("task-attachments", anexo.file_path),
             content: [{ type: "text", text: `📎 ${anexo.file_name}`, styles: {} }],
           },
         ],

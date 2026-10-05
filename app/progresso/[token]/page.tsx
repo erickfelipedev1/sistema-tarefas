@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProjectProgressPanel } from "@/components/onboarding/ProjectProgressPanel";
 import { DocumentsPanel } from "@/components/onboarding/DocumentsPanel";
@@ -57,20 +58,36 @@ export default async function ProgressoPage({
   }
 
   const documentos = documentsData as ProjectDocuments | null;
-  const arquivosComLink = (documentos?.files ?? []).map((arquivo) => ({
+  // Buckets privados: o servidor gera links assinados (1h) só pros arquivos
+  // que as RPCs devolveram pra esse token — o cliente não tem login.
+  // Se falhar, a página abre igual — só o arquivo aparece como indisponível.
+  async function assinar(bucket: "drive-files" | "invoices", caminhos: string[]) {
+    if (caminhos.length === 0) return new Map<string, string>();
+    try {
+      const { data, error } = await createAdminClient().storage.from(bucket).createSignedUrls(caminhos, 3600);
+      if (error) console.error(`Links assinados (${bucket}) falharam:`, error.message);
+      return new Map((data ?? []).filter((d) => d.signedUrl && d.path).map((d) => [d.path as string, d.signedUrl]));
+    } catch (e) {
+      console.error(`Links assinados (${bucket}) falharam:`, e);
+      return new Map<string, string>();
+    }
+  }
+
+  const arquivos = documentos?.files ?? [];
+  const faturas = (invoicesData as PublicInvoice[] | null) ?? [];
+  const [linksArquivos, linksFaturas] = await Promise.all([
+    assinar("drive-files", arquivos.map((a) => a.file_path)),
+    assinar("invoices", faturas.map((f) => f.file_path).filter((c): c is string => !!c)),
+  ]);
+
+  const arquivosComLink = arquivos.map((arquivo) => ({
     ...arquivo,
-    publicUrl: supabase.storage
-      .from("drive-files")
-      .getPublicUrl(arquivo.file_path).data.publicUrl,
+    publicUrl: linksArquivos.get(arquivo.file_path) ?? "",
   }));
 
-  const faturas = (invoicesData as PublicInvoice[] | null) ?? [];
   const faturasComLink = faturas.map((fatura) => ({
     ...fatura,
-    publicUrl: fatura.file_path
-      ? supabase.storage.from("invoices").getPublicUrl(fatura.file_path).data
-          .publicUrl
-      : null,
+    publicUrl: fatura.file_path ? linksFaturas.get(fatura.file_path) ?? null : null,
   }));
 
   const equipe = (teamData as ProjectTeamMember[] | null) ?? [];

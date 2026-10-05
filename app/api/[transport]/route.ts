@@ -1,4 +1,5 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
+import { linkDoArquivo } from "@/lib/arquivos";
 import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -1137,7 +1138,8 @@ Retorna: confirmação com o link do arquivo.`,
             admin.from("task_attachments").select("*").eq("task_id", alvo.id).order("created_at"),
           ]);
           await syncAnexosWiki(admin, tarefaRow?.page_id ?? null, (anexos ?? []) as TaskAttachment[]).catch(() => {});
-          const url = admin.storage.from("task-attachments").getPublicUrl(caminho).data.publicUrl;
+          // Link protegido: abre só pra quem está logado no d.hub.
+          const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://sistema-tarefas-five.vercel.app"}${linkDoArquivo("task-attachments", caminho)}`;
 
           return {
             content: [{ type: "text", text: `Arquivo "${nome}" anexado em "${alvo.title}". ${url}` }],
