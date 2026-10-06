@@ -67,14 +67,14 @@ export default function ProjectTabs({
         })}
       </div>
 
-      <div className={aba === "tarefas" ? "animate-entrar" : "hidden"}>{tarefas}</div>
+      <div className={aba === "tarefas" ? "" : "hidden"}>{tarefas}</div>
       {otimizacoes && (
-        <div className={aba === "otimizacoes" ? "animate-entrar" : "hidden"}>{otimizacoes}</div>
+        <div className={aba === "otimizacoes" ? "" : "hidden"}>{otimizacoes}</div>
       )}
-      <div className={aba === "wiki" ? "animate-entrar" : "hidden"}>{wiki}</div>
-      <div className={aba === "arquivos" ? "animate-entrar" : "hidden"}>{arquivos}</div>
-      <div className={aba === "faturas" ? "animate-entrar" : "hidden"}>{faturas}</div>
-      <div className={aba === "mensagens" ? "animate-entrar" : "hidden"}>{mensagens}</div>
+      <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
+      <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
+      <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
+      <div className={aba === "mensagens" ? "" : "hidden"}>{mensagens}</div>
     </div>
   );
 }

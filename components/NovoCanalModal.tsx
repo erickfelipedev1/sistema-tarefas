@@ -58,8 +58,8 @@ export default function NovoCanalModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-aparecer items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-sm animate-surgir rounded-xl bg-surface p-5 shadow-dropdown">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-sm rounded-xl bg-surface p-5 shadow-dropdown">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">Novo canal</h2>
           <button

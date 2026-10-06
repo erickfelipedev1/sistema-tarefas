@@ -37,8 +37,8 @@ export default function NovaMensagemModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-aparecer items-center justify-center bg-black/50 px-4">
-      <div className="flex max-h-[70vh] w-full max-w-sm animate-surgir flex-col rounded-xl bg-surface shadow-dropdown">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="flex max-h-[70vh] w-full max-w-sm flex-col rounded-xl bg-surface shadow-dropdown">
         <div className="flex items-center justify-between px-5 pt-5">
           <h2 className="text-sm font-semibold text-ink">Nova mensagem</h2>
           <button

@@ -108,7 +108,7 @@ export function NotificationsWidget({
               onClick={() => setAberto(false)}
               className="fixed inset-0 z-40 cursor-default"
             />
-            <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] origin-top-right animate-pop rounded-2xl border border-line bg-surface p-2 shadow-dropdown">
+            <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-surface p-2 shadow-dropdown">
               <p className="px-2.5 py-2 text-xs font-semibold text-ink-muted">
                 Notificações
               </p>

@@ -4,8 +4,6 @@
 // todo medidor tem rótulo e número visíveis, então a cor nunca é a única
 // pista.
 
-import type { CSSProperties } from "react";
-
 function pct(valor: number | null) {
   return valor === null ? "—" : `${Math.round(valor * 100)}%`;
 }
@@ -36,8 +34,6 @@ export function MeiaLua({ valor, cor, rotulo }: { valor: number | null; cor: str
             strokeWidth="16"
             strokeLinecap="round"
             strokeDasharray={`${limitar(valor) * comprimento} ${comprimento}`}
-            className="animate-tracar"
-            style={{ "--traco": limitar(valor) * comprimento } as CSSProperties}
           />
         )}
         <text
@@ -83,8 +79,6 @@ export function Anel({
             strokeWidth="7"
             strokeLinecap="round"
             strokeDasharray={`${limitar(valor) * circ} ${circ}`}
-            className="animate-tracar"
-            style={{ "--traco": limitar(valor) * circ } as CSSProperties}
             transform="rotate(-90 38 38)"
           />
         )}
@@ -132,8 +126,6 @@ export function AneisConcentricos({
                 strokeWidth="9"
                 strokeLinecap="round"
                 strokeDasharray={`${limitar(a.valor) * circ} ${circ}`}
-                className="animate-tracar"
-                style={{ "--traco": limitar(a.valor) * circ, animationDelay: `${i * 90}ms` } as CSSProperties}
                 transform="rotate(-90 80 80)"
               />
             )}

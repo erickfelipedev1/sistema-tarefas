@@ -48,7 +48,7 @@ export default async function WikiDocPage({
   const voltarLabel = ehPaginaDeProjeto ? "Voltar para o cliente" : "Wiki";
 
   return (
-    <main className="mx-auto max-w-[1400px] animate-entrar px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex gap-6">
         {!ehPaginaDeProjeto && (
           <WikiSidebar pages={pages} activePageId={page.id} />

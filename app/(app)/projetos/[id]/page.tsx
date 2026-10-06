@@ -89,7 +89,7 @@ export default async function ProjetoPage({
   }
 
   return (
-    <main className="mx-auto max-w-[1400px] animate-entrar px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <Link
         href="/projetos"
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
