@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
+import { clienteDaRequisicao, perfilAtual, usuarioAtual } from "@/lib/sessao";
 import TaskBoard from "@/components/TaskBoard";
 import NewPageButton from "@/components/NewPageButton";
 import ShareProjectLink from "@/components/ShareProjectLink";
@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import ProjectTabs from "@/components/ProjectTabs";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
+import OptimizationsManager from "@/components/OptimizationsManager";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
 import ProjectFeedbackList from "@/components/ProjectFeedbackList";
@@ -40,6 +41,12 @@ export default async function ProjetoPage({
     (user?.user_metadata?.username as string | undefined) ??
     user?.email?.split("@")[0] ??
     "";
+
+  // Aba "Otimizações": só pro tráfego (profiles.faz_otimizacoes, migration
+  // 0043) e pros líderes (ve_tudo).
+  const perfil = await perfilAtual();
+  const souLider = perfil?.ve_tudo === true;
+  const temOtimizacoes = souLider || perfil?.faz_otimizacoes === true;
 
   const { data: tasks } = await supabase
     .from("tasks")
@@ -130,6 +137,17 @@ export default async function ProjetoPage({
             profiles={profiles ?? []}
             showHeader={false}
           />
+        }
+        otimizacoes={
+          temOtimizacoes ? (
+            <OptimizationsManager
+              projectId={id}
+              currentUserId={user?.id ?? ""}
+              currentUserLabel={userLabel}
+              souLider={souLider}
+              profiles={profiles ?? []}
+            />
+          ) : undefined
         }
         wiki={
           <div>

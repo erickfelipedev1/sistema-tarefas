@@ -8,10 +8,12 @@ import {
   FileStackIcon,
   MessageCircleIcon,
   ReceiptIcon,
+  SlidersIcon,
 } from "./ui/icons";
 
 const ABAS = [
   { key: "tarefas", label: "Tarefas", icon: ClipboardListIcon },
+  { key: "otimizacoes", label: "Otimizações", icon: SlidersIcon },
   { key: "wiki", label: "Wiki", icon: BookOpenIcon },
   { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
@@ -20,28 +22,32 @@ const ABAS = [
 
 type AbaKey = (typeof ABAS)[number]["key"];
 
-// As cinco abas ficam sempre montadas (só escondidas com CSS) pra não
+// As abas ficam sempre montadas (só escondidas com CSS) pra não
 // perder o estado nem reconectar o realtime do quadro de tarefas/drive/
 // faturas/mensagens toda vez que alguém troca de aba.
+// "Otimizações" só existe pra quem a página mandar (tráfego e líderes).
 export default function ProjectTabs({
   tarefas,
+  otimizacoes,
   wiki,
   arquivos,
   faturas,
   mensagens,
 }: {
   tarefas: ReactNode;
+  otimizacoes?: ReactNode;
   wiki: ReactNode;
   arquivos: ReactNode;
   faturas: ReactNode;
   mensagens: ReactNode;
 }) {
   const [aba, setAba] = useState<AbaKey>("tarefas");
+  const abas = ABAS.filter((item) => item.key !== "otimizacoes" || !!otimizacoes);
 
   return (
     <div>
       <div className="mb-5 flex items-center gap-1 overflow-x-auto border-b border-line">
-        {ABAS.map((item) => {
+        {abas.map((item) => {
           const Icon = item.icon;
           const ativa = item.key === aba;
           return (
@@ -62,6 +68,9 @@ export default function ProjectTabs({
       </div>
 
       <div className={aba === "tarefas" ? "" : "hidden"}>{tarefas}</div>
+      {otimizacoes && (
+        <div className={aba === "otimizacoes" ? "" : "hidden"}>{otimizacoes}</div>
+      )}
       <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
       <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>

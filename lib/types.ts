@@ -252,6 +252,21 @@ export interface PublicInvoice {
   file_path: string | null;
 }
 
+// Linha de optimizations (migration 0043) — otimização diária do tráfego,
+// registrada na aba "Otimizações" de /projetos/[id].
+export interface Optimization {
+  id: string;
+  project_id: string;
+  opt_date: string;
+  place: string;
+  action_taken: string;
+  justification: string | null;
+  created_by: string | null;
+  created_by_label: string | null;
+  created_at: string;
+  edited_at: string | null;
+}
+
 export interface DriveFolder {
   id: string;
   name: string;
