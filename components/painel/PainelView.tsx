@@ -10,12 +10,15 @@ import type {
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
+import Coreografia from "@/components/movimento/Coreografia";
 import PainelFiltros from "./PainelFiltros";
 import GraficoSemanas from "./GraficoSemanas";
 import { AneisConcentricos, Anel, MeiaLua } from "./Medidores";
 
 // Parte visual do Painel — recebe tudo já calculado (ver
-// app/(app)/painel/page.tsx), sem buscar nada.
+// app/(app)/painel/page.tsx), sem buscar nada. A entrada animada é da
+// Coreografia: aqui os elementos só se marcam com data-mov (ver
+// components/movimento/Coreografia.tsx).
 export default function PainelView({
   painel,
   eficiencia,
@@ -59,15 +62,21 @@ export default function PainelView({
   const variacao = painel.concluidas - painel.concluidasAnterior;
 
   return (
+    // key: trocar o período ou a pessoa remonta e a entrada toca de novo.
+    <Coreografia key={`${periodoChave}-${pessoaAtual}`}>
     <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
-      <PageHeader title="Painel" subtitle={subtitulo} />
+      <div data-mov="topo">
+        <PageHeader title="Painel" subtitle={subtitulo} />
+      </div>
 
-      <PainelFiltros
-        periodoAtual={periodoChave}
-        periodos={periodos}
-        pessoas={pessoas}
-        pessoaAtual={pessoaAtual}
-      />
+      <div data-mov="topo">
+        <PainelFiltros
+          periodoAtual={periodoChave}
+          periodos={periodos}
+          pessoas={pessoas}
+          pessoaAtual={pessoaAtual}
+        />
+      </div>
 
       {semMigracao && (
         <p className="mb-5 rounded-xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
@@ -79,6 +88,7 @@ export default function PainelView({
       {lembreteLixo && (
         <Link
           href="/regras"
+          data-mov="card"
           className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-brand-forte/40 bg-brand-light px-5 py-3 text-sm hover:border-brand-forte"
         >
           <span aria-hidden="true">🗑️</span>
@@ -93,7 +103,7 @@ export default function PainelView({
       )}
 
       {/* Faixa do topo: quem é, eficiência geral e a divisão das atividades */}
-      <section className="grid items-center gap-6 rounded-2xl border border-line bg-surface p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1.4fr)_minmax(0,0.9fr)] lg:gap-0 lg:divide-x lg:divide-line">
+      <section data-mov="card" className="grid items-center gap-6 rounded-2xl border border-line bg-surface p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1.4fr)_minmax(0,0.9fr)] lg:gap-0 lg:divide-x lg:divide-line">
         <div className="flex items-center gap-4 lg:pr-6">
           <Avatar name={pessoaNome} src={pessoaAvatar} size="md" className="!h-16 !w-16 !text-xl" />
           <div className="min-w-0">
@@ -131,13 +141,13 @@ export default function PainelView({
         <dl className="grid grid-cols-[1fr_auto] gap-y-1 text-sm lg:pl-6">
           <dt className="col-span-2 mb-1 text-sm font-semibold text-ink">Atividades</dt>
           <dt className="text-ink-muted">Atrasadas</dt>
-          <dd className="text-right font-semibold text-ink">{eficiencia.geral.atrasadas}</dd>
+          <dd data-mov="numero" className="text-right font-semibold text-ink">{eficiencia.geral.atrasadas}</dd>
           <dt className="text-ink-muted">Realizadas</dt>
-          <dd className="text-right font-semibold text-ink">{eficiencia.geral.realizadas}</dd>
+          <dd data-mov="numero" className="text-right font-semibold text-ink">{eficiencia.geral.realizadas}</dd>
           <dt className="text-ink-muted">Abertas</dt>
-          <dd className="text-right font-semibold text-ink">{eficiencia.geral.abertas}</dd>
+          <dd data-mov="numero" className="text-right font-semibold text-ink">{eficiencia.geral.abertas}</dd>
           <dt className="border-t border-line pt-1 text-ink-muted">Total</dt>
-          <dd className="border-t border-line pt-1 text-right font-semibold text-ink">
+          <dd data-mov="numero" className="border-t border-line pt-1 text-right font-semibold text-ink">
             {eficiencia.geral.total}
           </dd>
         </dl>
@@ -155,13 +165,13 @@ export default function PainelView({
       </section>
 
       <section className="mt-3 grid gap-3 lg:grid-cols-3">
-        <div className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
+        <div data-mov="card" className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
           <p className="text-sm font-semibold text-ink">Concluídas por semana</p>
           <p className="mt-0.5 text-xs text-ink-muted">Últimas {semanas} semanas</p>
           <GraficoSemanas dados={painel.porSemana} />
         </div>
 
-        <div className="rounded-2xl border border-line bg-surface p-5">
+        <div data-mov="card" className="rounded-2xl border border-line bg-surface p-5">
           <p className="text-sm font-semibold text-ink">Por cliente</p>
           <p className="mt-0.5 text-xs text-ink-muted">Concluídas nos últimos {rotuloPeriodo}</p>
           {painel.porCliente.length === 0 ? (
@@ -169,13 +179,14 @@ export default function PainelView({
           ) : (
             <ul className="mt-4 space-y-3">
               {painel.porCliente.slice(0, 6).map((c) => (
-                <li key={c.projectId ?? "geral"}>
+                <li key={c.projectId ?? "geral"} data-mov="item">
                   <div className="flex items-baseline justify-between gap-2 text-xs">
                     <span className="truncate text-ink">{nomeDe(c.projectId)}</span>
                     <span className="font-medium text-ink">{c.total}</span>
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-surface-hover">
                     <div
+                      data-mov="barra"
                       className="h-full rounded-full bg-brand-forte"
                       style={{ width: `${(c.total / maiorCliente) * 100}%` }}
                     />
@@ -218,6 +229,7 @@ export default function PainelView({
         </p>
       )}
     </main>
+    </Coreografia>
   );
 }
 
@@ -246,7 +258,7 @@ function ListaTarefas({
   alerta?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div data-mov="card" className="rounded-2xl border border-line bg-surface p-5">
       <p className="text-sm font-semibold text-ink">
         {titulo} <span className="font-normal text-ink-muted">({tarefas.length})</span>
       </p>
@@ -255,7 +267,7 @@ function ListaTarefas({
       ) : (
         <ul className="mt-3 divide-y divide-line">
           {tarefas.slice(0, 8).map((t) => (
-            <li key={t.id}>
+            <li key={t.id} data-mov="item">
               <Link
                 href={t.project_id ? `/projetos/${t.project_id}` : "/board"}
                 className="flex items-center justify-between gap-3 py-2 hover:text-brand-forte"
@@ -309,7 +321,7 @@ function CaixaDeEntrada({
   const novas = itens.filter((i) => i.nova).length;
   const hoje = diaSP(new Date());
   return (
-    <section className={`rounded-2xl border border-line bg-surface p-5 ${className}`}>
+    <section data-mov="card" className={`rounded-2xl border border-line bg-surface p-5 ${className}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-ink">
           Caixa de entrada <span className="font-normal text-ink-muted">({itens.length})</span>
@@ -330,7 +342,7 @@ function CaixaDeEntrada({
           {itens.slice(0, MAX_CAIXA).map((item) => {
             const t = item.tarefa;
             return (
-              <li key={t.id}>
+              <li key={t.id} data-mov="item">
                 <Link
                   href={t.project_id ? `/projetos/${t.project_id}` : "/board"}
                   className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 hover:text-brand-forte"
@@ -338,7 +350,7 @@ function CaixaDeEntrada({
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       {item.nova && (
-                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-brand-forte" aria-hidden="true" />
+                        <span data-mov="ponto" className="h-2 w-2 flex-shrink-0 rounded-full bg-brand-forte" aria-hidden="true" />
                       )}
                       <span className="truncate text-sm font-medium text-ink">{t.title}</span>
                     </span>
@@ -404,7 +416,7 @@ function CartaoEficiencia({
   const total = { rotulo: "Total", cor: "rgb(var(--color-brand-forte))", bloco: eficiencia.geral };
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section data-mov="card" className="rounded-2xl border border-line bg-surface p-5">
       <p className="text-sm font-semibold text-ink">Eficiência</p>
       <p className="mt-0.5 text-xs text-ink-muted">
         Atividades em dia: nem atrasadas, nem entregues depois do prazo
@@ -430,10 +442,11 @@ function CartaoEficiencia({
                 <span className="h-2 w-2 rounded-full" style={{ background: c.cor }} aria-hidden="true" />
                 {c.rotulo}
               </span>
-              <span className="font-semibold text-ink">{pctTexto(c.bloco.eficiencia)}</span>
+              <span data-mov="numero" className="font-semibold text-ink">{pctTexto(c.bloco.eficiencia)}</span>
             </div>
             <div className="mt-1 h-1.5 rounded-full bg-surface-hover">
               <div
+                data-mov="barra"
                 className="h-full rounded-full"
                 style={{ width: `${(c.bloco.eficiencia ?? 0) * 100}%`, background: c.cor }}
               />
@@ -459,7 +472,7 @@ function CartaoEficiencia({
               ).map(([rotulo, n]) => (
                 <div key={rotulo} className="flex justify-between py-0.5">
                   <dt className="text-ink-muted">{rotulo}</dt>
-                  <dd className="font-medium text-ink">{n}</dd>
+                  <dd data-mov="numero" className="font-medium text-ink">{n}</dd>
                 </div>
               ))}
             </dl>

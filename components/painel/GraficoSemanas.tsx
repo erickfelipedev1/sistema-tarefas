@@ -56,6 +56,7 @@ export default function GraficoSemanas({ dados }: { dados: { semana: string; tot
                   className="group relative flex h-full flex-1 items-end justify-center focus:outline-none"
                 >
                   <span
+                    data-mov="coluna"
                     className={`w-full max-w-[36px] rounded-t transition-opacity ${
                       atual ? "bg-brand-forte/60" : "bg-brand-forte"
                     } ${ativo !== null && ativo !== i ? "opacity-50" : ""}`}

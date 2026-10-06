@@ -121,3 +121,14 @@
     background: transparent;
   }
 }
+
+/* Entrada animada (components/movimento/Coreografia.tsx): até o GSAP
+   assumir, a tela fica escondida — senão aparece pronta, some e entra de
+   novo. Se o script não rodar, ela aparece sozinha depois de 2s. */
+.coreografia[data-anim="pendente"] {
+  animation: coreografia-revela 0.2s 2s both;
+}
+@keyframes coreografia-revela {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

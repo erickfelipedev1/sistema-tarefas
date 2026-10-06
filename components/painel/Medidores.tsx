@@ -34,6 +34,7 @@ export function MeiaLua({ valor, cor, rotulo }: { valor: number | null; cor: str
             strokeWidth="16"
             strokeLinecap="round"
             strokeDasharray={`${limitar(valor) * comprimento} ${comprimento}`}
+            data-mov="traco"
           />
         )}
         <text
@@ -79,6 +80,7 @@ export function Anel({
             strokeWidth="7"
             strokeLinecap="round"
             strokeDasharray={`${limitar(valor) * circ} ${circ}`}
+            data-mov="traco"
             transform="rotate(-90 38 38)"
           />
         )}
@@ -126,6 +128,7 @@ export function AneisConcentricos({
                 strokeWidth="9"
                 strokeLinecap="round"
                 strokeDasharray={`${limitar(a.valor) * circ} ${circ}`}
+                data-mov="traco"
                 transform="rotate(-90 80 80)"
               />
             )}
