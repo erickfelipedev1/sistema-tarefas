@@ -27,7 +27,7 @@ export default function EmojiPicker({
       </button>
 
       {aberto && (
-        <div className="absolute bottom-full right-0 z-20 mb-2 grid w-56 grid-cols-8 gap-0.5 rounded-lg border border-line bg-surface p-2 shadow-dropdown">
+        <div className="absolute bottom-full right-0 z-20 mb-2 grid w-56 origin-bottom-right animate-pop grid-cols-8 gap-0.5 rounded-lg border border-line bg-surface p-2 shadow-dropdown">
           {EMOJIS_RAPIDOS.map((emoji) => (
             <button
               key={emoji}

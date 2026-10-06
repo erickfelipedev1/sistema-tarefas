@@ -52,7 +52,7 @@ export default async function ProjetosPage() {
     .select("id, username, name, avatar_url");
 
   return (
-    <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1400px] animate-entrar px-4 py-6 sm:px-6 sm:py-8">
       <ProjectsList
         initialProjects={projects ?? []}
         currentUserId={user?.id ?? null}

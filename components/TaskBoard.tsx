@@ -491,7 +491,7 @@ export default function TaskBoard({
               </div>
 
               <div className="space-y-2.5">
-                {tarefasDaColuna.map((task) => {
+                {tarefasDaColuna.map((task, i) => {
                   const atrasada =
                     !!task.due_date &&
                     task.due_date < hoje &&
@@ -504,7 +504,8 @@ export default function TaskBoard({
                       onDragStart={(e) => handleDragStart(e, task)}
                       onDragEnd={handleDragEnd}
                       onClick={() => abrirEditar(task)}
-                      className={`group cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                      style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+                      className={`group animate-entrar cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
                         corTarefa(task.color).borda
                       } ${draggedId === task.id ? "opacity-40" : ""}`}
                     >

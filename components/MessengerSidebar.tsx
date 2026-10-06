@@ -86,7 +86,7 @@ export default function MessengerSidebar({
           {menuAberto && (
             <div
               role="menu"
-              className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-dropdown"
+              className="absolute right-0 top-10 z-20 w-44 origin-top-right animate-pop overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-dropdown"
             >
               <button
                 role="menuitem"

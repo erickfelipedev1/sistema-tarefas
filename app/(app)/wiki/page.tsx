@@ -16,7 +16,7 @@ export default async function WikiListPage() {
   const pages = await getMinhasPaginas(supabase, user?.id, verTudo);
 
   return (
-    <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1400px] animate-entrar px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex gap-6">
         <WikiSidebar pages={pages} />
         <div className="min-w-0 flex-1">

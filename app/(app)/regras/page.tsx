@@ -26,7 +26,7 @@ export default async function RegrasPage() {
   const escalaHoje = ESCALA_LIXO.find((e) => e.dia === hoje);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-4xl animate-entrar px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader title="Regras" subtitle="Combinados do escritório e a escala da retirada do lixo." />
 
       <section className="rounded-2xl border border-brand-forte/40 bg-brand-light p-5 sm:p-6">

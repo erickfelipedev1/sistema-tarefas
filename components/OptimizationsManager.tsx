@@ -247,7 +247,7 @@ export default function OptimizationsManager({
       />
 
       {mostrarForm && (
-        <div className="mb-6 rounded-2xl border border-line bg-surface p-5">
+        <div className="mb-6 animate-entrar rounded-2xl border border-line bg-surface p-5">
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Campo label="Data" required error={erroData}>
@@ -311,7 +311,7 @@ export default function OptimizationsManager({
       {erroCarregar && <p className="mb-3 text-sm text-danger">{erroCarregar}</p>}
 
       <div className="space-y-2.5">
-        {itens.map((item) => {
+        {itens.map((item, i) => {
           const autor = profiles.find((p) => p.id === item.created_by);
           const nomeAutor =
             autor?.name || autor?.username || item.created_by_label || "Alguém";
@@ -319,7 +319,8 @@ export default function OptimizationsManager({
           return (
             <div
               key={item.id}
-              className="rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-ink-muted"
+              style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+              className="animate-entrar rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-ink-muted"
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">

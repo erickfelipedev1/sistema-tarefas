@@ -103,6 +103,20 @@
   }
 }
 
+/* Quem pede menos movimento no sistema operacional fica sem animação e sem
+   transição — a tela só troca de estado. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer utilities {
   /* Scrollbar discreto — usado no quadro Kanban e em listas longas. */
   .scrollbar-thin {

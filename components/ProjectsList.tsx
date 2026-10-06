@@ -328,10 +328,11 @@ export default function ProjectsList({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projetosFiltrados.map((project) => (
+          {projetosFiltrados.map((project, i) => (
             <ProjectCard
               key={project.id}
               project={project}
+              atraso={Math.min(i, 11) * 35}
               avatarUrl={
                 project.created_by
                   ? avatarPorCriador.get(project.created_by)
@@ -350,12 +351,14 @@ export default function ProjectsList({
 
 function ProjectCard({
   project,
+  atraso,
   avatarUrl,
   onRename,
   onDelete,
   onTogglePublic,
 }: {
   project: Project;
+  atraso: number;
   avatarUrl: string | null | undefined;
   onRename: () => void;
   onDelete: () => void;
@@ -376,7 +379,10 @@ function ProjectCard({
   }, [menuAberto]);
 
   return (
-    <div className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
+    <div
+      style={{ animationDelay: `${atraso}ms` }}
+      className="group relative animate-entrar rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+    >
       <Link href={`/projetos/${project.id}`} className="block">
         <p className="pr-7 text-base font-semibold leading-snug text-ink">
           {project.name}
@@ -432,7 +438,7 @@ function ProjectCard({
         {menuAberto && (
           <div
             role="menu"
-            className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown"
+            className="absolute right-0 top-8 z-10 w-40 origin-top-right animate-pop overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown"
           >
             <Link
               href={`/projetos/${project.id}`}

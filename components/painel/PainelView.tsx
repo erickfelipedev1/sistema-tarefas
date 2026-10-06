@@ -59,7 +59,7 @@ export default function PainelView({
   const variacao = painel.concluidas - painel.concluidasAnterior;
 
   return (
-    <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1100px] animate-entrar px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader title="Painel" subtitle={subtitulo} />
 
       <PainelFiltros
@@ -176,7 +176,7 @@ export default function PainelView({
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-surface-hover">
                     <div
-                      className="h-full rounded-full bg-brand-forte"
+                      className="h-full origin-left animate-encher rounded-full bg-brand-forte"
                       style={{ width: `${(c.total / maiorCliente) * 100}%` }}
                     />
                   </div>
@@ -434,7 +434,7 @@ function CartaoEficiencia({
             </div>
             <div className="mt-1 h-1.5 rounded-full bg-surface-hover">
               <div
-                className="h-full rounded-full"
+                className="h-full origin-left animate-encher rounded-full"
                 style={{ width: `${(c.bloco.eficiencia ?? 0) * 100}%`, background: c.cor }}
               />
             </div>

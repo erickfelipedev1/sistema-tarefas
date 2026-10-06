@@ -245,12 +245,12 @@ export default function TaskModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex animate-aparecer items-center justify-center bg-black/40 p-4"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl md:flex-row"
+        className="flex max-h-[90vh] w-full max-w-2xl animate-surgir flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl md:flex-row"
       >
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-1 flex items-start justify-between gap-4">
