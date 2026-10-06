@@ -50,7 +50,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-texto)", "system-ui", "sans-serif"],
       },
       borderRadius: {
         xl: "12px",

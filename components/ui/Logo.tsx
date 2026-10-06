@@ -16,7 +16,7 @@ export function Logo({
     <span
       className={`inline-block ${texto} leading-none tracking-tight ${className}`}
       style={{
-        fontFamily: "var(--font-logo), var(--font-inter), sans-serif",
+        fontFamily: "var(--font-logo), var(--font-texto), sans-serif",
         backgroundImage: DEGRADE,
         WebkitBackgroundClip: "text",
         backgroundClip: "text",

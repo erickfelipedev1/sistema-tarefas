@@ -3,6 +3,7 @@ import { podeVerTudo } from "@/lib/permissions";
 import { getMinhasPaginas } from "@/lib/wiki";
 import WikiSidebar from "@/components/WikiSidebar";
 import WikiPagesPanel from "@/components/WikiPagesPanel";
+import Coreografia from "@/components/movimento/Coreografia";
 
 export default async function WikiListPage() {
   const supabase = await clienteDaRequisicao();
@@ -16,6 +17,7 @@ export default async function WikiListPage() {
   const pages = await getMinhasPaginas(supabase, user?.id, verTudo);
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex gap-6">
         <WikiSidebar pages={pages} />
@@ -28,5 +30,6 @@ export default async function WikiListPage() {
         </div>
       </div>
     </main>
+    </Coreografia>
   );
 }

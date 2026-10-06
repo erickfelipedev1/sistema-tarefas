@@ -1,5 +1,6 @@
 import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import ProjectsList from "@/components/ProjectsList";
+import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
 
 export default async function ProjetosPage() {
@@ -52,6 +53,7 @@ export default async function ProjetosPage() {
     .select("id, username, name, avatar_url");
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <ProjectsList
         initialProjects={projects ?? []}
@@ -63,5 +65,6 @@ export default async function ProjetosPage() {
         subtitle="Organize seus clientes, equipes e entregas em um só lugar."
       />
     </main>
+    </Coreografia>
   );
 }

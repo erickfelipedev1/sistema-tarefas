@@ -12,6 +12,7 @@ const useEfeitoDeLayout = typeof window !== "undefined" ? useLayoutEffect : useE
 // na dança marcando o elemento com data-mov:
 //   topo     título, subtítulo e filtros sobem em sequência
 //   card     cartões sobem em cascata
+//   bloco    cartões pequenos em grade ou coluna (tarefas, clientes) sobem
 //   item     linhas de lista deslizam de leve
 //   ponto    marcadores pequenos crescem
 //   barra    barra horizontal enche | coluna  barra vertical cresce
@@ -35,6 +36,16 @@ export default function Coreografia({ children }: { children: ReactNode }) {
     const ctx = gsap.context(() => {
       const q = (tipo: string) => gsap.utils.toArray<HTMLElement>(`[data-mov~="${tipo}"]`, palco);
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      // Cascata com teto: 3 cartões ou 60, a entrada dura o mesmo tanto.
+      const cascata = (n: number, cada: number, teto: number) => ({ amount: Math.min(cada * Math.max(n - 1, 0), teto) });
+
+      // Quem tem transition no CSS (hover dos cartões) brigaria com o GSAP
+      // quadro a quadro; fica desligada só enquanto a entrada toca.
+      const todos = gsap.utils.toArray<HTMLElement>("[data-mov]", palco);
+      gsap.set(todos, { transition: "none" });
+      tl.eventCallback("onComplete", () => {
+        gsap.set(todos, { clearProps: "transition" });
+      });
 
       const topo = q("topo");
       if (topo.length) {
@@ -43,7 +54,20 @@ export default function Coreografia({ children }: { children: ReactNode }) {
 
       const cards = q("card");
       if (cards.length) {
-        tl.from(cards, { opacity: 0, y: semDeslocar ? 0 : 20, stagger: 0.07, duration: 0.5, clearProps: "transform,opacity" }, 0.12);
+        tl.from(
+          cards,
+          { opacity: 0, y: semDeslocar ? 0 : 20, stagger: cascata(cards.length, 0.07, 0.45), duration: 0.5, clearProps: "transform,opacity" },
+          0.12
+        );
+      }
+
+      const blocos = q("bloco");
+      if (blocos.length) {
+        tl.from(
+          blocos,
+          { opacity: 0, y: semDeslocar ? 0 : 12, stagger: cascata(blocos.length, 0.04, 0.5), duration: 0.4, clearProps: "transform,opacity" },
+          0.3
+        );
       }
 
       const itens = q("item");

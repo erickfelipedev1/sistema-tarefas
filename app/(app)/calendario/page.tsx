@@ -1,5 +1,6 @@
 import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import CalendarView from "@/components/CalendarView";
+import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
 
 export default async function CalendarioPage() {
@@ -43,6 +44,7 @@ export default async function CalendarioPage() {
     "";
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <CalendarView
         initialTasks={tasks ?? []}
@@ -55,5 +57,6 @@ export default async function CalendarioPage() {
         subtitle="Veja e organize seus compromissos e tarefas."
       />
     </main>
+    </Coreografia>
   );
 }

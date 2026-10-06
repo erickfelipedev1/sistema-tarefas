@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/PageHeader";
+import Coreografia from "@/components/movimento/Coreografia";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -26,10 +27,11 @@ export default async function RegrasPage() {
   const escalaHoje = ESCALA_LIXO.find((e) => e.dia === hoje);
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader title="Regras" subtitle="Combinados do escritório e a escala da retirada do lixo." />
 
-      <section className="rounded-2xl border border-brand-forte/40 bg-brand-light p-5 sm:p-6">
+      <section data-mov="card" className="rounded-2xl border border-brand-forte/40 bg-brand-light p-5 sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-forte">Lixo de hoje</p>
         {escalaHoje ? (
           <>
@@ -48,7 +50,7 @@ export default async function RegrasPage() {
       </section>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+        <section data-mov="card" className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-ink">Escala da semana</h2>
           <ul className="mt-3 divide-y divide-line">
             {ESCALA_LIXO.map((e) => {
@@ -70,7 +72,7 @@ export default async function RegrasPage() {
           </ul>
         </section>
 
-        <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
+        <section data-mov="card" className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-ink">Lixeiras pra verificar</h2>
           <ul className="mt-3 space-y-1.5 text-sm text-ink">
             {LIXEIRAS.map((l) => (
@@ -92,7 +94,7 @@ export default async function RegrasPage() {
         </section>
       </div>
 
-      <section className="mt-4 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      <section data-mov="card" className="mt-4 rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <h2 className="text-sm font-semibold text-ink">Regras gerais</h2>
         <ol className="mt-3 space-y-2.5 text-sm text-ink">
           {REGRAS_GERAIS.map((r, i) => (
@@ -106,6 +108,7 @@ export default async function RegrasPage() {
         </ol>
       </section>
     </main>
+    </Coreografia>
   );
 }
 

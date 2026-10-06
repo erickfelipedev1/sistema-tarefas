@@ -478,6 +478,7 @@ export default function TaskBoard({
               onDragOver={(e) => handleColumnDragOver(e, coluna.key)}
               onDragLeave={() => handleColumnDragLeave(coluna.key)}
               onDrop={(e) => handleDrop(e, coluna.key)}
+              data-mov="card"
               className={`w-[85%] flex-shrink-0 snap-start rounded-2xl p-1.5 transition-colors sm:w-auto sm:min-w-[270px] xl:min-w-0 ${
                 dragOverCol === coluna.key ? "bg-brand/5 ring-2 ring-brand/30" : ""
               }`}
@@ -504,6 +505,7 @@ export default function TaskBoard({
                       onDragStart={(e) => handleDragStart(e, task)}
                       onDragEnd={handleDragEnd}
                       onClick={() => abrirEditar(task)}
+                      data-mov="bloco"
                       className={`group cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
                         corTarefa(task.color).borda
                       } ${draggedId === task.id ? "opacity-40" : ""}`}

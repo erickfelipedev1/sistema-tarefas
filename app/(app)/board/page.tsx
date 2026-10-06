@@ -1,5 +1,6 @@
 import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import TaskBoard from "@/components/TaskBoard";
+import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
 
 export default async function BoardPage() {
@@ -32,6 +33,7 @@ export default async function BoardPage() {
     "";
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <TaskBoard
         initialTasks={tasks ?? []}
@@ -45,5 +47,6 @@ export default async function BoardPage() {
         subtitle="Organize seu dia e acompanhe o que precisa ser feito."
       />
     </main>
+    </Coreografia>
   );
 }

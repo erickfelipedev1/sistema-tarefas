@@ -343,7 +343,7 @@ export default function TaskRequests({
         </div>
       )}
 
-      <div className="mb-5 inline-flex rounded-lg border border-line bg-surface p-1">
+      <div data-mov="topo" className="mb-5 inline-flex rounded-lg border border-line bg-surface p-1">
         <button
           onClick={() => setAba("recebidas")}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -550,6 +550,7 @@ export default function TaskRequests({
           return (
             <div
               key={req.id}
+              data-mov="bloco"
               className="rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-ink-muted"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">

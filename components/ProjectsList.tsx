@@ -376,7 +376,10 @@ function ProjectCard({
   }, [menuAberto]);
 
   return (
-    <div className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
+    <div
+      data-mov="bloco"
+      className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+    >
       <Link href={`/projetos/${project.id}`} className="block">
         <p className="pr-7 text-base font-semibold leading-snug text-ink">
           {project.name}

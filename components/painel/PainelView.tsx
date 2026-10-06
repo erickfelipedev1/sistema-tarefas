@@ -65,9 +65,7 @@ export default function PainelView({
     // key: trocar o período ou a pessoa remonta e a entrada toca de novo.
     <Coreografia key={`${periodoChave}-${pessoaAtual}`}>
     <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
-      <div data-mov="topo">
-        <PageHeader title="Painel" subtitle={subtitulo} />
-      </div>
+      <PageHeader title="Painel" subtitle={subtitulo} />
 
       <div data-mov="topo">
         <PainelFiltros

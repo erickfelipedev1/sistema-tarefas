@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Nunito, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
 import PwaSetup from "@/components/PwaSetup";
 
-const inter = Inter({
+// Fonte do sistema: Nunito, de cantos arredondados (antes era a Inter).
+const texto = Nunito({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-texto",
   display: "swap",
 });
 
@@ -44,7 +45,7 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       translate="no"
-      className={`${inter.variable} ${outfit.variable}`}
+      className={`${texto.variable} ${outfit.variable}`}
       data-theme="dark"
     >
       <head>

@@ -46,7 +46,7 @@ export default function ProjectTabs({
 
   return (
     <div>
-      <div className="mb-5 flex items-center gap-1 overflow-x-auto border-b border-line">
+      <div data-mov="card" className="mb-5 flex items-center gap-1 overflow-x-auto border-b border-line">
         {abas.map((item) => {
           const Icon = item.icon;
           const ativa = item.key === aba;

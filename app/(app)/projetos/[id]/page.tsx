@@ -9,6 +9,7 @@ import ClientRequestAccess, {
 } from "@/components/ClientRequestAccess";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ProjectTabs from "@/components/ProjectTabs";
+import Coreografia from "@/components/movimento/Coreografia";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
@@ -89,16 +90,18 @@ export default async function ProjetoPage({
   }
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <Link
         href="/projetos"
+        data-mov="topo"
         className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"
       >
         <ChevronLeftIcon className="h-3.5 w-3.5" />
         Clientes
       </Link>
 
-      <div className="mb-5 mt-2">
+      <div data-mov="topo" className="mb-5 mt-2">
         <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
           {project.name}
         </h1>
@@ -109,24 +112,30 @@ export default async function ProjetoPage({
         </p>
       </div>
 
-      <ShareProjectLink projectId={id} shareToken={project.share_token} />
+      <div data-mov="card">
+        <ShareProjectLink projectId={id} shareToken={project.share_token} />
+      </div>
 
-      <ClientRequestAccess
-        projectId={id}
-        acessos={acessosCliente}
-        semResponsavel={!project.responsible_id}
-        erroCarregar={erroAcessos}
-      />
+      <div data-mov="card">
+        <ClientRequestAccess
+          projectId={id}
+          acessos={acessosCliente}
+          semResponsavel={!project.responsible_id}
+          erroCarregar={erroAcessos}
+        />
+      </div>
 
-      <ProjectDetailsCard
-        projectId={id}
-        profiles={profiles ?? []}
-        initialStatus={project.status}
-        initialResponsibleId={project.responsible_id}
-        initialStartDate={project.start_date}
-        initialTargetEndDate={project.target_end_date}
-        initialInfoConfirmed={project.initial_info_confirmed}
-      />
+      <div data-mov="card">
+        <ProjectDetailsCard
+          projectId={id}
+          profiles={profiles ?? []}
+          initialStatus={project.status}
+          initialResponsibleId={project.responsible_id}
+          initialStartDate={project.start_date}
+          initialTargetEndDate={project.target_end_date}
+          initialInfoConfirmed={project.initial_info_confirmed}
+        />
+      </div>
 
       <ProjectTabs
         tarefas={
@@ -189,5 +198,6 @@ export default async function ProjetoPage({
         }
       />
     </main>
+    </Coreografia>
   );
 }

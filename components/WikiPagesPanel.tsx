@@ -99,7 +99,7 @@ export default function WikiPagesPanel({
             />
           </div>
         ) : (
-          <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
+          <div data-mov="card" className="divide-y divide-line rounded-2xl border border-line bg-surface">
             {paginasFiltradas.map((p) => (
               <PaginaRow key={p.id} pagina={p} />
             ))}
@@ -117,7 +117,10 @@ function metaTexto(pagina: PaginaResumo) {
 
 function PaginaCard({ pagina }: { pagina: PaginaResumo }) {
   return (
-    <div className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover">
+    <div
+      data-mov="bloco"
+      className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-card-hover"
+    >
       <Link href={`/wiki/${pagina.id}`} className="block">
         <p className="truncate pr-6 text-sm font-medium text-ink">
           {pagina.title || "Sem título"}

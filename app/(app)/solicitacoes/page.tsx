@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import TaskRequests from "@/components/TaskRequests";
+import Coreografia from "@/components/movimento/Coreografia";
 
 export default async function SolicitacoesPage() {
   const supabase = await clienteDaRequisicao();
@@ -25,6 +26,7 @@ export default async function SolicitacoesPage() {
     ]);
 
   return (
+    <Coreografia>
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <TaskRequests
         currentUserId={user.id}
@@ -34,5 +36,6 @@ export default async function SolicitacoesPage() {
         projects={projects ?? []}
       />
     </main>
+    </Coreografia>
   );
 }
