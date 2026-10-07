@@ -4,11 +4,12 @@ import { podeVerTudo } from "@/lib/permissions";
 import {
   calcularEficiencia,
   calcularPainel,
+  diaSP,
   montarCaixaDeEntrada,
   type PedidoRecebido,
   type TarefaMetrica,
 } from "@/lib/painel";
-import PainelView from "@/components/painel/PainelView";
+import PainelView, { type OtimizacaoDoPainel } from "@/components/painel/PainelView";
 import { escalaDeHojePara, type PerfilBasico } from "@/lib/regras";
 
 export const dynamic = "force-dynamic";
@@ -48,10 +49,11 @@ export default async function PainelPage({
     supabase.from("projects").select("id, name"),
   ]);
   const pessoa = (perfis ?? []).find((p) => p.id === pessoaId);
-  // Cargo (migration 0034) à parte, pra não derrubar a lista de perfis sem ela.
+  // Cargo (migration 0034) e faz_otimizacoes (0043) à parte e com "*", pra não
+  // derrubar a lista de perfis em banco sem essas colunas.
   const { data: comCargo } = await supabase
     .from("profiles")
-    .select("cargo")
+    .select("*")
     .eq("id", pessoaId)
     .maybeSingle();
 
@@ -105,6 +107,22 @@ export default async function PainelPage({
     : { data: [] as { hours: number }[] };
   const totalHoras = (horas ?? []).reduce((soma, h) => soma + Number(h.hours), 0);
 
+  // Otimizações do tráfego (migration 0043) que a pessoa registrou no
+  // período, em todos os clientes. O cartão só aparece pra quem é do tráfego
+  // (faz_otimizacoes) ou já registrou alguma — pro resto da equipe não faz
+  // sentido. Sem a migration a consulta falha e o cartão não aparece.
+  const inicioOtimizacoes = diaSP(new Date(Date.now() - (periodo.dias - 1) * 24 * 60 * 60 * 1000));
+  const { data: linhasOtimizacoes } = await supabase
+    .from("optimizations")
+    .select("id, project_id, opt_date, place, action_taken, justification")
+    .eq("created_by", pessoaId)
+    .gte("opt_date", inicioOtimizacoes)
+    .order("opt_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(300);
+  const otimizacoes = (linhasOtimizacoes ?? []) as OtimizacaoDoPainel[];
+  const mostrarOtimizacoes = comCargo?.faz_otimizacoes === true || otimizacoes.length > 0;
+
   const nomesProjetos = Object.fromEntries(
     (projetos ?? []).map((p) => [p.id as string, p.name as string])
   );
@@ -135,6 +153,7 @@ export default async function PainelPage({
       semMigracao={semMigracao}
       totalHoras={totalHoras}
       nomesProjetos={nomesProjetos}
+      otimizacoes={mostrarOtimizacoes ? otimizacoes : null}
       lembreteLixo={
         pessoaId === user.id ? escalaDeHojePara(user.id, (perfis ?? []) as PerfilBasico[]) : null
       }

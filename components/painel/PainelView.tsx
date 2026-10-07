@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { diaSP } from "@/lib/painel";
+import type { Optimization } from "@/lib/types";
 import type {
   BlocoEficiencia,
   Eficiencia,
@@ -14,6 +15,12 @@ import Coreografia from "@/components/movimento/Coreografia";
 import PainelFiltros from "./PainelFiltros";
 import GraficoSemanas from "./GraficoSemanas";
 import { AneisConcentricos, Anel, MeiaLua } from "./Medidores";
+
+// Otimização do tráfego como o Painel mostra (ver app/(app)/painel/page.tsx).
+export type OtimizacaoDoPainel = Pick<
+  Optimization,
+  "id" | "project_id" | "opt_date" | "place" | "action_taken" | "justification"
+>;
 
 // Parte visual do Painel — recebe tudo já calculado (ver
 // app/(app)/painel/page.tsx), sem buscar nada. A entrada animada é da
@@ -36,6 +43,7 @@ export default function PainelView({
   semMigracao,
   totalHoras,
   nomesProjetos,
+  otimizacoes = null,
   lembreteLixo = null,
 }: {
   painel: Painel;
@@ -54,6 +62,9 @@ export default function PainelView({
   semMigracao: boolean;
   totalHoras: number;
   nomesProjetos: Record<string, string>;
+  // Otimizações que a pessoa registrou no período; null = não é do tráfego,
+  // o cartão nem aparece.
+  otimizacoes?: OtimizacaoDoPainel[] | null;
   // Se a pessoa está na escala do lixo hoje (lib/regras.ts).
   lembreteLixo?: { rotulo: string; colegas: string[] } | null;
 }) {
@@ -161,6 +172,10 @@ export default function PainelView({
         />
         <CaixaDeEntrada itens={caixaDeEntrada} nomeDe={nomeDe} className="lg:col-span-2" />
       </section>
+
+      {otimizacoes && (
+        <CartaoOtimizacoes itens={otimizacoes} nomeDe={nomeDe} rotuloPeriodo={rotuloPeriodo} />
+      )}
 
       <section className="mt-3 grid gap-3 lg:grid-cols-3">
         <div data-mov="card" className="rounded-2xl border border-line bg-surface p-5 lg:col-span-2">
@@ -288,6 +303,76 @@ function ListaTarefas({
         <p className="mt-2 text-xs text-ink-muted">e mais {tarefas.length - 8}.</p>
       )}
     </div>
+  );
+}
+
+const MAX_OTIMIZACOES = 8;
+
+// Otimizações do tráfego registradas pela pessoa (aba "Otimizações" dos
+// clientes): quantas foram, em quantos dias, onde, e as mais recentes.
+function CartaoOtimizacoes({
+  itens,
+  nomeDe,
+  rotuloPeriodo,
+}: {
+  itens: OtimizacaoDoPainel[];
+  nomeDe: (id: string | null) => string;
+  rotuloPeriodo: string;
+}) {
+  const dias = new Set(itens.map((i) => i.opt_date)).size;
+  const clientes = new Set(itens.map((i) => i.project_id)).size;
+  const porLocal = Array.from(
+    itens.reduce((mapa, i) => mapa.set(i.place, (mapa.get(i.place) ?? 0) + 1), new Map<string, number>())
+  ).sort((a, b) => b[1] - a[1]);
+
+  return (
+    <section data-mov="card" className="mt-3 rounded-2xl border border-line bg-surface p-5">
+      <p className="text-sm font-semibold text-ink">
+        Otimizações <span className="font-normal text-ink-muted">({itens.length})</span>
+      </p>
+      <p className="mt-0.5 text-xs text-ink-muted">
+        Registradas nos últimos {rotuloPeriodo}
+        {itens.length > 0 &&
+          ` · ${dias} ${dias === 1 ? "dia" : "dias"} com registro · ${clientes} ${clientes === 1 ? "cliente" : "clientes"}`}
+      </p>
+
+      {itens.length === 0 ? (
+        <p className="mt-4 text-sm text-ink-muted">Nenhuma otimização registrada no período.</p>
+      ) : (
+        <>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {porLocal.map(([local, total]) => (
+              <Badge key={local} tone="neutral">
+                {local} · {total}
+              </Badge>
+            ))}
+          </div>
+
+          <ul className="mt-3 divide-y divide-line">
+            {itens.slice(0, MAX_OTIMIZACOES).map((o) => (
+              <li key={o.id} data-mov="item">
+                <Link
+                  href={`/projetos/${o.project_id}`}
+                  className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 py-2.5 hover:text-brand-forte"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-ink">{o.action_taken}</span>
+                    <span className="block truncate text-xs text-ink-muted">
+                      {nomeDe(o.project_id)} · {o.place}
+                      {o.justification && ` · ${o.justification}`}
+                    </span>
+                  </span>
+                  <span className="flex-shrink-0 text-xs text-ink-muted">{formatarPrazo(o.opt_date)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {itens.length > MAX_OTIMIZACOES && (
+            <p className="mt-2 text-xs text-ink-muted">e mais {itens.length - MAX_OTIMIZACOES}.</p>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
