@@ -215,7 +215,16 @@ export default function ProjectsList({
     if (!confirmado) return;
 
     setProjects((current) => current.filter((p) => p.id !== project.id));
-    await supabase.from("projects").delete().eq("id", project.id);
+    const { error } = await supabase.from("projects").delete().eq("id", project.id);
+    if (error) {
+      // 23503: o cliente tem serviços lançados no faturamento (migration 0044).
+      setProjects((current) => (current.some((p) => p.id === project.id) ? current : [...current, project]));
+      window.alert(
+        error.code === "23503"
+          ? `Não dá pra excluir "${project.name}": há serviços lançados no faturamento deste cliente.`
+          : `Não foi possível excluir "${project.name}". Tenta de novo.`
+      );
+    }
   }
 
   // Projeto público: todo mundo vê, mesmo sem tarefa nele. Todo projeto

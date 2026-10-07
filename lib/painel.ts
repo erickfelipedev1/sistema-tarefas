@@ -27,7 +27,7 @@ export function diaSP(iso: string | Date) {
   }).format(typeof iso === "string" ? new Date(iso) : iso);
 }
 
-function somarDias(dia: string, n: number) {
+export function somarDias(dia: string, n: number) {
   const d = new Date(`${dia}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);

@@ -42,7 +42,7 @@ export default function AppShell({
 
   return (
     <div className="flex min-h-screen">
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
+      <div className="nao-imprime fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
         <button
           onClick={() => setAberto(true)}
           aria-label="Abrir menu"
@@ -53,7 +53,7 @@ export default function AppShell({
         <Logo tamanho="sm" />
       </div>
 
-      <div className="hidden lg:flex">
+      <div className="nao-imprime hidden lg:flex">
         <Sidebar {...sidebarProps} />
       </div>
 
@@ -78,7 +78,7 @@ export default function AppShell({
         </div>
       )}
 
-      <div className="min-h-screen min-w-0 flex-1 pt-14 lg:pt-0">{children}</div>
+      <div className="conteudo-do-app min-h-screen min-w-0 flex-1 pt-14 lg:pt-0">{children}</div>
     </div>
   );
 }

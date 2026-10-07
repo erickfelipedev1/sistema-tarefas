@@ -16,6 +16,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ClipboardListIcon,
+  FileTextIcon,
   FolderIcon,
   ListChecksIcon,
   MessageCircleIcon,
@@ -38,6 +39,7 @@ const SECOES: {
     titulo: null,
     itens: [
       { href: "/painel", label: "Painel", icon: BarChartIcon },
+      { href: "/relatorio", label: "Relatório", icon: FileTextIcon },
       { href: "/board", label: "Tarefas", icon: ClipboardListIcon },
       { href: "/calendario", label: "Calendário", icon: CalendarIcon },
       { href: "/wiki", label: "Wiki", icon: BookOpenIcon },

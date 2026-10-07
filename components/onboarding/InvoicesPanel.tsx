@@ -55,6 +55,32 @@ export function InvoicesPanel({ invoices }: { invoices: FaturaComLink[] }) {
               </>
             );
 
+            // Fatura que veio do Relatório mensal traz os serviços cobrados.
+            const itens = fatura.items ?? [];
+            if (itens.length > 0 && !fatura.publicUrl) {
+              return (
+                <div key={fatura.id} className="rounded-xl border border-line bg-surface px-3.5 py-3">
+                  <div className="flex items-center justify-between gap-3">{Conteudo}</div>
+                  <ul className="mt-2.5 space-y-1 border-t border-line pt-2.5">
+                    {itens.map((item, i) => (
+                      <li key={i} className="flex items-baseline justify-between gap-3 text-xs">
+                        <span className="min-w-0 text-ink-muted">
+                          {Number(item.quantity) !== 1 &&
+                            `${Number(item.quantity).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} × `}
+                          <span className="text-ink">{item.name}</span>
+                          {item.detail && ` · ${item.detail}`}
+                          {item.recurring && " · mensal"}
+                        </span>
+                        <span className="flex-shrink-0 tabular-nums text-ink">
+                          {formatarMoeda(Number(item.total))}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            }
+
             return fatura.publicUrl ? (
               <a
                 key={fatura.id}

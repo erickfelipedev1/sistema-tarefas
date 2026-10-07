@@ -227,6 +227,17 @@ export interface ProjectDocuments {
 // status gravado (ver lib/invoices.ts).
 export type InvoiceStatus = "pending" | "paid" | "cancelled";
 
+// Um serviço dentro de uma fatura que veio do Relatório mensal (coluna
+// invoices.items, migration 0045) — o detalhe que o cliente vê.
+export interface InvoiceItem {
+  name: string;
+  detail: string | null;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  recurring: boolean;
+}
+
 export interface Invoice {
   id: string;
   project_id: string;
@@ -250,6 +261,8 @@ export interface PublicInvoice {
   status: InvoiceStatus;
   paid_at: string | null;
   file_path: string | null;
+  // Só nas faturas enviadas pelo Relatório mensal (migration 0045).
+  items?: InvoiceItem[] | null;
 }
 
 // Linha de optimizations (migration 0043) — otimização diária do tráfego,

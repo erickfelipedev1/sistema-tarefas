@@ -132,3 +132,42 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Impressão (Relatório mensal): some o que é controle (.nao-imprime), aparece
+   o que só existe no papel (.so-imprime), e as cores viram as do tema claro
+   mesmo com o sistema no escuro — fundo escuro gasta tinta e fica ilegível. */
+.so-imprime {
+  display: none;
+}
+
+@media print {
+  :root,
+  :root[data-theme="light"] {
+    --color-canvas: 255 255 255;
+    --color-surface: 255 255 255;
+    --color-surface-hover: 238 241 232;
+    --color-line: 205 211 196;
+    --color-ink: 20 23 15;
+    --color-ink-muted: 91 102 83;
+    --color-avatar: 18 22 13;
+    --color-brand-light: 241 249 223;
+    --color-brand-forte: 76 117 12;
+    --color-success: 15 122 76;
+    --color-warning: 154 102 8;
+    --color-danger: 196 42 48;
+  }
+
+  .nao-imprime {
+    display: none !important;
+  }
+  .so-imprime {
+    display: block;
+  }
+  .conteudo-do-app {
+    padding-top: 0 !important;
+  }
+  /* Tabela larga cabe na folha em vez de cortar na rolagem. */
+  .conteudo-do-app .overflow-x-auto {
+    overflow: visible;
+  }
+}
