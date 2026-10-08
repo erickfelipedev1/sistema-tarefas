@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -75,6 +75,9 @@ export default function TaskRequests({
   const [erroTitulo, setErroTitulo] = useState<string | null>(null);
   const [erroResponsavel, setErroResponsavel] = useState<string | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  // Tarefa que já foi criada num envio em que só o registro do pedido falhou:
+  // ao tentar de novo, reaproveita essa em vez de criar outra igual.
+  const tarefaJaCriada = useRef<Task | null>(null);
 
   const profilesById = useMemo(() => {
     const mapa: Record<string, Profile> = {};
@@ -178,6 +181,7 @@ export default function TaskRequests({
     setErroResponsavel(null);
     setErroEnvio(null);
     setMostrarForm(false);
+    tarefaJaCriada.current = null;
   }
 
   function fecharForm() {
@@ -216,60 +220,64 @@ export default function TaskRequests({
       .filter(Boolean)
       .join("\n\n");
 
-    const { data: ultimaTarefa } = await supabase
-      .from("tasks")
-      .select("position")
-      .eq("status", "todo")
-      .order("position", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const proximaPosicao = (ultimaTarefa?.position ?? 0) + 1;
-
-    const { data: novaTarefa, error: erroTarefa } = await supabase
-      .from("tasks")
-      .insert({
-        title: title.trim(),
-        description: descricaoTarefa || null,
-        status: "todo",
-        position: proximaPosicao,
-        project_id: projectId || null,
-        // Período: começa no dia do pedido e vai até o prazo.
-        start_date: dueDate ? new Date().toLocaleDateString("en-CA") : null,
-        due_date: dueDate || null,
-        assigned_to: [requestedTo],
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-
-    if (erroTarefa || !novaTarefa) {
-      setSalvando(false);
-      setErroEnvio("Não foi possível enviar a solicitação. Tente novamente.");
-      return;
-    }
-
-    let tarefaFinal = novaTarefa as Task;
-    avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
-
-    // Cria a página da Wiki dessa tarefa na hora, igual acontece quando a
-    // tarefa é criada pelo quadro normal.
-    const { data: pagina } = await supabase
-      .from("pages")
-      .insert({
-        title: tarefaFinal.title,
-        content: buildTaskSummaryBlocks(tarefaFinal, profiles, projects),
-        project_id: tarefaFinal.project_id,
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-
-    if (pagina) {
-      await supabase
+    let tarefaFinal = tarefaJaCriada.current;
+    if (!tarefaFinal) {
+      const { data: ultimaTarefa } = await supabase
         .from("tasks")
-        .update({ page_id: pagina.id })
-        .eq("id", tarefaFinal.id);
-      tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
+        .select("position")
+        .eq("status", "todo")
+        .order("position", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const proximaPosicao = (ultimaTarefa?.position ?? 0) + 1;
+
+      const { data: novaTarefa, error: erroTarefa } = await supabase
+        .from("tasks")
+        .insert({
+          title: title.trim(),
+          description: descricaoTarefa || null,
+          status: "todo",
+          position: proximaPosicao,
+          project_id: projectId || null,
+          // Período: começa no dia do pedido e vai até o prazo.
+          start_date: dueDate ? new Date().toLocaleDateString("en-CA") : null,
+          due_date: dueDate || null,
+          assigned_to: [requestedTo],
+          created_by_label: currentUserLabel,
+        })
+        .select()
+        .single();
+
+      if (erroTarefa || !novaTarefa) {
+        setSalvando(false);
+        setErroEnvio("Não foi possível enviar a solicitação. Tente novamente.");
+        return;
+      }
+
+      tarefaFinal = novaTarefa as Task;
+      avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
+
+      // Cria a página da Wiki dessa tarefa na hora, igual acontece quando a
+      // tarefa é criada pelo quadro normal.
+      const { data: pagina } = await supabase
+        .from("pages")
+        .insert({
+          title: tarefaFinal.title,
+          content: buildTaskSummaryBlocks(tarefaFinal, profiles, projects),
+          project_id: tarefaFinal.project_id,
+          created_by_label: currentUserLabel,
+        })
+        .select()
+        .single();
+
+      if (pagina) {
+        await supabase
+          .from("tasks")
+          .update({ page_id: pagina.id })
+          .eq("id", tarefaFinal.id);
+        tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
+      }
+      tarefaJaCriada.current = tarefaFinal;
     }
 
     const resolvedAt = new Date().toISOString();
@@ -295,8 +303,13 @@ export default function TaskRequests({
 
     setSalvando(false);
     if (error || !data) {
+      // Mostra o erro de verdade (antes a mensagem culpava sempre a migration
+      // 0019, mesmo quando o motivo era outro). A tarefa fica guardada em
+      // tarefaJaCriada: clicar em "Enviar" de novo só refaz o registro.
       setErroEnvio(
-        "A tarefa foi criada, mas não deu pra registrar o pedido em Solicitações. Confere se a migration 0019_task_requests_extra_fields.sql já foi rodada no Supabase."
+        `A tarefa foi criada, mas não deu pra registrar o pedido em Solicitações. Clique em "Enviar solicitação" de novo: a tarefa não será duplicada. Detalhe do erro: ${
+          error?.message ?? "sem resposta do banco"
+        }${error?.code ? ` (${error.code})` : ""}`
       );
       return;
     }
