@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
+  BarChartIcon,
   BookOpenIcon,
   ClipboardListIcon,
   FileStackIcon,
@@ -18,6 +19,7 @@ const ABAS = [
   { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
   { key: "mensagens", label: "Mensagens", icon: MessageCircleIcon },
+  { key: "analytics", label: "Analytics", icon: BarChartIcon },
 ] as const;
 
 type AbaKey = (typeof ABAS)[number]["key"];
@@ -26,6 +28,9 @@ type AbaKey = (typeof ABAS)[number]["key"];
 // perder o estado nem reconectar o realtime do quadro de tarefas/drive/
 // faturas/mensagens toda vez que alguém troca de aba.
 // "Otimizações" só existe pra quem a página mandar (tráfego e líderes).
+// "Analytics" é a exceção: só é montada na primeira vez que alguém abre a
+// aba, porque ela consulta o Reportei e não faz sentido toda visita à página
+// do cliente pagar essa espera.
 export default function ProjectTabs({
   tarefas,
   otimizacoes,
@@ -33,6 +38,7 @@ export default function ProjectTabs({
   arquivos,
   faturas,
   mensagens,
+  analytics,
 }: {
   tarefas: ReactNode;
   otimizacoes?: ReactNode;
@@ -40,8 +46,10 @@ export default function ProjectTabs({
   arquivos: ReactNode;
   faturas: ReactNode;
   mensagens: ReactNode;
+  analytics: ReactNode;
 }) {
   const [aba, setAba] = useState<AbaKey>("tarefas");
+  const [abriuAnalytics, setAbriuAnalytics] = useState(false);
   const abas = ABAS.filter((item) => item.key !== "otimizacoes" || !!otimizacoes);
 
   return (
@@ -53,7 +61,10 @@ export default function ProjectTabs({
           return (
             <button
               key={item.key}
-              onClick={() => setAba(item.key)}
+              onClick={() => {
+                setAba(item.key);
+                if (item.key === "analytics") setAbriuAnalytics(true);
+              }}
               className={`flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 ativa
                   ? "border-brand text-brand-forte"
@@ -75,6 +86,7 @@ export default function ProjectTabs({
       <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
       <div className={aba === "mensagens" ? "" : "hidden"}>{mensagens}</div>
+      {abriuAnalytics && <div className={aba === "analytics" ? "" : "hidden"}>{analytics}</div>}
     </div>
   );
 }

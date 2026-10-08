@@ -13,6 +13,7 @@ import Coreografia from "@/components/movimento/Coreografia";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
+import AnalyticsCliente from "@/components/AnalyticsCliente";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
 import ProjectFeedbackList from "@/components/ProjectFeedbackList";
@@ -196,6 +197,7 @@ export default async function ProjetoPage({
             <ProjectFeedbackList feedback={feedback ?? []} />
           </div>
         }
+        analytics={<AnalyticsCliente projectId={id} projectName={project.name} />}
       />
     </main>
     </Coreografia>
