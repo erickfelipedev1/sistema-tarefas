@@ -12,7 +12,7 @@ import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
-import { InboxIcon, LinkIcon, PlusIcon } from "./ui/icons";
+import { InboxIcon, LinkIcon, PlusIcon, Trash2Icon } from "./ui/icons";
 
 type Aba = "recebidas" | "enviadas";
 type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger";
@@ -75,6 +75,10 @@ export default function TaskRequests({
   const [erroTitulo, setErroTitulo] = useState<string | null>(null);
   const [erroResponsavel, setErroResponsavel] = useState<string | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  // Exclusão: qual solicitação está pedindo confirmação, e qual está sendo apagada.
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<string | null>(null);
+  const [erroLista, setErroLista] = useState<string | null>(null);
   // Tarefa que já foi criada num envio em que só o registro do pedido falhou:
   // ao tentar de novo, reaproveita essa em vez de criar outra igual.
   const tarefaJaCriada = useRef<Task | null>(null);
@@ -322,6 +326,31 @@ export default function TaskRequests({
     setTimeout(() => setSucesso(false), 4000);
   }
 
+  // Exclui a solicitação (some pra quem enviou e pra quem recebeu). A tarefa
+  // que ela criou só vai junto se a pessoa escolher: quem exclui o pedido
+  // pode querer só limpar a lista, com o trabalho seguindo no quadro.
+  async function excluirSolicitacao(req: TaskRequest, comTarefa: boolean) {
+    setExcluindo(req.id);
+    setErroLista(null);
+    const { error } = await supabase.from("task_requests").delete().eq("id", req.id);
+    if (error) {
+      setExcluindo(null);
+      setErroLista(`Não foi possível excluir a solicitação "${req.title}": ${error.message}`);
+      return;
+    }
+    setRequests((current) => current.filter((r) => r.id !== req.id));
+    setConfirmandoExclusao(null);
+    if (comTarefa && req.task_id) {
+      const { error: erroTarefa } = await supabase.from("tasks").delete().eq("id", req.task_id);
+      if (erroTarefa) {
+        setErroLista(
+          `A solicitação "${req.title}" foi excluída, mas a tarefa não: ${erroTarefa.message}. Exclua a tarefa pelo quadro.`
+        );
+      }
+    }
+    setExcluindo(null);
+  }
+
   function statusInfo(status: TaskRequest["status"]): { texto: string; tone: BadgeTone } {
     if (status === "pending") return { texto: "Pendente", tone: "warning" };
     if (status === "accepted") return { texto: "Criada", tone: "success" };
@@ -556,6 +585,8 @@ export default function TaskRequests({
         </div>
       )}
 
+      {erroLista && <p className="mb-3 text-sm text-danger">{erroLista}</p>}
+
       <div className="space-y-2.5">
         {lista.map((req) => {
           const s = statusInfo(req.status);
@@ -604,8 +635,53 @@ export default function TaskRequests({
                   <span className="text-xs text-ink-muted">
                     {formatarDataHora(req.created_at)}
                   </span>
+                  <button
+                    onClick={() => setConfirmandoExclusao(req.id)}
+                    disabled={excluindo !== null}
+                    title="Excluir solicitação"
+                    aria-label={`Excluir a solicitação ${req.title}`}
+                    className="rounded-md p-1.5 text-ink-muted hover:bg-danger-light hover:text-danger disabled:opacity-40"
+                  >
+                    <Trash2Icon className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
+
+              {confirmandoExclusao === req.id && (
+                <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-line pt-3">
+                  <p className="mr-auto text-xs text-ink-muted">
+                    {req.task_id
+                      ? "Excluir esta solicitação? Ela some pra quem enviou e pra quem recebeu. A tarefa que ela criou pode ficar no quadro ou ser excluída junto."
+                      : "Excluir esta solicitação? Ela some pra quem enviou e pra quem recebeu."}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmandoExclusao(null)}
+                    disabled={excluindo !== null}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => excluirSolicitacao(req, false)}
+                    disabled={excluindo !== null}
+                  >
+                    {excluindo === req.id ? "Excluindo..." : req.task_id ? "Só a solicitação" : "Excluir"}
+                  </Button>
+                  {req.task_id && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => excluirSolicitacao(req, true)}
+                      disabled={excluindo !== null}
+                    >
+                      Solicitação e tarefa
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
