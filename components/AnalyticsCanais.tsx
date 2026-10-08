@@ -1,9 +1,11 @@
 import { formatarValor, type CanalDeAnalytics } from "@/lib/analytics";
 import { Badge } from "./ui/Badge";
+import GraficoDeLinha from "./GraficoDeLinha";
 
-// Os blocos de números da aba "Analytics": um por canal conectado no
-// Reportei, cada métrica com o valor do período e a variação contra o
-// período anterior. Só desenha o que recebe (ver AnalyticsCliente).
+// Os blocos da aba "Analytics": um por canal conectado no Reportei. Em cima,
+// cada métrica com o valor do período e a variação contra o período
+// anterior; embaixo, os gráficos da evolução dia a dia (um por métrica, cada
+// um com a própria escala). Só desenha o que recebe (ver AnalyticsCliente).
 // A variação aparece sem verde/vermelho de propósito: subir é bom pra
 // cliques e ruim pra custo, e a tela não tem como saber qual é qual em todo
 // canal.
@@ -32,7 +34,7 @@ export default function AnalyticsCanais({ canais }: { canais: CanalDeAnalytics[]
               {canal.metricas.map((m) => (
                 <div key={m.chave}>
                   <dt className="text-xs text-ink-muted">{m.rotulo}</dt>
-                  <dd className="mt-1 text-xl font-semibold tabular-nums text-ink">
+                  <dd className="mt-1 text-xl font-semibold text-ink">
                     {formatarValor(m.valor, m.formato)}
                   </dd>
                   <dd className="mt-0.5 text-xs tabular-nums text-ink-muted">
@@ -47,6 +49,13 @@ export default function AnalyticsCanais({ canais }: { canais: CanalDeAnalytics[]
                 </div>
               ))}
             </dl>
+          )}
+          {canal.graficos.length > 0 && (
+            <div className="mt-5 grid gap-x-6 gap-y-5 border-t border-line pt-4 sm:grid-cols-2 lg:grid-cols-3">
+              {canal.graficos.map((g) => (
+                <GraficoDeLinha key={g.chave} grafico={g} />
+              ))}
+            </div>
           )}
         </section>
       ))}

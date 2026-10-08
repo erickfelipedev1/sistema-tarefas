@@ -14,6 +14,17 @@ export interface MetricaDoCanal {
   variacao: number | null;
 }
 
+// Evolução diária de uma métrica, pra virar um gráfico de linha.
+export interface GraficoDoCanal {
+  chave: string;
+  rotulo: string;
+  formato: Formato;
+  // true = métrica de nível (seguidores): o eixo se ajusta aos dados em vez
+  // de partir do zero.
+  nivel: boolean;
+  pontos: { dia: string; valor: number }[]; // dia em YYYY-MM-DD
+}
+
 export interface CanalDeAnalytics {
   id: number;
   nome: string; // "Meta Ads", "Instagram"...
@@ -21,6 +32,7 @@ export interface CanalDeAnalytics {
   // false = a conta está desconectada/pausada no Reportei.
   ativo: boolean;
   metricas: MetricaDoCanal[];
+  graficos: GraficoDoCanal[];
   erro: string | null;
 }
 
@@ -74,11 +86,19 @@ export function nomeDoCanal(slug: string) {
 //   CTR do Google Ads e da taxa de engajamento do GA4; o CTR do Meta já vem
 //   em porcentagem.
 // - gads:cost_micros já chega em reais, apesar do nome.
+// - "dividir": métrica que o d.hub calcula a partir de duas outras do mesmo
+//   canal, em vez de pedir pronta. É o caso do custo por visita ao perfil do
+//   Meta Ads: a métrica pronta do Reportei (cost_per_instagram_profile_visits)
+//   devolve a quantidade de visitas, não o custo.
+// - "semZero": custo por alguma coisa que veio zerado é porque não houve
+//   nenhuma (zero leads), não porque saiu de graça — aparece como "—".
 interface Destaque {
   chave: string;
   rotulo: string;
   formato: Formato;
   fracao?: boolean;
+  dividir?: [numerador: string, denominador: string];
+  semZero?: boolean;
 }
 
 const DESTAQUES_POR_CANAL: Record<string, Destaque[]> = {
@@ -94,6 +114,20 @@ const DESTAQUES_POR_CANAL: Record<string, Destaque[]> = {
       chave: "fb_ads:actions_onsite_conversion.messaging_conversation_started_7d",
       rotulo: "Conversas iniciadas",
       formato: "numero",
+    },
+    { chave: "fb_ads:instagram_profile_visits", rotulo: "Visitas ao perfil", formato: "numero" },
+    {
+      chave: "dhub:custo_por_visita_ao_perfil",
+      rotulo: "Custo por visita ao perfil",
+      formato: "moeda",
+      dividir: ["fb_ads:spend", "fb_ads:instagram_profile_visits"],
+    },
+    { chave: "fb_ads:actions_cost_per_lead", rotulo: "Custo por lead", formato: "moeda", semZero: true },
+    {
+      chave: "fb_ads:spend-actions_onsite_conversion.messaging_conversation_started_7d",
+      rotulo: "Custo por conversa iniciada",
+      formato: "moeda",
+      semZero: true,
     },
   ],
   google_adwords: [
@@ -150,32 +184,157 @@ const DESTAQUES_GENERICOS: { sufixos: string[]; rotulo: string; formato: Formato
 ];
 
 export interface MetricaEscolhida {
-  metrica: MetricaReportei;
+  chave: string;
   rotulo: string;
   formato: Formato;
   fracao: boolean;
+  semZero: boolean;
+  // A métrica do Reportei a pedir, ou null quando é calculada ("dividir").
+  metrica: MetricaReportei | null;
+  // Pras calculadas: as duas métricas do Reportei que entram na conta.
+  dividir: [MetricaReportei, MetricaReportei] | null;
 }
 
 // Escolhe, no catálogo de um canal, as métricas de número único que entram
-// no resumo. O que o catálogo não tiver é pulado.
+// no resumo. O que o catálogo não tiver é pulado (e a calculada some se
+// faltar uma das duas de que ela depende).
 export function escolherMetricas(slug: string, catalogo: MetricaReportei[]): MetricaEscolhida[] {
   const numeros = catalogo.filter((m) => m.component.startsWith("number"));
   const doCanal = DESTAQUES_POR_CANAL[slug];
   if (doCanal) {
-    return doCanal.flatMap((d) => {
-      const metrica = numeros.find((m) => m.reference_key === d.chave);
-      return metrica ? [{ metrica, rotulo: d.rotulo, formato: d.formato, fracao: !!d.fracao }] : [];
+    const achar = (chave: string) => numeros.find((m) => m.reference_key === chave);
+    return doCanal.flatMap((d): MetricaEscolhida[] => {
+      const comum = { chave: d.chave, rotulo: d.rotulo, formato: d.formato, fracao: !!d.fracao, semZero: !!d.semZero };
+      if (d.dividir) {
+        const [numerador, denominador] = [achar(d.dividir[0]), achar(d.dividir[1])];
+        return numerador && denominador ? [{ ...comum, metrica: null, dividir: [numerador, denominador] }] : [];
+      }
+      const metrica = achar(d.chave);
+      return metrica ? [{ ...comum, metrica, dividir: null }] : [];
     });
   }
   const sufixo = (chave: string) => (chave.includes(":") ? chave.slice(chave.indexOf(":") + 1) : chave);
   const escolhidas: MetricaEscolhida[] = [];
   for (const d of DESTAQUES_GENERICOS) {
     const metrica = numeros.find((m) => d.sufixos.includes(sufixo(m.reference_key)));
-    if (metrica && !escolhidas.some((e) => e.metrica.id === metrica.id)) {
-      escolhidas.push({ metrica, rotulo: d.rotulo, formato: d.formato, fracao: false });
+    if (metrica && !escolhidas.some((e) => e.metrica?.id === metrica.id)) {
+      escolhidas.push({
+        chave: metrica.reference_key,
+        rotulo: d.rotulo,
+        formato: d.formato,
+        fracao: false,
+        semZero: false,
+        metrica,
+        dividir: null,
+      });
     }
   }
   return escolhidas;
+}
+
+// Os gráficos de evolução diária de cada canal. "chave" é uma métrica de
+// gráfico do catálogo (component chart_v1) com a data como dimensão. Quando a
+// métrica traz mais de uma série (cliques e CTR juntos), "serie" diz qual
+// usar — um gráfico só mostra uma grandeza, nunca duas escalas no mesmo eixo.
+interface DestaqueDeGrafico {
+  chave: string;
+  rotulo: string;
+  formato: Formato;
+  serie?: string;
+  nivel?: boolean;
+}
+
+const GRAFICOS_POR_CANAL: Record<string, DestaqueDeGrafico[]> = {
+  facebook_ads: [
+    { chave: "fb_ads:spend_by_date", rotulo: "Investimento por dia", formato: "moeda" },
+    { chave: "fb_ads:clicks_and_ctr_by_date", rotulo: "Cliques por dia", formato: "numero", serie: "clicks" },
+    {
+      chave: "fb_ads:instagram_profile_visits_by_date",
+      rotulo: "Visitas ao perfil por dia",
+      formato: "numero",
+    },
+  ],
+  // No Google Ads as séries vêm sem nome, na ordem das métricas do catálogo:
+  // a primeira é a grandeza (custo, cliques, conversões) e a segunda a taxa.
+  google_adwords: [
+    { chave: "gads:cost_average_cpc_per_day", rotulo: "Investimento por dia", formato: "moeda" },
+    { chave: "gads:clicks_ctr_per_day", rotulo: "Cliques por dia", formato: "numero" },
+    { chave: "gads:conversion_conversion_rate_per_day", rotulo: "Conversões por dia", formato: "numero" },
+  ],
+  instagram_business: [
+    { chave: "ig:reach_over_time", rotulo: "Alcance por dia", formato: "numero" },
+    { chave: "ig:followers_count_chart", rotulo: "Seguidores", formato: "numero", nivel: true },
+    { chave: "ig:new_followers_count_chart", rotulo: "Novos seguidores por dia", formato: "numero" },
+  ],
+  facebook: [
+    { chave: "fb:follows_over_time", rotulo: "Seguidores", formato: "numero", nivel: true },
+    { chave: "fb:page_messages_new_over_time", rotulo: "Novas conversas por dia", formato: "numero" },
+  ],
+  google_analytics_4: [{ chave: "google_analytics_4:users_over_time", rotulo: "Usuários por dia", formato: "numero" }],
+};
+
+export interface GraficoEscolhido {
+  metrica: MetricaReportei;
+  rotulo: string;
+  formato: Formato;
+  serie: string | null;
+  nivel: boolean;
+}
+
+export function escolherGraficos(slug: string, catalogo: MetricaReportei[]): GraficoEscolhido[] {
+  return (GRAFICOS_POR_CANAL[slug] ?? []).flatMap((g) => {
+    const metrica = catalogo.find((m) => m.reference_key === g.chave && m.component.startsWith("chart"));
+    return metrica ? [{ metrica, rotulo: g.rotulo, formato: g.formato, serie: g.serie ?? null, nivel: !!g.nivel }] : [];
+  });
+}
+
+// As datas dos gráficos chegam em três formatos, conforme o canal:
+// "2026-09-24", "2026-09-24T07:00:00+0000" e "20260924". Vira YYYY-MM-DD.
+export function normalizarDia(rotulo: unknown): string | null {
+  if (typeof rotulo !== "string") return null;
+  if (/^\d{8}$/.test(rotulo)) return `${rotulo.slice(0, 4)}-${rotulo.slice(4, 6)}-${rotulo.slice(6, 8)}`;
+  return /^\d{4}-\d{2}-\d{2}/.test(rotulo) ? rotulo.slice(0, 10) : null;
+}
+
+// Transforma a resposta de uma métrica de gráfico nos pontos do dia a dia.
+// Devolve [] quando não há dados (o Reportei responde só com uma mensagem),
+// quando o formato é outro, ou quando a série pedida não existe.
+export function lerSerieDiaria(dado: unknown, serie: string | null): { dia: string; valor: number }[] {
+  const { labels, values } = (dado ?? {}) as { labels?: unknown; values?: unknown };
+  if (!Array.isArray(labels) || !Array.isArray(values) || values.length === 0) return [];
+  const series = values as { name?: unknown; data?: unknown }[];
+  // Com nome pedido: a série cujo nome contém o termo e não é uma taxa. Sem
+  // nome: a primeira.
+  const escolhida = serie
+    ? series.find((s) => typeof s.name === "string" && s.name.includes(serie) && !s.name.includes("rate"))
+    : series[0];
+  if (!escolhida || !Array.isArray(escolhida.data)) return [];
+  const dados = escolhida.data as unknown[];
+  const pontos: { dia: string; valor: number }[] = [];
+  labels.forEach((rotulo, i) => {
+    const dia = normalizarDia(rotulo);
+    const valor = lerNumero(dados[i]);
+    if (dia && valor !== null) pontos.push({ dia, valor });
+  });
+  return pontos;
+}
+
+// O Reportei só devolve os dias em que houve movimento (um Google Ads que
+// rodou 12 dias em 90 vem com 12 pontos). Num gráfico de volume isso
+// esconderia os buracos, então os dias que faltam entram como zero, do
+// primeiro ao último dia do período. Em métrica de nível (seguidores) não se
+// inventa ponto nenhum.
+export function preencherDias(pontos: { dia: string; valor: number }[], inicio: string, fim: string) {
+  const porDia = new Map(pontos.map((p) => [p.dia, p.valor]));
+  const completos: { dia: string; valor: number }[] = [];
+  const cursor = new Date(`${inicio}T12:00:00Z`);
+  for (let i = 0; i < 400; i++) {
+    const dia = cursor.toISOString().slice(0, 10);
+    if (dia > fim) break;
+    completos.push({ dia, valor: porDia.get(dia) ?? 0 });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return completos;
 }
 
 export function formatarValor(valor: number | null, formato: Formato) {

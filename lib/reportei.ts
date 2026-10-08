@@ -42,8 +42,12 @@ export interface MetricaReportei {
   [campo: string]: unknown;
 }
 
+// Resposta de uma métrica. Número: "values" é o valor e "comparison" o
+// período anterior. Gráfico (component chart_v1): "labels" são as datas e
+// "values" uma lista de séries ({ name, data }).
 export interface DadoReportei {
   values: unknown;
+  labels?: unknown;
   comparison?: { values: unknown; difference: number | null; absoluteDifference: number | null } | null;
 }
 
@@ -180,7 +184,7 @@ const buscarDados = unstable_cache(
     // que não precisa ocupar o cache.
     const dados: Record<string, DadoReportei> = {};
     for (const [id, dado] of Object.entries(resposta.data ?? {})) {
-      dados[id] = { values: dado.values, comparison: dado.comparison ?? null };
+      dados[id] = { values: dado.values, labels: dado.labels, comparison: dado.comparison ?? null };
     }
     return dados;
   },

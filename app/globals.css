@@ -42,6 +42,9 @@
     --viz-realizadas: #23A66C;
     --viz-tarefas: #2E8AE6;
     --viz-demandas: #D95C9E;
+    /* Linha dos gráficos de série única (Analytics): o limão da marca num
+       passo mais escuro — o limão cheio é claro demais pra traço no escuro. */
+    --viz-serie: #74A52B;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
     --shadow-card-hover: 0 14px 28px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -78,6 +81,7 @@
     --viz-realizadas: #0F7A4C;
     --viz-tarefas: #0B6FD6;
     --viz-demandas: #B8338F;
+    --viz-serie: #4C750C;
 
     --shadow-card: 0 1px 2px rgba(20, 23, 15, 0.08), 0 1px 1px rgba(20, 23, 15, 0.04);
     --shadow-card-hover: 0 14px 28px rgba(20, 23, 15, 0.14), 0 4px 10px rgba(20, 23, 15, 0.08);
