@@ -171,3 +171,22 @@
     overflow: visible;
   }
 }
+
+/* Logo d.hub (components/ui/Logo.tsx): o degradê limão corre pelas letras o
+   tempo todo. O fundo tem o dobro da largura e anda exatamente um ciclo, e
+   como o degradê começa e termina na mesma cor a repetição não tem emenda.
+   Roda também com "efeitos de animação" desligados no sistema: é só cor
+   mudando devagar, nada se desloca. */
+.logo-vivo {
+  background-size: 200% 100%;
+  animation: logo-fluxo 6s linear infinite;
+}
+@keyframes logo-fluxo {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+@media print {
+  .logo-vivo {
+    animation: none;
+  }
+}

@@ -1,8 +1,12 @@
 // Logo do d.hub: "d" em negrito e ".hub" fino, com o degradê limão da
 // marca. Feito em texto (fonte Outfit, --font-logo) com o degradê recortado
 // nas letras, pra ficar nítido em qualquer tamanho.
+// O degradê corre devagar pelas letras o tempo todo (classe .logo-vivo, em
+// globals.css), com uma faixa mais clara que passa como um brilho. Começa e
+// termina na mesma cor, então a volta não tem emenda.
 
-const DEGRADE = "linear-gradient(100deg, #DAEE63 0%, #AEDF55 55%, #7FD36A 100%)";
+const DEGRADE =
+  "linear-gradient(100deg, #AEDF55 0%, #7FD36A 28%, #AEDF55 44%, #F1FFB0 50%, #AEDF55 56%, #DAEE63 78%, #AEDF55 100%)";
 
 export function Logo({
   tamanho = "md",
@@ -14,7 +18,7 @@ export function Logo({
   const texto = { sm: "text-xl", md: "text-[26px]", lg: "text-4xl" }[tamanho];
   return (
     <span
-      className={`inline-block ${texto} leading-none tracking-tight ${className}`}
+      className={`logo-vivo inline-block ${texto} leading-none tracking-tight ${className}`}
       style={{
         fontFamily: "var(--font-logo), var(--font-texto), sans-serif",
         backgroundImage: DEGRADE,
