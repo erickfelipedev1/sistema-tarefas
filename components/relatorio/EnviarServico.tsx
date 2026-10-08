@@ -83,9 +83,10 @@ export default function EnviarServico({
 
   return (
     <section data-mov="card" className="rounded-2xl border border-line bg-surface p-5">
-      <p className="text-sm font-semibold text-ink">Enviar serviço de {nomeDoMes(mes)}</p>
+      <p className="text-sm font-semibold text-ink">Enviar outro serviço de {nomeDoMes(mes)}</p>
       <p className="mt-0.5 text-xs text-ink-muted">
-        Um envio por serviço. O faturamento confere e inclui no relatório do cliente.
+        Pra o que não virou tarefa no sistema. Um envio por serviço; o faturamento confere e inclui no
+        relatório do cliente.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

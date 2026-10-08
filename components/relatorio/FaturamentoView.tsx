@@ -12,6 +12,7 @@ import CatalogoServicos from "./CatalogoServicos";
 import Link from "next/link";
 import EnviarAoCliente, { type FaturaDoMes } from "./EnviarAoCliente";
 import EnviosPendentes, { type EnvioPendente } from "./EnviosPendentes";
+import TarefasSemValor, { type TarefaSemValor } from "./TarefasSemValor";
 
 // Aba "Faturamento" do Relatório mensal — recebe tudo já calculado (ver
 // app/(app)/relatorio/faturamento.tsx e lib/faturamento.ts). Com um cliente
@@ -33,6 +34,8 @@ export default function FaturamentoView({
   enviosDoMes,
   enviosEmOutrosMeses,
   enviosComErro,
+  tarefasPorCliente,
+  tarefasComErro,
 }: {
   faturamento: Faturamento;
   totalAnterior: number;
@@ -55,12 +58,27 @@ export default function FaturamentoView({
   enviosEmOutrosMeses: { mes: string; nome: string; total: number }[];
   // A lista de envios da equipe não carregou inteira.
   enviosComErro: boolean;
+  // Tarefas concluídas no mês que ainda não têm valor (e as marcadas "não
+  // cobrar"), por cliente. Entram sozinhas; ver TarefasSemValor.
+  tarefasPorCliente: Record<string, { semValor: TarefaSemValor[]; dispensadas: { id: string; titulo: string }[] }>;
+  tarefasComErro: boolean;
 }) {
   const nomeDoCliente = (id: string) => clientes.find((c) => c.id === id)?.nome ?? "Cliente";
   const nomeDaPessoa = (id: string | null) => (id ? pessoas.find((p) => p.id === id)?.nome ?? "—" : "—");
   const mesPassado = nomeDoMes(somarMes(mes, -1)).split(" de ")[0];
   const diferenca = faturamento.total - totalAnterior;
   const mensais = faturamento.porCliente.reduce((n, c) => n + c.linhas.filter((l) => l.recurring).length, 0);
+  // Um bloco por cliente que tem serviço lançado OU tarefa concluída no mês.
+  const lancadosPorCliente = new Map(faturamento.porCliente.map((c) => [c.projectId, c]));
+  const blocos = Array.from(new Set([...lancadosPorCliente.keys(), ...Object.keys(tarefasPorCliente)]))
+    .map((projectId) => ({
+      projectId,
+      linhas: lancadosPorCliente.get(projectId)?.linhas ?? [],
+      total: lancadosPorCliente.get(projectId)?.total ?? 0,
+      tarefas: tarefasPorCliente[projectId] ?? { semValor: [], dispensadas: [] },
+    }))
+    .sort((a, b) => nomeDoCliente(a.projectId).localeCompare(nomeDoCliente(b.projectId), "pt-BR"));
+  const tarefasSemValor = blocos.reduce((n, b) => n + b.tarefas.semValor.length, 0);
   // Coluna interna: some do papel quando o documento é pra um cliente só.
   const colunaInterna = cliente ? "nao-imprime" : "";
 
@@ -126,6 +144,11 @@ export default function FaturamentoView({
                 rotulo="Serviços no mês"
                 valor={String(faturamento.quantidadeDeLinhas)}
                 detalhe={mensais === 1 ? "1 mensal" : `${mensais} mensais`}
+                extraSoNaTela={
+                  tarefasSemValor > 0
+                    ? ` · ${tarefasSemValor} ${tarefasSemValor === 1 ? "tarefa" : "tarefas"} sem valor`
+                    : undefined
+                }
               />
             </section>
 
@@ -156,6 +179,12 @@ export default function FaturamentoView({
               </p>
             )}
 
+            {tarefasComErro && (
+              <p className="nao-imprime mt-3 rounded-xl border border-danger/30 bg-danger-light px-4 py-2.5 text-xs text-danger">
+                Não deu pra carregar as tarefas concluídas do mês; elas não aparecem abaixo. Recarregue a página.
+              </p>
+            )}
+
             <LancarServico
               mes={mes}
               clienteInicial={cliente}
@@ -164,25 +193,28 @@ export default function FaturamentoView({
               servicos={servicos.filter((s) => s.active)}
             />
 
-            {faturamento.porCliente.length === 0 ? (
+            {blocos.length === 0 ? (
               <p
                 data-mov="card"
                 className="mt-3 rounded-2xl border border-line bg-surface px-5 py-10 text-center text-sm text-ink-muted"
               >
-                Nenhum serviço lançado em {nomeDoMes(mes)}
+                Nenhum serviço lançado nem tarefa concluída em {nomeDoMes(mes)}
                 {cliente ? ` para ${nomeDoCliente(cliente)}` : ""}.
               </p>
             ) : (
-              faturamento.porCliente.map((c) => (
+              blocos.map((c) => (
                 <section
                   key={c.projectId}
                   data-mov="card"
-                  className="mt-3 break-inside-avoid rounded-2xl border border-line bg-surface p-5"
+                  className={`mt-3 break-inside-avoid rounded-2xl border border-line bg-surface p-5 ${
+                    c.linhas.length === 0 ? "nao-imprime" : ""
+                  }`}
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-semibold text-ink">{nomeDoCliente(c.projectId)}</p>
                     <p className="text-sm font-semibold tabular-nums text-ink">{formatarMoeda(c.total)}</p>
                   </div>
+                  {c.linhas.length > 0 && (
                   <div className="mt-3 overflow-x-auto scrollbar-thin">
                     <table className="w-full min-w-[560px] text-left text-sm">
                       <thead>
@@ -238,7 +270,17 @@ export default function FaturamentoView({
                       </tbody>
                     </table>
                   </div>
-                  {faturasDoMes ? (
+                  )}
+
+                  {(c.tarefas.semValor.length > 0 || c.tarefas.dispensadas.length > 0) && (
+                    <TarefasSemValor
+                      tarefas={c.tarefas.semValor}
+                      dispensadas={c.tarefas.dispensadas}
+                      servicos={servicos.filter((s) => s.active)}
+                    />
+                  )}
+
+                  {c.linhas.length === 0 ? null : faturasDoMes ? (
                     <EnviarAoCliente
                       projectId={c.projectId}
                       clienteNome={nomeDoCliente(c.projectId)}
@@ -254,6 +296,7 @@ export default function FaturamentoView({
                       }))}
                       fatura={faturasDoMes[c.projectId] ?? null}
                       usuarioRotulo={usuarioRotulo}
+                      tarefasSemValor={c.tarefas.semValor.length}
                     />
                   ) : (
                     <p className="nao-imprime mt-3 border-t border-line pt-3 text-xs text-warning">
@@ -287,10 +330,13 @@ function Resumo({
   valor,
   detalhe,
   detalheSoNaTela = false,
+  extraSoNaTela,
 }: {
   rotulo: string;
   valor: string;
   detalhe: string;
+  // Complemento interno do detalhe (ex.: tarefas sem valor): nunca vai pro papel.
+  extraSoNaTela?: string;
   // O comparativo com o mês anterior é informação interna: não vai pro papel.
   detalheSoNaTela?: boolean;
 }) {
@@ -298,7 +344,10 @@ function Resumo({
     <div data-mov="card" className="rounded-2xl border border-line bg-surface p-4">
       <p className="text-xs font-medium text-ink-muted">{rotulo}</p>
       <p className="mt-2 break-words text-2xl font-semibold leading-tight tabular-nums text-ink">{valor}</p>
-      <p className={`mt-2 text-xs text-ink-muted ${detalheSoNaTela ? "nao-imprime" : ""}`}>{detalhe}</p>
+      <p className={`mt-2 text-xs text-ink-muted ${detalheSoNaTela ? "nao-imprime" : ""}`}>
+        {detalhe}
+        {extraSoNaTela && <span className="nao-imprime">{extraSoNaTela}</span>}
+      </p>
     </div>
   );
 }

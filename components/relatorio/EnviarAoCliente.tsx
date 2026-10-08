@@ -47,6 +47,7 @@ export default function EnviarAoCliente({
   itens,
   fatura,
   usuarioRotulo,
+  tarefasSemValor,
 }: {
   projectId: string;
   clienteNome: string;
@@ -55,6 +56,8 @@ export default function EnviarAoCliente({
   itens: InvoiceItem[];
   fatura: FaturaDoMes | null;
   usuarioRotulo: string;
+  // Tarefas concluídas do cliente que ainda não têm valor: ficam fora da fatura.
+  tarefasSemValor: number;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -155,6 +158,13 @@ export default function EnviarAoCliente({
           <p className="mr-auto text-xs text-ink-muted">
             Cria a fatura &quot;Serviços de {nomeDoMes(mes)}&quot;, de {formatarMoeda(total)}, na aba Faturas de{" "}
             {clienteNome}. O cliente vê no portal dele.
+            {tarefasSemValor > 0 && (
+              <span className="mt-1 block font-medium text-warning">
+                {tarefasSemValor === 1
+                  ? "Há 1 tarefa concluída sem valor: ela fica fora desta fatura."
+                  : `Há ${tarefasSemValor} tarefas concluídas sem valor: elas ficam fora desta fatura.`}
+              </span>
+            )}
           </p>
           {erro && <p className="w-full text-right text-xs text-danger">{erro}</p>}
           <label className="flex items-center gap-2 text-xs font-medium text-ink-muted">

@@ -8,6 +8,7 @@ import RelatorioAbas from "./RelatorioAbas";
 import RelatorioControles from "./RelatorioControles";
 import EnviarServico from "./EnviarServico";
 import DesistirDoEnvio from "./DesistirDoEnvio";
+import EnviarTarefas, { type MinhaTarefa } from "./EnviarTarefas";
 
 const SITUACAO = {
   pending: { rotulo: "Aguardando análise", tom: "warning" },
@@ -24,6 +25,7 @@ export default function MeusServicosView({
   clientes,
   catalogo,
   envios,
+  tarefas,
   semMigracao,
   erroDeCarga,
 }: {
@@ -32,6 +34,8 @@ export default function MeusServicosView({
   clientes: { id: string; nome: string }[];
   catalogo: ServicoDoCatalogo[];
   envios: Envio[];
+  // Tarefas de cliente que a pessoa concluiu no mês; null = falta a 0048.
+  tarefas: MinhaTarefa[] | null;
   semMigracao: boolean;
   erroDeCarga: boolean;
 }) {
@@ -62,7 +66,11 @@ export default function MeusServicosView({
           </p>
         ) : (
           <>
-            <EnviarServico mes={mes} clientes={clientes} catalogo={catalogo} />
+            {tarefas && tarefas.length > 0 && <EnviarTarefas tarefas={tarefas} catalogo={catalogo} mes={mes} />}
+
+            <div className={tarefas && tarefas.length > 0 ? "mt-3" : ""}>
+              <EnviarServico mes={mes} clientes={clientes} catalogo={catalogo} />
+            </div>
 
             <section data-mov="card" className="mt-3 rounded-2xl border border-line bg-surface p-5">
               <p className="text-sm font-semibold text-ink">

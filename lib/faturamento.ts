@@ -31,6 +31,8 @@ export interface Envio {
   status: "pending" | "accepted" | "declined";
   review_note: string | null;
   created_at: string;
+  // De qual tarefa concluída veio o envio (migration 0048), se veio de uma.
+  task_id?: string | null;
 }
 
 export interface Lancamento {
