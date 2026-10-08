@@ -185,8 +185,30 @@
   from { background-position: 0% 50%; }
   to { background-position: 200% 50%; }
 }
+
+/* "d.gital hub" que se junta em "d.hub": o miolo ("gital ") é uma caixa que
+   abre e fecha na largura, em laço — 3,5s por extenso, fecha, 7s como
+   "d.hub", abre de novo. 2.15em é a largura do miolo na fonte do logo (2em)
+   com uma folguinha: maior que isso, o começo do fechamento não mexe nada. A folga embaixo (com a margem negativa) é pro "g" não
+   ser cortado pela caixa. */
+.logo-meio {
+  display: inline-block;
+  overflow: hidden;
+  white-space: pre;
+  vertical-align: bottom;
+  padding-bottom: 0.3em;
+  margin-bottom: -0.3em;
+  max-width: 0;
+  animation: logo-junta 12s ease-in-out infinite;
+}
+@keyframes logo-junta {
+  0%, 29% { max-width: 2.15em; }
+  36%, 93% { max-width: 0; }
+  100% { max-width: 2.15em; }
+}
 @media print {
-  .logo-vivo {
+  .logo-vivo,
+  .logo-meio {
     animation: none;
   }
 }

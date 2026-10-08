@@ -4,6 +4,8 @@
 // O degradê corre devagar pelas letras o tempo todo (classe .logo-vivo, em
 // globals.css), com uma faixa mais clara que passa como um brilho. Começa e
 // termina na mesma cor, então a volta não tem emenda.
+// O nome também se mexe: aparece por extenso, "d.gital hub", e o miolo
+// ("gital ") se fecha até sobrar "d.hub" — classe .logo-meio, em laço.
 
 const DEGRADE =
   "linear-gradient(100deg, #AEDF55 0%, #7FD36A 28%, #AEDF55 44%, #F1FFB0 50%, #AEDF55 56%, #DAEE63 78%, #AEDF55 100%)";
@@ -32,7 +34,11 @@ export function Logo({
       aria-label="d.hub"
     >
       <span className="font-bold">d</span>
-      <span className="font-light">.hub</span>
+      <span className="font-light">.</span>
+      <span className="logo-meio font-light" aria-hidden="true">
+        {"gital "}
+      </span>
+      <span className="font-light">hub</span>
     </span>
   );
 }
