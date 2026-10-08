@@ -9,6 +9,30 @@ export interface Servico {
   active: boolean;
 }
 
+// O que o colaborador enxerga do catálogo: sem preço (função
+// catalogo_de_servicos, migration 0047).
+export interface ServicoDoCatalogo {
+  id: string;
+  name: string;
+  recurrence: "unico" | "mensal";
+}
+
+// Serviço que um colaborador enviou pro faturamento (service_submissions,
+// migration 0047).
+export interface Envio {
+  id: string;
+  project_id: string;
+  service_id: string | null;
+  service_name: string;
+  detail: string | null;
+  quantity: number;
+  month: string; // YYYY-MM-01
+  submitted_by: string;
+  status: "pending" | "accepted" | "declined";
+  review_note: string | null;
+  created_at: string;
+}
+
 export interface Lancamento {
   id: string;
   project_id: string;

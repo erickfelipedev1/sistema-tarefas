@@ -14,8 +14,11 @@ export default function RelatorioControles({
   mes,
   ehMesAtual,
   filtro,
+  semImpressao = false,
 }: {
-  aba: "faturamento" | "entregas" | "avaliacoes";
+  aba: "faturamento" | "servicos" | "entregas" | "avaliacoes";
+  // Tela que não é pra imprimir (formulário de envio): sem o botão.
+  semImpressao?: boolean;
   mes: string;
   ehMesAtual: boolean;
   // parametro: nome na URL; valor "" = sem filtro.
@@ -62,9 +65,11 @@ export default function RelatorioControles({
         </select>
       )}
 
-      <Button variant="secondary" size="sm" onClick={() => window.print()} className="ml-auto">
-        Imprimir ou salvar em PDF
-      </Button>
+      {!semImpressao && (
+        <Button variant="secondary" size="sm" onClick={() => window.print()} className="ml-auto">
+          Imprimir ou salvar em PDF
+        </Button>
+      )}
     </div>
   );
 }

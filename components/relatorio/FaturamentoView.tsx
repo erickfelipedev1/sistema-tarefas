@@ -9,7 +9,9 @@ import RelatorioControles from "./RelatorioControles";
 import LancarServico from "./LancarServico";
 import AcoesDoLancamento from "./AcoesDoLancamento";
 import CatalogoServicos from "./CatalogoServicos";
+import Link from "next/link";
 import EnviarAoCliente, { type FaturaDoMes } from "./EnviarAoCliente";
+import EnviosPendentes, { type EnvioPendente } from "./EnviosPendentes";
 
 // Aba "Faturamento" do Relatório mensal — recebe tudo já calculado (ver
 // app/(app)/relatorio/faturamento.tsx e lib/faturamento.ts). Com um cliente
@@ -28,6 +30,9 @@ export default function FaturamentoView({
   erroDeCarga,
   faturasDoMes,
   usuarioRotulo,
+  enviosDoMes,
+  enviosEmOutrosMeses,
+  enviosComErro,
 }: {
   faturamento: Faturamento;
   totalAnterior: number;
@@ -44,6 +49,12 @@ export default function FaturamentoView({
   // 0045, e aí não dá pra enviar.
   faturasDoMes: Record<string, FaturaDoMes> | null;
   usuarioRotulo: string;
+  // Serviços enviados pela equipe que ainda esperam análise: os deste mês
+  // (já filtrados pelo cliente escolhido) e a contagem dos outros meses.
+  enviosDoMes: EnvioPendente[];
+  enviosEmOutrosMeses: { mes: string; nome: string; total: number }[];
+  // A lista de envios da equipe não carregou inteira.
+  enviosComErro: boolean;
 }) {
   const nomeDoCliente = (id: string) => clientes.find((c) => c.id === id)?.nome ?? "Cliente";
   const nomeDaPessoa = (id: string | null) => (id ? pessoas.find((p) => p.id === id)?.nome ?? "—" : "—");
@@ -117,6 +128,33 @@ export default function FaturamentoView({
                 detalhe={mensais === 1 ? "1 mensal" : `${mensais} mensais`}
               />
             </section>
+
+            {enviosComErro && (
+              <p className="nao-imprime mt-3 rounded-xl border border-danger/30 bg-danger-light px-4 py-2.5 text-xs text-danger">
+                Não deu pra carregar todos os serviços enviados pela equipe; pode haver envios esperando análise
+                que não aparecem aqui. Recarregue a página.
+              </p>
+            )}
+
+            {enviosDoMes.length > 0 && <EnviosPendentes envios={enviosDoMes} />}
+
+            {enviosEmOutrosMeses.length > 0 && (
+              <p className="nao-imprime mt-3 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs text-ink-muted">
+                A equipe também enviou serviços que esperam análise em outros meses:{" "}
+                {enviosEmOutrosMeses.map((o, i) => (
+                  <span key={o.mes}>
+                    {i > 0 && ", "}
+                    <Link
+                      href={`/relatorio?aba=faturamento&mes=${o.mes}${cliente ? `&cliente=${cliente}` : ""}`}
+                      className="font-medium text-brand-forte hover:underline"
+                    >
+                      {o.total} em {o.nome}
+                    </Link>
+                  </span>
+                ))}
+                .
+              </p>
+            )}
 
             <LancarServico
               mes={mes}

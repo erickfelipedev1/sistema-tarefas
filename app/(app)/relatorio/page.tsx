@@ -4,6 +4,7 @@ import { mesAtual, mesValido } from "@/lib/relatorio";
 import AbaAvaliacoes from "./avaliacoes";
 import AbaEntregas from "./entregas";
 import AbaFaturamento from "./faturamento";
+import AbaServicos from "./servicos";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic";
 //     pra quem tem "ve_tudo" ou "ve_faturamento" (migration 0044); a trava
 //     também existe no banco, pela RLS das tabelas de serviço.
 //   entregas — tarefas concluídas pelo time. Todo mundo vê a do próprio time.
+//   servicos — "Meus serviços": quem NÃO vê faturamento envia por aqui o que
+//     fez pra cada cliente, sem ver preço (migration 0047).
 //   avaliacoes — quem tem "ve_tudo" avalia os colaboradores; os outros veem
 //     as avaliações que receberam (migration 0046, também com RLS).
 // Quem não vê faturamento cai em Entregas quando não pede aba nenhuma.
@@ -40,6 +43,10 @@ export default async function RelatorioPage({
         mostrarFaturamento={veFaturamento}
       />
     );
+  }
+
+  if (!veFaturamento && searchParams.aba === "servicos") {
+    return <AbaServicos supabase={supabase} userId={user.id} mes={mes} />;
   }
 
   if (veFaturamento && searchParams.aba !== "entregas") {

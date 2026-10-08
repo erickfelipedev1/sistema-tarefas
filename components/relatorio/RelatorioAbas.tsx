@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-type Aba = "faturamento" | "entregas" | "avaliacoes";
+type Aba = "faturamento" | "servicos" | "entregas" | "avaliacoes";
 
-// Abas do Relatório mensal. Faturamento só entra pra quem pode ver preços
-// (ver app/(app)/relatorio/page.tsx); as outras duas são de todo mundo. Não
-// saem na impressão.
+// Abas do Relatório mensal. Quem pode ver preços tem "Faturamento"; o resto
+// da equipe tem "Meus serviços" no lugar, por onde envia o que fez (ver
+// app/(app)/relatorio/page.tsx). As outras duas são de todo mundo. Não saem
+// na impressão.
 export default function RelatorioAbas({
   atual,
   mes,
@@ -15,7 +16,9 @@ export default function RelatorioAbas({
   mostrarFaturamento: boolean;
 }) {
   const abas: { chave: Aba; rotulo: string }[] = [
-    ...(mostrarFaturamento ? [{ chave: "faturamento" as const, rotulo: "Faturamento" }] : []),
+    mostrarFaturamento
+      ? { chave: "faturamento", rotulo: "Faturamento" }
+      : { chave: "servicos", rotulo: "Meus serviços" },
     { chave: "entregas", rotulo: "Entregas do time" },
     { chave: "avaliacoes", rotulo: "Avaliações" },
   ];

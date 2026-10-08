@@ -158,3 +158,62 @@ export async function avisarAvaliacaoEnviada(evaluationId: string) {
     tag: `avaliacao-${evaluationId}`,
   });
 }
+
+// Depois que um colaborador envia um serviço pro faturamento (aba "Meus
+// serviços"): avisa quem cuida do faturamento. Só quem enviou dispara, e o
+// aviso não leva valor.
+export async function avisarServicoEnviado(submissionId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const { data: envio } = await admin
+    .from("service_submissions")
+    .select("submitted_by, service_name, month, status, created_at")
+    .eq("id", submissionId)
+    .maybeSingle();
+  if (!envio || envio.submitted_by !== user.id || envio.status !== "pending") return;
+  // Só vale logo depois de criar: chamar de novo mais tarde não reenvia o aviso.
+  if (Date.now() - new Date(envio.created_at as string).getTime() > 60_000) return;
+
+  const [{ data: quemEnviou }, { data: destinatarios }] = await Promise.all([
+    admin.from("profiles").select("name, username").eq("id", user.id).maybeSingle(),
+    admin.from("profiles").select("id").or("ve_faturamento.eq.true,ve_tudo.eq.true"),
+  ]);
+  const nome = (quemEnviou?.name as string | null) || (quemEnviou?.username as string | null) || "Alguém";
+  await enviarPush(
+    (destinatarios ?? []).map((p) => p.id as string).filter((id) => id !== user.id),
+    {
+      titulo: "Serviço enviado pro faturamento",
+      corpo: `${nome} enviou "${envio.service_name}" pra análise.`,
+      url: `/relatorio?aba=faturamento&mes=${String(envio.month).slice(0, 7)}`,
+      tag: `envio-${submissionId}`,
+    }
+  );
+}
+
+// Depois que o faturamento aceita ou recusa um envio: avisa o colaborador.
+// Só quem vê faturamento dispara.
+export async function avisarServicoRevisado(submissionId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const [{ data: envio }, { data: perfil }] = await Promise.all([
+    admin
+      .from("service_submissions")
+      .select("submitted_by, service_name, month, status")
+      .eq("id", submissionId)
+      .maybeSingle(),
+    admin.from("profiles").select("ve_tudo, ve_faturamento").eq("id", user.id).maybeSingle(),
+  ]);
+  if (!envio || envio.status === "pending" || !(perfil?.ve_tudo || perfil?.ve_faturamento)) return;
+  if (envio.submitted_by === user.id) return;
+  await enviarPush([envio.submitted_by as string], {
+    titulo: envio.status === "accepted" ? "Serviço aceito" : "Serviço recusado",
+    corpo:
+      envio.status === "accepted"
+        ? `"${envio.service_name}" entrou no faturamento.`
+        : `"${envio.service_name}" foi recusado. Veja o motivo no d.hub.`,
+    url: `/relatorio?aba=servicos&mes=${String(envio.month).slice(0, 7)}`,
+    tag: `envio-${submissionId}`,
+  });
+}
