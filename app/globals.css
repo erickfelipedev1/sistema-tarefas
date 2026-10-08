@@ -42,9 +42,10 @@
     --viz-realizadas: #23A66C;
     --viz-tarefas: #2E8AE6;
     --viz-demandas: #D95C9E;
-    /* Linha dos gráficos de série única (Analytics): o limão da marca num
-       passo mais escuro — o limão cheio é claro demais pra traço no escuro. */
-    --viz-serie: #74A52B;
+    /* Linha dos gráficos de série única (Analytics): o limão da marca,
+       cheio. É claro demais pra dividir um gráfico com outras cores, mas
+       aqui a linha está sempre sozinha, sobre o fundo quase preto. */
+    --viz-serie: #AEDF55;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
     --shadow-card-hover: 0 14px 28px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -124,6 +125,51 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+/* Aba "Analytics" (components/analytics): cartões com borda fina e um
+   degradê quase imperceptível de cima pra baixo. "-vivo" reage ao mouse com
+   a borda puxando pro limão; "-destaque" é o cartão do resultado final, com
+   um banho de limão e um brilho bem leve em volta. */
+.cartao-analytics {
+  border: 1px solid rgb(var(--color-line));
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgb(var(--color-surface-hover) / 0.55) 0%, rgb(var(--color-surface)) 60%);
+}
+.cartao-analytics-vivo {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.cartao-analytics-vivo:hover {
+  border-color: rgb(var(--color-brand-forte) / 0.4);
+  box-shadow: 0 18px 40px -28px rgb(var(--color-brand) / 0.55);
+}
+.cartao-analytics-destaque {
+  border-color: rgb(var(--color-brand-forte) / 0.45);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--color-brand) / 0.24) 0%,
+    rgb(var(--color-brand) / 0.07) 48%,
+    rgb(var(--color-surface)) 100%
+  );
+  box-shadow: 0 0 48px -24px rgb(var(--color-brand) / 0.6);
+}
+.cartao-analytics-destaque.cartao-analytics-vivo:hover {
+  border-color: rgb(var(--color-brand-forte) / 0.7);
+  box-shadow: 0 0 56px -22px rgb(var(--color-brand) / 0.75);
+}
+/* Opção escolhida nos seletores (período, métrica do gráfico) e a linha do
+   gráfico grande: um halo limão curto, só no tema escuro. */
+.seletor-ativo {
+  box-shadow: 0 0 18px -6px rgb(var(--color-brand) / 0.7);
+}
+.grafico-brilho {
+  filter: drop-shadow(0 0 6px rgb(var(--color-brand) / 0.35));
+}
+:root[data-theme="light"] .seletor-ativo {
+  box-shadow: none;
+}
+:root[data-theme="light"] .grafico-brilho {
+  filter: none;
 }
 
 /* Entrada animada (components/movimento/Coreografia.tsx): até o GSAP

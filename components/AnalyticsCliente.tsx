@@ -7,8 +7,7 @@ import { formatarDataBR } from "@/lib/format";
 import AnalyticsCanais from "./AnalyticsCanais";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
-import { PageHeader } from "./ui/PageHeader";
-import { BarChartIcon } from "./ui/icons";
+import { BarChartIcon, CalendarIcon } from "./ui/icons";
 
 // Aba "Analytics" dentro de /projetos/[id]: os números de cada canal que o
 // cliente tem conectado no Reportei (Meta Ads, Google Ads, Instagram, GA4...),
@@ -59,39 +58,52 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
 
   return (
     <div>
-      <PageHeader
-        title="Analytics"
-        subtitle={
-          ok
-            ? `Números do Reportei de ${formatarDataBR(ok.periodo.inicio)} a ${formatarDataBR(ok.periodo.fim)}, comparados com os ${dias} dias anteriores.`
-            : "Números dos canais do cliente, direto do Reportei."
-        }
-        actions={
-          ok ? (
-            <div className="inline-flex rounded-lg border border-line bg-surface p-1" role="group" aria-label="Período">
+      <header className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink">Analytics</h1>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
+            {ok
+              ? `Números do Reportei de ${formatarDataBR(ok.periodo.inicio)} a ${formatarDataBR(ok.periodo.fim)}, comparados com os ${dias} dias anteriores.`
+              : "Números dos canais do cliente, direto do Reportei."}
+          </p>
+        </div>
+        {ok && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-xs tabular-nums text-ink-muted">
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {formatarDataBR(ok.periodo.inicio)} – {formatarDataBR(ok.periodo.fim)}
+            </p>
+            <div className="inline-flex rounded-full border border-line bg-surface p-1" role="group" aria-label="Período">
               {PERIODOS.map((p) => (
                 <button
                   key={p}
+                  type="button"
                   onClick={() => setDias(p)}
                   aria-pressed={p === dias}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    p === dias ? "bg-brand text-navy" : "text-ink-muted hover:bg-surface-hover hover:text-ink"
+                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+                    p === dias ? "seletor-ativo bg-brand text-navy" : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   {p} dias
                 </button>
               ))}
             </div>
-          ) : undefined
-        }
-      />
+          </div>
+        )}
+      </header>
 
       {carregando && !resultado && (
-        <div className="animate-pulse space-y-3" aria-busy="true">
+        <div className="animate-pulse space-y-4" aria-busy="true">
           <span className="sr-only">Carregando os números…</span>
-          {[0, 1].map((i) => (
-            <div key={i} className="h-36 rounded-2xl border border-line bg-surface" />
-          ))}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="cartao-analytics h-40" />
+            ))}
+          </div>
+          <div className="grid gap-4 xl:grid-cols-3">
+            <div className="cartao-analytics h-96 xl:col-span-2" />
+            <div className="cartao-analytics h-96" />
+          </div>
         </div>
       )}
 
@@ -116,7 +128,7 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
       )}
 
       {resultado?.estado === "sem-vinculo" && (
-        <div className="rounded-2xl border border-line bg-surface p-5">
+        <div className="cartao-analytics p-5">
           <p className="text-sm font-semibold text-ink">Ligar este cliente ao Reportei</p>
           <p className="mt-0.5 text-xs text-ink-muted">
             Escolha qual projeto do Reportei corresponde a {projectName}. Só precisa fazer uma vez.
@@ -153,7 +165,7 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
       {ok && (
         <div className={carregando ? "opacity-60 transition-opacity" : "transition-opacity"}>
           {ok.canais.length === 0 ? (
-            <div className="rounded-2xl border border-line bg-surface">
+            <div className="cartao-analytics">
               <EmptyState
                 className="py-14"
                 icon={<BarChartIcon className="h-7 w-7" />}
@@ -162,10 +174,10 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
               />
             </div>
           ) : (
-            <AnalyticsCanais canais={ok.canais} />
+            <AnalyticsCanais canais={ok.canais} periodo={ok.periodo} />
           )}
 
-          <p className="mt-4 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+          <p className="mt-6 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
             <span>
               Ligado ao projeto &quot;{ok.reportei.name}&quot; do Reportei. Os números ficam guardados por até 15
               minutos.

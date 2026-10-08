@@ -1,64 +1,60 @@
-import { formatarValor, type CanalDeAnalytics } from "@/lib/analytics";
-import { Badge } from "./ui/Badge";
-import GraficoDeLinha from "./GraficoDeLinha";
+"use client";
 
-// Os blocos da aba "Analytics": um por canal conectado no Reportei. Em cima,
-// cada métrica com o valor do período e a variação contra o período
-// anterior; embaixo, os gráficos da evolução dia a dia (um por métrica, cada
-// um com a própria escala). Só desenha o que recebe (ver AnalyticsCliente).
-// A variação aparece sem verde/vermelho de propósito: subir é bom pra
-// cliques e ruim pra custo, e a tela não tem como saber qual é qual em todo
-// canal.
-export default function AnalyticsCanais({ canais }: { canais: CanalDeAnalytics[] }) {
+import { useState } from "react";
+import type { CanalDeAnalytics } from "@/lib/analytics";
+import PainelDoCanal from "./analytics/PainelDoCanal";
+import { Badge } from "./ui/Badge";
+
+// O miolo da aba "Analytics": um painel por canal conectado no Reportei
+// (Meta Ads, Google Ads, Instagram...), um de cada vez — o seletor em cima
+// troca de canal. Assim cada canal tem a tela inteira pros seus cartões, o
+// gráfico grande e os insights, em vez de uma pilha de blocos iguais. Só
+// desenha o que recebe (ver AnalyticsCliente).
+export default function AnalyticsCanais({
+  canais,
+  periodo,
+}: {
+  canais: CanalDeAnalytics[];
+  periodo: { inicio: string; fim: string };
+}) {
+  const [escolhido, setEscolhido] = useState<number | null>(null);
+  const canal = canais.find((c) => c.id === escolhido) ?? canais[0];
+  if (!canal) return null;
+
   return (
-    <div className="space-y-3">
-      {canais.map((canal) => (
-        <section key={canal.id} className="rounded-2xl border border-line bg-surface p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-              {canal.nome}
-              {!canal.ativo && <Badge tone="warning">desconectado no Reportei</Badge>}
-            </p>
-            <p className="text-xs text-ink-muted">{canal.conta}</p>
-          </div>
-          {canal.erro ? (
-            <p className="mt-3 text-sm text-danger">{canal.erro}</p>
-          ) : canal.metricas.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-muted">Ainda não há um resumo configurado pra este tipo de canal.</p>
-          ) : canal.metricas.every((m) => m.valor === null) ? (
-            // Conta sem movimento no período (ex.: anúncios pausados): o
-            // Reportei não devolve número nenhum.
-            <p className="mt-3 text-sm text-ink-muted">Sem dados neste período.</p>
-          ) : (
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
-              {canal.metricas.map((m) => (
-                <div key={m.chave}>
-                  <dt className="text-xs text-ink-muted">{m.rotulo}</dt>
-                  <dd className="mt-1 text-xl font-semibold text-ink">
-                    {formatarValor(m.valor, m.formato)}
-                  </dd>
-                  <dd className="mt-0.5 text-xs tabular-nums text-ink-muted">
-                    {m.variacao === null
-                      ? "sem comparação"
-                      : Math.abs(m.variacao) < 0.05
-                        ? "igual ao período anterior"
-                        : `${m.variacao > 0 ? "▲" : "▼"} ${Math.abs(m.variacao).toLocaleString("pt-BR", {
-                            maximumFractionDigits: 1,
-                          })}% vs período anterior`}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {canal.graficos.length > 0 && (
-            <div className="mt-5 grid gap-x-6 gap-y-5 border-t border-line pt-4 sm:grid-cols-2 lg:grid-cols-3">
-              {canal.graficos.map((g) => (
-                <GraficoDeLinha key={g.chave} grafico={g} />
-              ))}
-            </div>
-          )}
-        </section>
-      ))}
+    <div>
+      <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Canal">
+        {canais.length > 1 ? (
+          canais.map((c) => {
+            const ativo = c.id === canal.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setEscolhido(c.id)}
+                aria-pressed={ativo}
+                className={`flex max-w-full items-baseline gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
+                  ativo
+                    ? "border-brand-forte/50 bg-brand/10 font-semibold text-ink"
+                    : "border-line bg-surface font-medium text-ink-muted hover:border-brand-forte/30 hover:text-ink"
+                }`}
+              >
+                {c.nome}
+                <span className="max-w-[160px] truncate text-xs font-normal text-ink-muted">{c.conta}</span>
+              </button>
+            );
+          })
+        ) : (
+          <p className="flex items-baseline gap-2 text-sm font-semibold text-ink">
+            {canal.nome}
+            <span className="text-xs font-normal text-ink-muted">{canal.conta}</span>
+          </p>
+        )}
+        {!canal.ativo && <Badge tone="warning">desconectado no Reportei</Badge>}
+      </div>
+
+      {/* A "key" recomeça o painel (a métrica escolhida no gráfico) ao trocar de canal. */}
+      <PainelDoCanal key={canal.id} canal={canal} periodo={periodo} />
     </div>
   );
 }
