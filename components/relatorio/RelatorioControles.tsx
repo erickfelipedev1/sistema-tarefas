@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 
 // Mês (anterior/próximo), o filtro da aba (time, em Entregas; cliente, em
-// Faturamento) e o botão de imprimir. O estado fica na URL, então dá pra
+// Faturamento; colaborador, em Avaliações) e o botão de imprimir. O estado fica na URL, então dá pra
 // mandar o link do relatório pra alguém. Não sai na impressão.
 export default function RelatorioControles({
   aba,
@@ -15,7 +15,7 @@ export default function RelatorioControles({
   ehMesAtual,
   filtro,
 }: {
-  aba: "faturamento" | "entregas";
+  aba: "faturamento" | "entregas" | "avaliacoes";
   mes: string;
   ehMesAtual: boolean;
   // parametro: nome na URL; valor "" = sem filtro.

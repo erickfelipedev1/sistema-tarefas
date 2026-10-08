@@ -24,14 +24,14 @@ export default async function AbaEntregas({
   verTudo,
   mes,
   timePedido,
-  mostrarAbas,
+  mostrarFaturamento,
 }: {
   supabase: SupabaseClient;
   userId: string;
   verTudo: boolean;
   mes: string;
   timePedido: string | undefined;
-  mostrarAbas: boolean;
+  mostrarFaturamento: boolean;
 }) {
   const mesAnterior = somarMes(mes, -1);
 
@@ -160,7 +160,7 @@ export default async function AbaEntregas({
       souDono={dono === userId}
       verTudo={verTudo}
       usuarioId={userId}
-      mostrarAbas={mostrarAbas}
+      mostrarFaturamento={mostrarFaturamento}
       times={
         verTudo
           ? [

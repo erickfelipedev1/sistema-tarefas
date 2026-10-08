@@ -33,7 +33,7 @@ export default function RelatorioView({
   observacoes,
   semMigracao,
   usuarioId,
-  mostrarAbas,
+  mostrarFaturamento,
   dadosIncompletos,
 }: {
   relatorio: Relatorio;
@@ -51,8 +51,8 @@ export default function RelatorioView({
   observacoes: string;
   semMigracao: boolean;
   usuarioId: string;
-  // As abas só existem pra quem também vê Faturamento.
-  mostrarAbas: boolean;
+  // A aba Faturamento só existe pra quem pode ver preços.
+  mostrarFaturamento: boolean;
   // Alguma consulta falhou ou passou do teto: os números podem estar a menos.
   dadosIncompletos: boolean;
 }) {
@@ -74,7 +74,7 @@ export default function RelatorioView({
           subtitle={`${titulo} · ${nomeDoMes(mes)}${ehMesAtual ? " (mês em andamento)" : ""}`}
         />
 
-        {mostrarAbas && <RelatorioAbas atual="entregas" mes={mes} />}
+        <RelatorioAbas atual="entregas" mes={mes} mostrarFaturamento={mostrarFaturamento} />
 
         <RelatorioControles
           aba="entregas"

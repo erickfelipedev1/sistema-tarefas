@@ -138,3 +138,23 @@ export async function testarPush(): Promise<string> {
   if (r.falhas.length === 0) return `Enviado pra ${r.enviados} aparelho(s). Deve chegar em alguns segundos.`;
   return `Enviados: ${r.enviados} de ${r.inscricoes}. Falhas: ${r.falhas.join(" | ")}`;
 }
+
+// Depois de enviar uma avaliação (aba Avaliações do Relatório): avisa o
+// colaborador avaliado. Só quem tem "ve_tudo" dispara, e só pra avaliação
+// que já está enviada — o texto do aviso não leva nota nem feedback.
+export async function avisarAvaliacaoEnviada(evaluationId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const [{ data: avaliacao }, { data: perfil }] = await Promise.all([
+    admin.from("evaluations").select("person_id, month, status").eq("id", evaluationId).maybeSingle(),
+    admin.from("profiles").select("ve_tudo").eq("id", user.id).maybeSingle(),
+  ]);
+  if (!avaliacao || avaliacao.status !== "sent" || !perfil?.ve_tudo) return;
+  await enviarPush([avaliacao.person_id as string], {
+    titulo: "Você recebeu uma avaliação",
+    corpo: "Sua avaliação do mês está disponível no d.hub.",
+    url: "/relatorio?aba=avaliacoes",
+    tag: `avaliacao-${evaluationId}`,
+  });
+}

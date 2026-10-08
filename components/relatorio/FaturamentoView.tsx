@@ -65,7 +65,7 @@ export default function FaturamentoView({
           }
         />
 
-        <RelatorioAbas atual="faturamento" mes={mes} />
+        <RelatorioAbas atual="faturamento" mes={mes} mostrarFaturamento />
 
         <RelatorioControles
           aba="faturamento"
