@@ -7,7 +7,7 @@ import type { Message } from "@/lib/types";
 import { channelKey, useNotifications } from "@/lib/notifications";
 import { ChevronLeftIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
-import { enviarAnexo, pastaDoCanal, type AnexoEnviado } from "@/lib/chat-anexos";
+import { apagarMensagem, enviarAnexo, pastaDoCanal, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
 import { avisarMensagemNova } from "@/lib/actions/push";
 
@@ -85,6 +85,12 @@ export default function ChannelThread({
           );
         }
       )
+      // Mensagem apagada por quem enviou: o aviso traz só o id, e some daqui
+      // se estiver na tela.
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, (payload) => {
+        const id = (payload.old as { id?: string }).id;
+        if (id) setMessages((current) => current.filter((m) => m.id !== id));
+      })
       .subscribe();
 
     return () => {
@@ -180,6 +186,14 @@ export default function ChannelThread({
     return true;
   }
 
+  async function apagar(m: Message) {
+    if (!window.confirm("Apagar esta mensagem? Ela some pra todo mundo do canal, e não dá pra desfazer.")) return;
+    setErroEnvio(null);
+    const falha = await apagarMensagem(supabase, m, currentUserId);
+    if (falha) return setErroEnvio(falha);
+    setMessages((current) => current.filter((x) => x.id !== m.id));
+  }
+
   // Em canal, como nos grupos do WhatsApp: ✓✓ azul quando todos os outros
   // membros já leram; senão ✓✓ cinza (entregue no canal).
   const outrosMembros = useMemo(
@@ -267,6 +281,7 @@ export default function ChannelThread({
           currentUserId={currentUserId}
           remetentes={profilesById}
           estadoDe={estadoDe}
+          aoApagar={apagar}
         />
         {mensagensVisiveis.length === 0 && busca && (
           <p className="py-6 text-center text-sm text-ink-muted">

@@ -9,7 +9,7 @@ import { rotuloPresenca } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
 import { ChevronLeftIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
-import { enviarAnexo, pastaDaDm, type AnexoEnviado } from "@/lib/chat-anexos";
+import { apagarMensagem, enviarAnexo, pastaDaDm, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
 import { avisarMensagemNova } from "@/lib/actions/push";
 
@@ -80,6 +80,12 @@ export default function ChatThread({
           );
         }
       )
+      // Mensagem apagada (por mim em outra aba, ou pela outra pessoa): o
+      // aviso traz só o id, e some daqui se estiver na tela.
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, (payload) => {
+        const id = (payload.old as { id?: string }).id;
+        if (id) setMessages((current) => current.filter((m) => m.id !== id));
+      })
       .subscribe();
 
     return () => {
@@ -176,6 +182,14 @@ export default function ChatThread({
     return true;
   }
 
+  async function apagar(m: Message) {
+    if (!window.confirm("Apagar esta mensagem? Ela some pra você e pra outra pessoa, e não dá pra desfazer.")) return;
+    setErroEnvio(null);
+    const falha = await apagarMensagem(supabase, m, currentUserId);
+    if (falha) return setErroEnvio(falha);
+    setMessages((current) => current.filter((x) => x.id !== m.id));
+  }
+
   // Setas estilo WhatsApp: lida quando a outra pessoa abriu a conversa
   // depois da mensagem; entregue quando ela está com o sistema aberto.
   function estadoDe(m: Message): EstadoEnvio {
@@ -262,6 +276,7 @@ export default function ChatThread({
           mensagens={mensagensVisiveis}
           currentUserId={currentUserId}
           estadoDe={estadoDe}
+          aoApagar={apagar}
         />
         {mensagensVisiveis.length === 0 && busca && (
           <p className="py-6 text-center text-sm text-ink-muted">

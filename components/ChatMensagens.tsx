@@ -13,7 +13,7 @@ import {
   rotuloDia,
 } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
-import { CopyIcon, FileTextIcon } from "@/components/ui/icons";
+import { CopyIcon, FileTextIcon, Trash2Icon } from "@/components/ui/icons";
 
 export type Remetente = {
   name: string | null;
@@ -31,17 +31,20 @@ export type EstadoEnvio = "enviada" | "entregue" | "lida";
 // As minhas ficam à direita (verde-claro), as dos outros à esquerda. Nos
 // canais (com `remetentes`), o balão dos outros mostra foto e nome no
 // começo de cada sequência. Separador de dia ("Hoje, 25 de setembro")
-// sempre que o dia muda.
+// sempre que o dia muda. Com "aoApagar", as minhas mensagens ganham a
+// lixeira ao lado do copiar (quem decide e confirma é a conversa).
 export default function ChatMensagens({
   mensagens,
   currentUserId,
   remetentes,
   estadoDe,
+  aoApagar,
 }: {
   mensagens: Message[];
   currentUserId: string;
   remetentes?: Record<string, Remetente>;
   estadoDe: (m: Message) => EstadoEnvio;
+  aoApagar?: (m: Message) => void;
 }) {
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
@@ -96,6 +99,16 @@ export default function ChatMensagens({
                 <div className="w-8 flex-shrink-0">
                   {!agrupada && <Avatar name={nome} src={info?.avatar_url} size="sm" />}
                 </div>
+              )}
+              {minha && aoApagar && (
+                <button
+                  onClick={() => aoApagar(m)}
+                  aria-label="Apagar mensagem"
+                  title="Apagar mensagem"
+                  className="flex-shrink-0 self-center rounded-md p-1 text-ink-muted opacity-0 hover:bg-danger-light hover:text-danger focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-60"
+                >
+                  <Trash2Icon className="h-3.5 w-3.5" />
+                </button>
               )}
               {minha && botaoCopiar}
               <div className={`flex max-w-[75%] flex-col ${minha ? "items-end" : "items-start"}`}>
