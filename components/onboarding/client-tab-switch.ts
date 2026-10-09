@@ -8,6 +8,7 @@ export type ClientPortalTab =
   | "visaoGeral"
   | "andamento"
   | "calendario"
+  | "posts"
   | "documentos"
   | "faturas";
 

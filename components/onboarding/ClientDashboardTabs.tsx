@@ -7,6 +7,7 @@ import {
   ClipboardListIcon,
   FileStackIcon,
   HomeIcon,
+  ImageIcon,
   ReceiptIcon,
 } from "../ui/icons";
 import { CLIENT_TAB_SWITCH_EVENT, type ClientPortalTab } from "./client-tab-switch";
@@ -15,6 +16,7 @@ const ABAS = [
   { key: "visaoGeral", label: "Visão geral", icon: HomeIcon },
   { key: "andamento", label: "Andamento", icon: ClipboardListIcon },
   { key: "calendario", label: "Calendário", icon: CalendarIcon },
+  { key: "posts", label: "Posts", icon: ImageIcon },
   { key: "documentos", label: "Documentos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
 ] as const satisfies readonly { key: ClientPortalTab; label: string; icon: unknown }[];
@@ -29,12 +31,17 @@ export function ClientDashboardTabs({
   visaoGeral,
   andamento,
   calendario,
+  posts,
+  postsEsperando = 0,
   documentos,
   faturas,
 }: {
   visaoGeral: ReactNode;
   andamento: ReactNode;
   calendario: ReactNode;
+  posts: ReactNode;
+  // Quantos posts esperam o comentário do cliente (vira o número na aba).
+  postsEsperando?: number;
   documentos: ReactNode;
   faturas: ReactNode;
 }) {
@@ -67,6 +74,11 @@ export function ClientDashboardTabs({
             >
               <Icon className="h-4 w-4" />
               {item.label}
+              {item.key === "posts" && postsEsperando > 0 && (
+                <span className="rounded-full bg-brand px-1.5 text-[11px] font-semibold tabular-nums text-navy">
+                  {postsEsperando}
+                </span>
+              )}
             </button>
           );
         })}
@@ -75,6 +87,7 @@ export function ClientDashboardTabs({
       <div className={aba === "visaoGeral" ? "" : "hidden"}>{visaoGeral}</div>
       <div className={aba === "andamento" ? "" : "hidden"}>{andamento}</div>
       <div className={aba === "calendario" ? "" : "hidden"}>{calendario}</div>
+      <div className={aba === "posts" ? "" : "hidden"}>{posts}</div>
       <div className={aba === "documentos" ? "" : "hidden"}>{documentos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
     </div>

@@ -134,6 +134,15 @@ export interface PedidoRecebido {
   client_login_id: string | null;
 }
 
+// Post que a pessoa criou e em que o cliente pediu ajuste (migration 0051):
+// entra na Caixa de entrada até ser reenviado.
+export interface PostComAjuste {
+  id: string;
+  project_id: string;
+  category: string;
+  scheduled_date: string | null;
+}
+
 export interface ItemCaixaDeEntrada {
   tarefa: TarefaMetrica;
   origem: "cliente" | "solicitacao" | "atribuida";

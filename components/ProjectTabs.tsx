@@ -7,6 +7,7 @@ import {
   BookOpenIcon,
   ClipboardListIcon,
   FileStackIcon,
+  ImageIcon,
   MessageCircleIcon,
   ReceiptIcon,
   SlidersIcon,
@@ -15,6 +16,7 @@ import {
 const ABAS = [
   { key: "tarefas", label: "Tarefas", icon: ClipboardListIcon },
   { key: "otimizacoes", label: "Otimizações", icon: SlidersIcon },
+  { key: "posts", label: "Posts", icon: ImageIcon },
   { key: "wiki", label: "Wiki", icon: BookOpenIcon },
   { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
@@ -31,26 +33,34 @@ type AbaKey = (typeof ABAS)[number]["key"];
 // "Analytics" é a exceção: só é montada na primeira vez que alguém abre a
 // aba, porque ela consulta o Reportei e não faz sentido toda visita à página
 // do cliente pagar essa espera.
+// "Posts" também só monta quando é aberta (consulta, tempo real e links
+// assinados dos arquivos).
+// "inicial" abre a página já numa aba (?aba=posts, vindo de um aviso).
 export default function ProjectTabs({
   tarefas,
   otimizacoes,
+  posts,
   wiki,
   arquivos,
   faturas,
   mensagens,
   analytics,
+  inicial,
 }: {
   tarefas: ReactNode;
   otimizacoes?: ReactNode;
+  posts: ReactNode;
   wiki: ReactNode;
   arquivos: ReactNode;
   faturas: ReactNode;
   mensagens: ReactNode;
   analytics: ReactNode;
+  inicial?: string;
 }) {
-  const [aba, setAba] = useState<AbaKey>("tarefas");
-  const [abriuAnalytics, setAbriuAnalytics] = useState(false);
   const abas = ABAS.filter((item) => item.key !== "otimizacoes" || !!otimizacoes);
+  const [aba, setAba] = useState<AbaKey>(abas.find((item) => item.key === inicial)?.key ?? "tarefas");
+  const [abriuAnalytics, setAbriuAnalytics] = useState(aba === "analytics");
+  const [abriuPosts, setAbriuPosts] = useState(aba === "posts");
 
   return (
     <div>
@@ -64,6 +74,7 @@ export default function ProjectTabs({
               onClick={() => {
                 setAba(item.key);
                 if (item.key === "analytics") setAbriuAnalytics(true);
+                if (item.key === "posts") setAbriuPosts(true);
               }}
               className={`flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 ativa
@@ -82,6 +93,7 @@ export default function ProjectTabs({
       {otimizacoes && (
         <div className={aba === "otimizacoes" ? "" : "hidden"}>{otimizacoes}</div>
       )}
+      {abriuPosts && <div className={aba === "posts" ? "" : "hidden"}>{posts}</div>}
       <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
       <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>

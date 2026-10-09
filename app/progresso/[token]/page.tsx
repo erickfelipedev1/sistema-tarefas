@@ -6,6 +6,8 @@ import { DocumentsPanel } from "@/components/onboarding/DocumentsPanel";
 import { InvoicesPanel } from "@/components/onboarding/InvoicesPanel";
 import { ProjectOverviewPanel } from "@/components/onboarding/ProjectOverviewPanel";
 import { ClientCalendar } from "@/components/onboarding/ClientCalendar";
+import { ClientPosts } from "@/components/onboarding/ClientPosts";
+import { midiasValidas } from "@/lib/posts";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
   ProjectDocuments,
@@ -14,6 +16,7 @@ import type {
   ProjectProgress,
   ProjectTeamMember,
   PublicInvoice,
+  PublicPost,
   PublicProjectMessage,
 } from "@/lib/types";
 
@@ -32,6 +35,7 @@ export default async function ProgressoPage({
     { data: teamData },
     { data: notificationsData },
     { data: messagesData },
+    { data: postsData },
   ] = await Promise.all([
     supabase.rpc("get_project_progress", { p_token: params.token }),
     supabase.rpc("get_project_documents", { p_token: params.token }),
@@ -40,6 +44,8 @@ export default async function ProgressoPage({
     supabase.rpc("get_project_team", { p_token: params.token }),
     supabase.rpc("get_project_notifications", { p_token: params.token }),
     supabase.rpc("get_project_messages", { p_token: params.token }),
+    // Sem a migration 0051 a função não existe: volta erro e a aba fica vazia.
+    supabase.rpc("get_project_posts", { p_token: params.token }),
   ]);
 
   const progresso = progressData as ProjectProgress | null;
@@ -61,7 +67,7 @@ export default async function ProgressoPage({
   // Buckets privados: o servidor gera links assinados (1h) só pros arquivos
   // que as RPCs devolveram pra esse token — o cliente não tem login.
   // Se falhar, a página abre igual — só o arquivo aparece como indisponível.
-  async function assinar(bucket: "drive-files" | "invoices", caminhos: string[]) {
+  async function assinar(bucket: "drive-files" | "invoices" | "post-media", caminhos: string[]) {
     if (caminhos.length === 0) return new Map<string, string>();
     try {
       const { data, error } = await createAdminClient().storage.from(bucket).createSignedUrls(caminhos, 3600);
@@ -75,10 +81,24 @@ export default async function ProgressoPage({
 
   const arquivos = documentos?.files ?? [];
   const faturas = (invoicesData as PublicInvoice[] | null) ?? [];
-  const [linksArquivos, linksFaturas] = await Promise.all([
+  // Posts enviados pela equipe (aba "Posts"): os arquivos de cada um também
+  // saem daqui com link assinado.
+  const postsSemLink = ((Array.isArray(postsData) ? postsData : []) as (Omit<PublicPost, "media"> & { media: unknown })[]).map(
+    (p) => ({ ...p, media: midiasValidas(p.media) })
+  );
+  const [linksArquivos, linksFaturas, linksPosts] = await Promise.all([
     assinar("drive-files", arquivos.map((a) => a.file_path)),
     assinar("invoices", faturas.map((f) => f.file_path).filter((c): c is string => !!c)),
+    assinar(
+      "post-media",
+      postsSemLink.flatMap((p) => p.media.map((m) => m.path))
+    ),
   ]);
+  const posts: PublicPost[] = postsSemLink.map((p) => ({
+    ...p,
+    comments: Array.isArray(p.comments) ? p.comments : [],
+    media: p.media.map((m) => ({ ...m, url: linksPosts.get(m.path) ?? "" })),
+  }));
 
   const arquivosComLink = arquivos.map((arquivo) => ({
     ...arquivo,
@@ -116,6 +136,8 @@ export default async function ProgressoPage({
         }
         andamento={<ProjectProgressPanel data={progresso} />}
         calendario={<ClientCalendar tasks={progresso.tasks} />}
+        posts={<ClientPosts token={params.token} projectName={progresso.project_name} initialPosts={posts} />}
+        postsEsperando={posts.filter((p) => p.status === "enviado").length}
         documentos={
           <DocumentsPanel
             folders={documentos?.folders ?? []}

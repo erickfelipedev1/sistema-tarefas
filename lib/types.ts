@@ -143,7 +143,8 @@ export type ProjectNotificationType =
   | "task"
   | "task_done"
   | "message"
-  | "status";
+  | "status"
+  | "post";
 
 // Linha de project_notifications — alimentada só por gatilhos (nunca por
 // texto solto da equipe). Serve tanto pro sino de notificações quanto
@@ -278,6 +279,68 @@ export interface Optimization {
   created_by_label: string | null;
   created_at: string;
   edited_at: string | null;
+}
+
+// Preview de posts (migration 0051): o post que o colaborador monta pro
+// cliente aprovar. Ver lib/posts.ts pros rótulos de cada valor.
+export type PostCategory = "carrossel" | "estatico" | "reel";
+export type PostNetwork = "instagram" | "facebook" | "tiktok" | "linkedin";
+export type PostStatus = "rascunho" | "enviado" | "ajuste" | "publicado";
+
+// Um arquivo do post, guardado em posts.media. "path" é o caminho no bucket
+// privado "post-media".
+export interface PostMedia {
+  path: string;
+  type: "image" | "video";
+  name: string;
+  size: number;
+}
+
+export interface Post {
+  id: string;
+  project_id: string;
+  category: PostCategory;
+  caption: string;
+  networks: PostNetwork[];
+  scheduled_date: string | null;
+  media: PostMedia[];
+  status: PostStatus;
+  sent_count: number;
+  sent_at: string | null;
+  created_by: string | null;
+  created_by_label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostComment {
+  id: string;
+  post_id: string;
+  sender_type: MessageSenderType;
+  sender_label: string;
+  sender_id: string | null;
+  content: string;
+  // true = veio com o botão "Pedir ajuste" do cliente.
+  is_adjust: boolean;
+  created_at: string;
+}
+
+// O que o portal do cliente recebe de get_project_posts(token): só posts já
+// enviados, com os comentários, e cada arquivo já com o link assinado que o
+// servidor gerou ("url"; vazio se o link falhou).
+export type PublicPostComment = Omit<PostComment, "post_id" | "sender_id">;
+
+export interface PublicPost {
+  id: string;
+  category: PostCategory;
+  caption: string;
+  networks: PostNetwork[];
+  scheduled_date: string | null;
+  media: (PostMedia & { url: string })[];
+  status: Exclude<PostStatus, "rascunho">;
+  sent_count: number;
+  sent_at: string | null;
+  comments: PublicPostComment[];
 }
 
 export interface DriveFolder {

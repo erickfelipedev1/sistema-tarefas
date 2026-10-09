@@ -13,6 +13,7 @@ import Coreografia from "@/components/movimento/Coreografia";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
+import PostsManager from "@/components/PostsManager";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
@@ -23,8 +24,10 @@ import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
 
 export default async function ProjetoPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { aba?: string };
 }) {
   const { id } = params;
   const supabase = await clienteDaRequisicao();
@@ -139,6 +142,17 @@ export default async function ProjetoPage({
       </div>
 
       <ProjectTabs
+        inicial={searchParams?.aba}
+        posts={
+          <PostsManager
+            projectId={id}
+            projectName={project.name}
+            currentUserId={user?.id ?? ""}
+            currentUserLabel={userLabel}
+            souLider={souLider}
+            profiles={profiles ?? []}
+          />
+        }
         tarefas={
           <TaskBoard
             initialTasks={tasks ?? []}

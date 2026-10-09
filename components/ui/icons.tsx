@@ -457,3 +457,42 @@ export const ArrowDownRightIcon = createIcon(
     <path d="M17 9v8H9" />
   </>
 );
+
+// Ícones do preview de posts (aba "Posts" do cliente e da equipe).
+export const ImageIcon = createIcon(
+  "ImageIcon",
+  <>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <circle cx="9" cy="10" r="1.6" />
+    <path d="M20.5 15.5 16 11l-8 8.5" />
+  </>
+);
+
+export const HeartIcon = createIcon(
+  "HeartIcon",
+  <>
+    <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20Z" />
+  </>
+);
+
+export const BookmarkIcon = createIcon(
+  "BookmarkIcon",
+  <>
+    <path d="M6.5 4.5h11v15.5L12 16l-5.5 4V4.5Z" />
+  </>
+);
+
+export const ThumbsUpIcon = createIcon(
+  "ThumbsUpIcon",
+  <>
+    <path d="M7.5 10.5v9h-3v-9h3Z" />
+    <path d="M7.5 10.5 11 4c1.4 0 2.5 1.1 2.5 2.5V9.5h4.3a2 2 0 0 1 2 2.4l-1.2 6a2 2 0 0 1-2 1.6H7.5" />
+  </>
+);
+
+export const ShareIcon = createIcon(
+  "ShareIcon",
+  <>
+    <path d="M13 5.5 20 12l-7 6.5V14.5c-4.5 0-7.3 1.3-9 4 .4-5 3.2-8.6 9-9.3V5.5Z" />
+  </>
+);

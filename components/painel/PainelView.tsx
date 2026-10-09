@@ -6,6 +6,7 @@ import type {
   Eficiencia,
   ItemCaixaDeEntrada,
   Painel,
+  PostComAjuste,
   TarefaMetrica,
 } from "@/lib/painel";
 import { Avatar } from "@/components/ui/Avatar";
@@ -45,6 +46,7 @@ export default function PainelView({
   nomesProjetos,
   otimizacoes = null,
   lembreteLixo = null,
+  postsComAjuste = [],
 }: {
   painel: Painel;
   eficiencia: Eficiencia;
@@ -52,6 +54,7 @@ export default function PainelView({
   pessoaAvatar: string | null;
   pessoaCargo: string | null;
   caixaDeEntrada: ItemCaixaDeEntrada[];
+  postsComAjuste?: PostComAjuste[];
   periodoChave: string;
   periodos: { valor: string; rotulo: string }[];
   rotuloPeriodo: string;
@@ -170,7 +173,7 @@ export default function PainelView({
           concluidas={painel.concluidas}
           variacao={variacao}
         />
-        <CaixaDeEntrada itens={caixaDeEntrada} nomeDe={nomeDe} className="lg:col-span-2" />
+        <CaixaDeEntrada itens={caixaDeEntrada} posts={postsComAjuste} nomeDe={nomeDe} className="lg:col-span-2" />
       </section>
 
       {otimizacoes && (
@@ -392,12 +395,16 @@ function descreverOrigem(item: ItemCaixaDeEntrada) {
 
 const MAX_CAIXA = 8;
 
+const CATEGORIA_DO_POST: Record<string, string> = { carrossel: "Carrossel", estatico: "Post estático", reel: "Reel" };
+
 function CaixaDeEntrada({
   itens,
+  posts,
   nomeDe,
   className = "",
 }: {
   itens: ItemCaixaDeEntrada[];
+  posts: PostComAjuste[];
   nomeDe: (id: string | null) => string;
   className?: string;
 }) {
@@ -407,7 +414,7 @@ function CaixaDeEntrada({
     <section data-mov="card" className={`rounded-2xl border border-line bg-surface p-5 ${className}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-ink">
-          Caixa de entrada <span className="font-normal text-ink-muted">({itens.length})</span>
+          Caixa de entrada <span className="font-normal text-ink-muted">({itens.length + posts.length})</span>
         </p>
         <Link href="/solicitacoes" className="text-xs font-medium text-brand-forte hover:underline">
           Ver solicitações →
@@ -418,10 +425,28 @@ function CaixaDeEntrada({
         {novas > 0 && ` · ${novas} nova${novas === 1 ? "" : "s"}`}
       </p>
 
-      {itens.length === 0 ? (
+      {itens.length + posts.length === 0 ? (
         <p className="mt-4 text-sm text-ink-muted">Nada esperando por você. 🎉</p>
       ) : (
         <ul className="mt-3 divide-y divide-line">
+          {/* Posts em que o cliente pediu ajuste vêm primeiro: tem alguém esperando. */}
+          {posts.map((post) => (
+            <li key={post.id} data-mov="item">
+              <Link
+                href={`/projetos/${post.project_id}?aba=posts`}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 hover:text-brand-forte"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink">O cliente pediu ajuste num post</span>
+                  <span className="block truncate text-xs text-ink-muted">
+                    {nomeDe(post.project_id)} · {CATEGORIA_DO_POST[post.category] ?? "Post"}
+                    {post.scheduled_date && ` · previsto para ${formatarPrazo(post.scheduled_date)}`}
+                  </span>
+                </span>
+                <Badge tone="warning">Ajuste pedido</Badge>
+              </Link>
+            </li>
+          ))}
           {itens.slice(0, MAX_CAIXA).map((item) => {
             const t = item.tarefa;
             return (

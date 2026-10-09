@@ -7,6 +7,7 @@ import {
   diaSP,
   montarCaixaDeEntrada,
   type PedidoRecebido,
+  type PostComAjuste,
   type TarefaMetrica,
 } from "@/lib/painel";
 import PainelView, { type OtimizacaoDoPainel } from "@/components/painel/PainelView";
@@ -123,6 +124,16 @@ export default async function PainelPage({
   const otimizacoes = (linhasOtimizacoes ?? []) as OtimizacaoDoPainel[];
   const mostrarOtimizacoes = comCargo?.faz_otimizacoes === true || otimizacoes.length > 0;
 
+  // Posts da pessoa em que o cliente pediu ajuste (migration 0051). Sem a
+  // migration a consulta falha e a lista fica vazia.
+  const { data: linhasPosts } = await supabase
+    .from("posts")
+    .select("id, project_id, category, scheduled_date")
+    .eq("created_by", pessoaId)
+    .eq("status", "ajuste")
+    .order("updated_at", { ascending: false })
+    .limit(20);
+
   const nomesProjetos = Object.fromEntries(
     (projetos ?? []).map((p) => [p.id as string, p.name as string])
   );
@@ -135,6 +146,7 @@ export default async function PainelPage({
       pessoaAvatar={pessoa?.avatar_url ?? null}
       pessoaCargo={(comCargo?.cargo as string | null | undefined) ?? null}
       caixaDeEntrada={caixaDeEntrada}
+      postsComAjuste={(linhasPosts ?? []) as PostComAjuste[]}
       periodoChave={chave}
       periodos={Object.entries(PERIODOS).map(([valor, p]) => ({ valor, rotulo: p.rotulo }))}
       rotuloPeriodo={periodo.rotulo}

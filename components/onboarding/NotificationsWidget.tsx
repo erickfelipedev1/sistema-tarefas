@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
   ClipboardListIcon,
   FileTextIcon,
+  ImageIcon,
   MessageCircleIcon,
   ReceiptIcon,
   TargetIcon,
@@ -20,6 +21,7 @@ const ICONE_POR_TIPO: Record<ProjectNotificationType, typeof FileTextIcon> = {
   task_done: CheckCircleIcon,
   message: MessageCircleIcon,
   status: TargetIcon,
+  post: ImageIcon,
 };
 
 // "Lido"/"não lido" não existe no banco (o cliente não tem login pra
