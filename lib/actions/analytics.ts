@@ -1,7 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { PERIODOS, sugerirProjeto, type Periodo, type ResultadoDeAnalytics } from "@/lib/analytics";
+import {
+  montarPeriodo,
+  montarPeriodoEntre,
+  PERIODOS,
+  sugerirProjeto,
+  type Periodo,
+  type ResultadoDeAnalytics,
+} from "@/lib/analytics";
 import { carregarCanais } from "@/lib/analytics-servidor";
 import { ErroReportei, listarProjetosDoReportei, reporteiConfigurado } from "@/lib/reportei";
 
@@ -18,11 +25,24 @@ async function clienteLogado() {
 }
 
 // Números do cliente no período: um bloco por canal conectado no Reportei.
-export async function carregarAnalytics(projectId: string, dias: number): Promise<ResultadoDeAnalytics> {
+// O período é um dos prontos (7, 30 ou 90 dias até ontem) ou, com
+// "intervalo", as datas escolhidas à mão — conferidas aqui de novo.
+export async function carregarAnalytics(
+  projectId: string,
+  dias: number,
+  intervalo?: { inicio: string; fim: string } | null
+): Promise<ResultadoDeAnalytics> {
   const supabase = await clienteLogado();
   if (!supabase) return { estado: "erro", mensagem: "Sua sessão expirou. Entre de novo." };
   if (!reporteiConfigurado()) return { estado: "sem-token" };
-  const periodoPedido = (PERIODOS as readonly number[]).includes(dias) ? (dias as Periodo) : 30;
+  let periodoPedido;
+  if (intervalo) {
+    const montado = montarPeriodoEntre(intervalo.inicio, intervalo.fim);
+    if ("erro" in montado) return { estado: "erro", mensagem: montado.erro };
+    periodoPedido = montado.periodo;
+  } else {
+    periodoPedido = montarPeriodo((PERIODOS as readonly number[]).includes(dias) ? (dias as Periodo) : 30);
+  }
 
   const { data: projeto, error } = await supabase
     .from("projects")

@@ -86,7 +86,7 @@ export type ResultadoDeAnalytics =
   | {
       estado: "ok";
       reportei: { id: number; name: string };
-      periodo: { inicio: string; fim: string; comparacaoInicio: string; comparacaoFim: string };
+      periodo: PeriodoDeAnalytics;
       canais: CanalDeAnalytics[];
     };
 
@@ -757,20 +757,63 @@ export function lerNumero(bruto: unknown): number | null {
   return null;
 }
 
+export interface PeriodoDeAnalytics {
+  inicio: string;
+  fim: string;
+  comparacaoInicio: string;
+  comparacaoFim: string;
+}
+
+// Hoje em São Paulo, como YYYY-MM-DD.
+export function hojeEmSaoPaulo(agora = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora);
+}
+
+function somarDias(dia: string, n: number) {
+  const d = new Date(`${dia}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Quantos dias o período cobre, contando o primeiro e o último.
+export function diasDoPeriodo(inicio: string, fim: string) {
+  return Math.round((Date.parse(`${fim}T12:00:00Z`) - Date.parse(`${inicio}T12:00:00Z`)) / 86_400_000) + 1;
+}
+
 // Período de N dias terminando ontem (o dia de hoje ainda está incompleto) e
 // os N dias imediatamente anteriores, pra comparação. Datas em São Paulo.
-export function montarPeriodo(dias: Periodo, agora = new Date()) {
-  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora);
-  const somar = (dia: string, n: number) => {
-    const d = new Date(`${dia}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + n);
-    return d.toISOString().slice(0, 10);
-  };
-  const fim = somar(hoje, -1);
-  const inicio = somar(fim, -(dias - 1));
-  const comparacaoFim = somar(inicio, -1);
-  const comparacaoInicio = somar(comparacaoFim, -(dias - 1));
+export function montarPeriodo(dias: Periodo, agora = new Date()): PeriodoDeAnalytics {
+  const fim = somarDias(hojeEmSaoPaulo(agora), -1);
+  const inicio = somarDias(fim, -(dias - 1));
+  const comparacaoFim = somarDias(inicio, -1);
+  const comparacaoInicio = somarDias(comparacaoFim, -(dias - 1));
   return { inicio, fim, comparacaoInicio, comparacaoFim };
+}
+
+// Período escolhido à mão ("data personalizada"): de um dia a outro, no
+// máximo um ano, sem passar de hoje. A comparação é com o mesmo número de
+// dias logo antes. Devolve o motivo quando as datas não servem — a mesma
+// conta vale na tela (antes de pedir) e no servidor (que não confia na tela).
+export const MAXIMO_DE_DIAS_DO_PERIODO = 366;
+
+export function montarPeriodoEntre(
+  inicio: string,
+  fim: string,
+  agora = new Date()
+): { periodo: PeriodoDeAnalytics } | { erro: string } {
+  const dataValida = (dia: unknown): dia is string =>
+    typeof dia === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dia) &&
+    !Number.isNaN(Date.parse(`${dia}T12:00:00Z`)) &&
+    new Date(`${dia}T12:00:00Z`).toISOString().slice(0, 10) === dia;
+  if (!dataValida(inicio) || !dataValida(fim)) return { erro: "Escolha a data de início e a de fim." };
+  if (inicio > fim) return { erro: "A data de início vem depois da data de fim." };
+  if (fim > hojeEmSaoPaulo(agora)) return { erro: "O período não pode passar de hoje." };
+  const dias = diasDoPeriodo(inicio, fim);
+  if (dias > MAXIMO_DE_DIAS_DO_PERIODO) return { erro: "O período pode ter no máximo um ano." };
+  const comparacaoFim = somarDias(inicio, -1);
+  const comparacaoInicio = somarDias(comparacaoFim, -(dias - 1));
+  return { periodo: { inicio, fim, comparacaoInicio, comparacaoFim } };
 }
 
 // Sugestão de vínculo: o projeto do Reportei cujo nome mais se parece com o

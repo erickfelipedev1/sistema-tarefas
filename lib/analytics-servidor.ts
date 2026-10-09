@@ -8,13 +8,12 @@ import {
   lerSerieDiaria,
   montarPainel,
   preencherDias,
-  montarPeriodo,
   nomeDoCanal,
   serieAcumulada,
   type CanalDeAnalytics,
   type GraficoDoCanal,
   type MetricaDoCanal,
-  type Periodo,
+  type PeriodoDeAnalytics,
 } from "@/lib/analytics";
 import {
   catalogoDeMetricas,
@@ -32,8 +31,7 @@ const posicao = (nome: string) => (ORDEM.includes(nome) ? ORDEM.indexOf(nome) : 
 
 const PAINEL_VAZIO = { principais: [], secundarias: [], funil: [], eficiencia: [] };
 
-export async function carregarCanais(reporteiProjetoId: number, dias: Periodo) {
-  const periodo = montarPeriodo(dias);
+export async function carregarCanais(reporteiProjetoId: number, periodo: PeriodoDeAnalytics) {
   const integracoes = (await listarIntegracoes(reporteiProjetoId)).slice(0, MAXIMO_DE_CANAIS);
 
   // Um canal com problema (conta desconectada, métrica indisponível) não
