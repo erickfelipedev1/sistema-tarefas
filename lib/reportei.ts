@@ -163,6 +163,15 @@ export const catalogoDeMetricas = unstable_cache(
 // Números das métricas pedidas, no período e no período de comparação.
 // Devolve um mapa id da métrica → dado. Em cache por 15 minutos pra mesma
 // combinação de integração, métricas e datas.
+// A recusa do Reportei (erro 4xx: conta desconectada, métrica que ele não
+// aceita) também fica em cache: sem isso cada visita repetiria a mesma
+// consulta que vai falhar, gastando o limite por minuto da conta — e a aba
+// existe também no portal do cliente, que é público. Token recusado (401),
+// limite estourado (429) e falha do lado deles (5xx) não ficam: passam.
+type RespostaEmCache =
+  | { dados: Record<string, DadoReportei>; recusa?: undefined }
+  | { recusa: { status: number; mensagem: string }; dados?: undefined };
+
 const buscarDados = unstable_cache(
   async (
     integracaoId: number,
@@ -171,33 +180,41 @@ const buscarDados = unstable_cache(
     fim: string,
     comparacaoInicio: string,
     comparacaoFim: string
-  ) => {
-    const resposta = await chamar<{ data: Record<string, DadoReportei> }>("/metrics/get-data", {
-      start: inicio,
-      end: fim,
-      comparison_start: comparacaoInicio,
-      comparison_end: comparacaoFim,
-      integration_id: integracaoId,
-      metrics: JSON.parse(metricasJson),
-    });
+  ): Promise<RespostaEmCache> => {
+    let resposta: { data: Record<string, DadoReportei> };
+    try {
+      resposta = await chamar<{ data: Record<string, DadoReportei> }>("/metrics/get-data", {
+        start: inicio,
+        end: fim,
+        comparison_start: comparacaoInicio,
+        comparison_end: comparacaoFim,
+        integration_id: integracaoId,
+        metrics: JSON.parse(metricasJson),
+      });
+    } catch (erro) {
+      const recusado =
+        erro instanceof ErroReportei && erro.status >= 400 && erro.status < 500 && ![401, 429].includes(erro.status);
+      if (!recusado) throw erro;
+      return { recusa: { status: erro.status, mensagem: erro.message } };
+    }
     // Só o que a tela usa: algumas métricas trazem a série diária ("trend"),
     // que não precisa ocupar o cache.
     const dados: Record<string, DadoReportei> = {};
     for (const [id, dado] of Object.entries(resposta.data ?? {})) {
       dados[id] = { values: dado.values, labels: dado.labels, comparison: dado.comparison ?? null };
     }
-    return dados;
+    return { dados };
   },
-  ["reportei-dados"],
+  ["reportei-dados-v2"],
   { revalidate: 900 }
 );
 
-export function dadosDasMetricas(
+export async function dadosDasMetricas(
   integracaoId: number,
   metricas: MetricaReportei[],
   periodo: { inicio: string; fim: string; comparacaoInicio: string; comparacaoFim: string }
 ) {
-  return buscarDados(
+  const resposta = await buscarDados(
     integracaoId,
     JSON.stringify(metricas),
     periodo.inicio,
@@ -205,4 +222,6 @@ export function dadosDasMetricas(
     periodo.comparacaoInicio,
     periodo.comparacaoFim
   );
+  if (resposta.recusa) throw new ErroReportei(resposta.recusa.status, resposta.recusa.mensagem);
+  return resposta.dados;
 }

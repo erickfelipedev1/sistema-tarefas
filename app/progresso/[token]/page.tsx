@@ -7,6 +7,8 @@ import { InvoicesPanel } from "@/components/onboarding/InvoicesPanel";
 import { ProjectOverviewPanel } from "@/components/onboarding/ProjectOverviewPanel";
 import { ClientCalendar } from "@/components/onboarding/ClientCalendar";
 import { ClientPosts } from "@/components/onboarding/ClientPosts";
+import AnalyticsCliente from "@/components/AnalyticsCliente";
+import { reporteiConfigurado } from "@/lib/reportei";
 import { midiasValidas } from "@/lib/posts";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
@@ -110,6 +112,24 @@ export default async function ProgressoPage({
     publicUrl: fatura.file_path ? linksFaturas.get(fatura.file_path) ?? null : null,
   }));
 
+  // Aba "Analytics": só aparece quando a equipe já ligou este cliente aos
+  // números (projects.reportei_project_id). Os dados em si só são buscados
+  // quando o cliente abre a aba.
+  let temAnalytics = false;
+  if (reporteiConfigurado()) {
+    try {
+      const { data: ligado, error } = await createAdminClient()
+        .from("projects")
+        .select("reportei_project_id")
+        .eq("share_token", params.token)
+        .maybeSingle();
+      if (error) console.error("Conferência do Analytics no portal falhou:", error.message);
+      temAnalytics = !!ligado?.reportei_project_id;
+    } catch (e) {
+      console.error("Conferência do Analytics no portal falhou:", e);
+    }
+  }
+
   const equipe = (teamData as ProjectTeamMember[] | null) ?? [];
   const notificacoes = (notificationsData as ProjectNotification[] | null) ?? [];
   const mensagens = (messagesData as PublicProjectMessage[] | null) ?? [];
@@ -138,6 +158,9 @@ export default async function ProgressoPage({
         calendario={<ClientCalendar tasks={progresso.tasks} />}
         posts={<ClientPosts token={params.token} projectName={progresso.project_name} initialPosts={posts} />}
         postsEsperando={posts.filter((p) => p.status === "enviado").length}
+        analytics={
+          temAnalytics ? <AnalyticsCliente portalToken={params.token} projectName={progresso.project_name} /> : undefined
+        }
         documentos={
           <DocumentsPanel
             folders={documentos?.folders ?? []}

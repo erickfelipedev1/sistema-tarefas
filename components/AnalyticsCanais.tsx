@@ -13,9 +13,12 @@ import { Badge } from "./ui/Badge";
 export default function AnalyticsCanais({
   canais,
   periodo,
+  noPortal,
 }: {
   canais: CanalDeAnalytics[];
   periodo: { inicio: string; fim: string };
+  // No portal do cliente a tela não cita a ferramenta de onde vêm os números.
+  noPortal?: boolean;
 }) {
   const [escolhido, setEscolhido] = useState<number | null>(null);
   const canal = canais.find((c) => c.id === escolhido) ?? canais[0];
@@ -50,7 +53,7 @@ export default function AnalyticsCanais({
             <span className="text-xs font-normal text-ink-muted">{canal.conta}</span>
           </p>
         )}
-        {!canal.ativo && <Badge tone="warning">desconectado no Reportei</Badge>}
+        {!canal.ativo && <Badge tone="warning">{noPortal ? "conta desconectada" : "desconectado no Reportei"}</Badge>}
       </div>
 
       {/* A "key" recomeça o painel (a métrica escolhida no gráfico) ao trocar de canal. */}

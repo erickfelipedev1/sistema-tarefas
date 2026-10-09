@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  BarChartIcon,
   CalendarIcon,
   ClipboardListIcon,
   FileStackIcon,
@@ -17,6 +18,7 @@ const ABAS = [
   { key: "andamento", label: "Andamento", icon: ClipboardListIcon },
   { key: "calendario", label: "Calendário", icon: CalendarIcon },
   { key: "posts", label: "Posts", icon: ImageIcon },
+  { key: "analytics", label: "Analytics", icon: BarChartIcon },
   { key: "documentos", label: "Documentos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
 ] as const satisfies readonly { key: ClientPortalTab; label: string; icon: unknown }[];
@@ -27,12 +29,16 @@ const ABAS = [
 // ficam sempre montadas, só escondidas com CSS. Também escuta o evento
 // "client-portal:switch-tab" (disparado por botões tipo "Ver todas as
 // faturas" dentro da Visão geral) pra trocar de aba por fora.
+// "Analytics" é a exceção: só existe quando a página manda (projeto ligado
+// aos números) e só é montada na primeira vez que o cliente abre a aba,
+// porque ela busca os dados na hora.
 export function ClientDashboardTabs({
   visaoGeral,
   andamento,
   calendario,
   posts,
   postsEsperando = 0,
+  analytics,
   documentos,
   faturas,
 }: {
@@ -42,10 +48,20 @@ export function ClientDashboardTabs({
   posts: ReactNode;
   // Quantos posts esperam o comentário do cliente (vira o número na aba).
   postsEsperando?: number;
+  analytics?: ReactNode;
   documentos: ReactNode;
   faturas: ReactNode;
 }) {
-  const [aba, setAba] = useState<ClientPortalTab>("visaoGeral");
+  const [abaPedida, setAba] = useState<ClientPortalTab>("visaoGeral");
+  const [abriuAnalytics, setAbriuAnalytics] = useState(false);
+  const abas = ABAS.filter((item) => item.key !== "analytics" || !!analytics);
+  // Pedido de fora pra uma aba que este cliente não tem cai na Visão geral.
+  const aba: ClientPortalTab = abas.some((item) => item.key === abaPedida) ? abaPedida : "visaoGeral";
+
+  // Qualquer caminho que leve à aba (clique ou evento de fora) monta a tela.
+  useEffect(() => {
+    if (aba === "analytics") setAbriuAnalytics(true);
+  }, [aba]);
 
   useEffect(() => {
     function aoTrocar(e: Event) {
@@ -59,7 +75,7 @@ export function ClientDashboardTabs({
   return (
     <div className="mt-8">
       <div className="mb-5 flex items-center gap-1 overflow-x-auto border-b border-line">
-        {ABAS.map((item) => {
+        {abas.map((item) => {
           const Icon = item.icon;
           const ativa = item.key === aba;
           return (
@@ -88,6 +104,7 @@ export function ClientDashboardTabs({
       <div className={aba === "andamento" ? "" : "hidden"}>{andamento}</div>
       <div className={aba === "calendario" ? "" : "hidden"}>{calendario}</div>
       <div className={aba === "posts" ? "" : "hidden"}>{posts}</div>
+      {analytics && abriuAnalytics && <div className={aba === "analytics" ? "" : "hidden"}>{analytics}</div>}
       <div className={aba === "documentos" ? "" : "hidden"}>{documentos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
     </div>

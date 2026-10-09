@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { carregarAnalytics, vincularReportei } from "@/lib/actions/analytics";
+import { carregarAnalytics, carregarAnalyticsDoPortal, vincularReportei } from "@/lib/actions/analytics";
 import {
   diasDoPeriodo,
   hojeEmSaoPaulo,
@@ -24,7 +24,21 @@ import { BarChartIcon, CalendarIcon, ChevronDownIcon } from "./ui/icons";
 // server actions de lib/actions/analytics.ts — o token do Reportei fica no
 // servidor. Só é montada quando a aba é aberta pela primeira vez (ver
 // ProjectTabs), pra página do cliente não esperar o Reportei à toa.
-export default function AnalyticsCliente({ projectId, projectName }: { projectId: string; projectName: string }) {
+// A mesma tela serve o portal do cliente (/progresso/<token>): com
+// "portalToken" ela busca pelo token do link, só mostra os números (quem liga
+// e troca o projeto do Reportei é a equipe), não cita a ferramenta e só tem
+// os períodos prontos — a data personalizada é da equipe (ver
+// carregarAnalyticsDoPortal).
+export default function AnalyticsCliente({
+  projectId,
+  projectName,
+  portalToken,
+}: {
+  projectId?: string;
+  projectName: string;
+  portalToken?: string;
+}) {
+  const noPortal = !!portalToken;
   const [dias, setDias] = useState<Periodo>(30);
   // Datas escolhidas à mão; null = vale o período pronto de "dias".
   const [intervalo, setIntervalo] = useState<{ inicio: string; fim: string } | null>(null);
@@ -39,7 +53,7 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
   useEffect(() => {
     let ativo = true;
     setCarregando(true);
-    carregarAnalytics(projectId, dias, intervalo)
+    (portalToken ? carregarAnalyticsDoPortal(portalToken, dias) : carregarAnalytics(projectId ?? "", dias, intervalo))
       .then((r) => {
         if (!ativo) return;
         setResultado(r);
@@ -54,9 +68,10 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
     return () => {
       ativo = false;
     };
-  }, [projectId, dias, intervalo, versao]);
+  }, [projectId, portalToken, dias, intervalo, versao]);
 
   async function vincular(reporteiId: number | null) {
+    if (noPortal || !projectId) return;
     setSalvando(true);
     setErroVinculo(null);
     const r = await vincularReportei(projectId, reporteiId);
@@ -79,22 +94,31 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
           <h1 className="text-3xl font-semibold tracking-tight text-ink">Analytics</h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
             {ok
-              ? `Números do Reportei de ${formatarDataBR(ok.periodo.inicio)} a ${formatarDataBR(ok.periodo.fim)}, comparados com ${
+              ? `${noPortal ? "Números dos seus canais" : "Números do Reportei"} de ${formatarDataBR(ok.periodo.inicio)} a ${formatarDataBR(ok.periodo.fim)}, comparados com ${
                   diasDoPeriodo(ok.periodo.inicio, ok.periodo.fim) === 1
                     ? "o dia anterior"
                     : `os ${diasDoPeriodo(ok.periodo.inicio, ok.periodo.fim)} dias anteriores`
                 }.`
-              : "Números dos canais do cliente, direto do Reportei."}
+              : noPortal
+                ? "Os resultados dos seus canais, atualizados pela equipe."
+                : "Números dos canais do cliente, direto do Reportei."}
           </p>
         </div>
         {comControles && (
           <div className="flex flex-wrap items-center gap-2.5">
-            <DataPersonalizada
-              inicio={escolhidoNaTela.inicio}
-              fim={escolhidoNaTela.fim}
-              ativa={intervalo !== null}
-              aoAplicar={setIntervalo}
-            />
+            {noPortal ? (
+              <p className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-xs tabular-nums text-ink-muted">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {formatarDataBR(escolhidoNaTela.inicio)} – {formatarDataBR(escolhidoNaTela.fim)}
+              </p>
+            ) : (
+              <DataPersonalizada
+                inicio={escolhidoNaTela.inicio}
+                fim={escolhidoNaTela.fim}
+                ativa={intervalo !== null}
+                aoAplicar={setIntervalo}
+              />
+            )}
             <div className="inline-flex rounded-full border border-line bg-surface p-1" role="group" aria-label="Período">
               {PERIODOS.map((p) => {
                 const ativo = intervalo === null && p === dias;
@@ -160,7 +184,18 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
         </div>
       )}
 
-      {resultado?.estado === "sem-vinculo" && (
+      {resultado?.estado === "sem-vinculo" && noPortal && (
+        <div className="cartao-analytics">
+          <EmptyState
+            className="py-14"
+            icon={<BarChartIcon className="h-7 w-7" />}
+            title="Os números ainda não estão disponíveis"
+            description="A equipe ainda não ligou os canais deste projeto. Assim que ligar, os resultados aparecem aqui."
+          />
+        </div>
+      )}
+
+      {resultado?.estado === "sem-vinculo" && !noPortal && (
         <div className="cartao-analytics p-5">
           <p className="text-sm font-semibold text-ink">Ligar este cliente ao Reportei</p>
           <p className="mt-0.5 text-xs text-ink-muted">
@@ -203,13 +238,19 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
                 className="py-14"
                 icon={<BarChartIcon className="h-7 w-7" />}
                 title="Nenhum canal conectado"
-                description={`O projeto "${ok.reportei.name}" não tem integrações no Reportei.`}
+                description={
+                  noPortal
+                    ? "Ainda não há canais conectados pra mostrar."
+                    : `O projeto "${ok.reportei.name}" não tem integrações no Reportei.`
+                }
               />
             </div>
           ) : (
-            <AnalyticsCanais canais={ok.canais} periodo={ok.periodo} />
+            <AnalyticsCanais canais={ok.canais} periodo={ok.periodo} noPortal={noPortal} />
           )}
 
+          {noPortal && <p className="mt-6 text-xs text-ink-muted">Os números são atualizados a cada 15 minutos.</p>}
+          {!noPortal && (
           <p className="mt-6 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
             <span>
               Ligado ao projeto &quot;{ok.reportei.name}&quot; do Reportei. Os números ficam guardados por até 15
@@ -226,6 +267,7 @@ export default function AnalyticsCliente({ projectId, projectName }: { projectId
             </button>
             {erroVinculo && <span className="text-danger">{erroVinculo}</span>}
           </p>
+          )}
         </div>
       )}
     </div>
