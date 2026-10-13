@@ -496,3 +496,12 @@ export const ShareIcon = createIcon(
     <path d="M13 5.5 20 12l-7 6.5V14.5c-4.5 0-7.3 1.3-9 4 .4-5 3.2-8.6 9-9.3V5.5Z" />
   </>
 );
+
+// Alfinete: página fixada em destaque na Wiki do cliente.
+export const PinIcon = createIcon(
+  "PinIcon",
+  <>
+    <path d="M9 4h6l-1 6 3 3v2H7v-2l3-3-1-6Z" />
+    <path d="M12 15v5" />
+  </>
+);

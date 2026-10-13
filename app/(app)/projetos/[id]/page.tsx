@@ -20,6 +20,7 @@ import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
 import ProjectFeedbackList from "@/components/ProjectFeedbackList";
 import { PaginaRow } from "@/components/WikiPagesPanel";
+import type { PaginaResumo } from "@/lib/wiki";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
 
@@ -70,11 +71,19 @@ export default async function ProjetoPage({
   // pacote, o cartão não aparece.
   const { data: pacoteDoCliente } = await supabase.rpc("pacote_do_cliente", { p_project_id: id });
 
-  const { data: pages } = await supabase
-    .from("pages")
-    .select("id, title, created_by_label, updated_at")
-    .eq("project_id", id)
-    .order("updated_at", { ascending: false });
+  // Páginas da Wiki do cliente, com as fixadas em destaque (migration 0054).
+  // Sem a migration a coluna não existe e a consulta falha: aí vale a lista
+  // simples, sem destaque.
+  const paginasDoCliente = (colunas: string) =>
+    supabase.from("pages").select(colunas).eq("project_id", id).order("updated_at", { ascending: false });
+  const comDestaque = await paginasDoCliente("id, title, created_by_label, updated_at, pinned_at");
+  const pages = ((comDestaque.error
+    ? (await paginasDoCliente("id, title, created_by_label, updated_at")).data
+    : comDestaque.data) ?? []) as unknown as PaginaResumo[];
+  const fixadas = pages
+    .filter((p) => p.pinned_at)
+    .sort((a, b) => (b.pinned_at ?? "").localeCompare(a.pinned_at ?? ""));
+  const naoFixadas = pages.filter((p) => !p.pinned_at);
 
   const { data: feedback } = await supabase
     .from("project_feedback")
@@ -190,7 +199,7 @@ export default async function ProjetoPage({
             <div className="mb-3 flex items-center justify-end">
               <NewPageButton projectId={id} />
             </div>
-            {(pages ?? []).length === 0 ? (
+            {pages.length === 0 ? (
               <div className="rounded-2xl border border-line bg-surface">
                 <EmptyState
                   icon={<BookOpenIcon className="h-6 w-6" />}
@@ -199,11 +208,34 @@ export default async function ProjetoPage({
                 />
               </div>
             ) : (
-              <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
-                {(pages ?? []).map((p) => (
-                  <PaginaRow key={p.id} pagina={p} />
-                ))}
-              </div>
+              <>
+                {fixadas.length > 0 && (
+                  <section className="mb-5">
+                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                      Em destaque
+                    </h2>
+                    <div className="divide-y divide-line rounded-2xl border border-brand-forte/30 bg-surface">
+                      {fixadas.map((p) => (
+                        <PaginaRow key={p.id} pagina={p} fixavel />
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {naoFixadas.length > 0 && (
+                  <section>
+                    {fixadas.length > 0 && (
+                      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                        Outras páginas
+                      </h2>
+                    )}
+                    <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
+                      {naoFixadas.map((p) => (
+                        <PaginaRow key={p.id} pagina={p} fixavel />
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
             )}
           </div>
         }

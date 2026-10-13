@@ -5,6 +5,9 @@ export interface PaginaResumo {
   title: string;
   created_by_label: string | null;
   updated_at: string;
+  // Quando foi fixada em destaque na Wiki do cliente (migration 0054); nulo
+  // ou ausente = não fixada.
+  pinned_at?: string | null;
 }
 
 // A Wiki do menu é individual, pra todo mundo: só entram páginas que eu

@@ -5,9 +5,10 @@ import Link from "next/link";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { EmptyState } from "./ui/EmptyState";
-import { BookOpenIcon } from "./ui/icons";
+import { BookOpenIcon, PinIcon } from "./ui/icons";
 import NewPageButton from "./NewPageButton";
 import DeletePageButton from "./DeletePageButton";
+import FixarPaginaButton from "./FixarPaginaButton";
 import { formatarRelativo } from "@/lib/format";
 import type { PaginaResumo } from "@/lib/wiki";
 
@@ -136,22 +137,26 @@ function PaginaCard({ pagina }: { pagina: PaginaResumo }) {
 
 // Exportado pra ser reaproveitado também na aba "Wiki" de dentro de um
 // projeto (app/(app)/projetos/[id]/page.tsx), em vez de duplicar a mesma
-// linha de página.
-export function PaginaRow({ pagina }: { pagina: PaginaResumo }) {
+// linha de página. Com "fixavel" (só na Wiki do cliente) a linha ganha o
+// alfinete de fixar em destaque.
+export function PaginaRow({ pagina, fixavel = false }: { pagina: PaginaResumo; fixavel?: boolean }) {
+  const fixada = !!pagina.pinned_at;
   return (
     <div className="group relative flex items-center hover:bg-surface-hover">
       <Link
         href={`/wiki/${pagina.id}`}
-        className="flex flex-1 items-center justify-between gap-3 px-4 py-3"
+        className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3"
       >
-        <span className="truncate text-sm font-medium text-ink">
-          {pagina.title || "Sem título"}
+        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-ink">
+          {fixavel && fixada && <PinIcon className="h-3.5 w-3.5 flex-shrink-0 text-brand-forte" fill="currentColor" />}
+          <span className="truncate">{pagina.title || "Sem título"}</span>
         </span>
         <span className="hidden flex-shrink-0 whitespace-nowrap text-xs text-ink-muted sm:block">
           {metaTexto(pagina)}
         </span>
       </Link>
-      <div className="pr-3">
+      <div className="flex items-center gap-0.5 pr-3">
+        {fixavel && <FixarPaginaButton pageId={pagina.id} fixada={fixada} />}
         <DeletePageButton pageId={pagina.id} />
       </div>
     </div>
