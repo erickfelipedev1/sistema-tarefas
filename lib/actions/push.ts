@@ -172,41 +172,6 @@ export async function avisarMencao(commentId: string, apenas?: string[]) {
   });
 }
 
-// Depois de passar uma subtarefa pra alguém: manda o push do aviso que o
-// banco já criou no sininho (migration 0066). Só quem fez a atribuição
-// dispara, só vale pra aviso recente que ainda não foi pro celular, e o texto
-// é o do próprio aviso — a tela não escolhe o que vai no push.
-export async function avisarSubtarefa(subtaskId: string) {
-  const user = await usuarioAtual();
-  if (!user || typeof subtaskId !== "string") return;
-  const admin = createAdminClient();
-  const desde = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { data: pendentes } = await admin
-    .from("user_notifications")
-    .select("id, profile_id, title, body, url")
-    .eq("subtask_id", subtaskId)
-    .eq("type", "subtask")
-    .eq("actor_id", user.id)
-    .is("pushed_at", null)
-    .gte("created_at", desde);
-  if (!pendentes || pendentes.length === 0) return;
-  await admin
-    .from("user_notifications")
-    .update({ pushed_at: new Date().toISOString() })
-    .in(
-      "id",
-      pendentes.map((n) => n.id as string)
-    );
-  for (const n of pendentes) {
-    await enviarPush([n.profile_id as string], {
-      titulo: n.title as string,
-      corpo: n.body as string,
-      url: n.url as string,
-      tag: `subtarefa-${subtaskId}`,
-    });
-  }
-}
-
 // Botão "Testar notificação": manda um aviso pra todos os aparelhos de quem
 // clicou e devolve o que aconteceu (pra achar o problema sem adivinhar).
 export async function testarPush(): Promise<string> {

@@ -220,9 +220,14 @@ export default function TaskBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tarefaInicial]);
 
+  // Tarefas abertas na mesma sessão do modal (mãe <-> subtarefa): ao fechar,
+  // o cartão de todas elas atualiza os indicadores.
+  const visitadas = useRef<Set<string>>(new Set());
+
   function fecharModal() {
     // A pessoa pode ter mexido no checklist/comentários: atualiza o cartão.
     const aberta = tarefaEditando?.id;
+    const mae = tarefaEditando?.parent_id;
     setModalAberto(false);
     setTarefaEditando(null);
     // Tira o "?tarefa=" do endereço pra um F5 não reabrir a tarefa.
@@ -230,10 +235,12 @@ export default function TaskBoard({
       window.history.replaceState(null, "", window.location.pathname);
     }
     if (aberta) {
-      carregarResumos(supabase, [aberta]).then((m) =>
-        setResumos((atual) => ({ ...atual, ...m }))
-      );
+      // Mexeu numa subtarefa: o contador da tarefa principal também muda.
+      const ids = new Set<string>([aberta, ...visitadas.current]);
+      if (mae) ids.add(mae);
+      carregarResumos(supabase, Array.from(ids)).then((m) => setResumos((atual) => ({ ...atual, ...m })));
     }
+    visitadas.current = new Set();
   }
 
   function handleCreated(nova: Task) {
@@ -616,6 +623,15 @@ export default function TaskBoard({
                         </div>
                       )}
 
+                      {task.parent_id && (
+                        <p className="mt-2 truncate text-[11px] font-medium text-brand-forte">
+                          ↳ Subtarefa
+                          {tasks.find((t) => t.id === task.parent_id)
+                            ? ` de ${tasks.find((t) => t.id === task.parent_id)?.title}`
+                            : ""}
+                        </p>
+                      )}
+
                       {temConteudo(resumos[task.id]) && (
                         <IndicadoresTarefa resumo={resumos[task.id]} />
                       )}
@@ -697,7 +713,12 @@ export default function TaskBoard({
 
       {modalAberto && (
         <TaskModal
+          key={tarefaEditando?.id ?? "nova"}
           task={tarefaEditando}
+          onAbrirOutra={(t) => {
+            if (tarefaEditando) visitadas.current.add(tarefaEditando.id);
+            abrirEditar(t);
+          }}
           projectId={projectId}
           projects={projects}
           profiles={profiles}

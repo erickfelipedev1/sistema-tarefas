@@ -44,7 +44,7 @@ export async function carregarResumos(
     const lote = unicos.slice(i, i + LOTE);
     const [checklist, subtarefas, comentarios, anexos, horas] = await Promise.all([
       supabase.from("task_checklist_items").select("task_id, done").in("task_id", lote),
-      supabase.from("task_subtasks").select("task_id, status").in("task_id", lote),
+      supabase.from("tasks").select("parent_id, status").in("parent_id", lote),
       supabase.from("task_comments").select("task_id").in("task_id", lote),
       supabase.from("task_attachments").select("task_id").in("task_id", lote),
       supabase.from("task_hours").select("task_id, hours").in("task_id", lote),
@@ -55,10 +55,11 @@ export async function carregarResumos(
       r.checklistTotal += 1;
       if (c.done) r.checklistFeitos += 1;
     });
-    // Sem a migration 0065 a consulta falha e as subtarefas só ficam em zero.
+    // Subtarefas = tarefas com parent_id (migration 0067); as canceladas não
+    // contam. Sem a migration a consulta falha e o contador só fica em zero.
     (subtarefas.data ?? []).forEach((s) => {
-      const r = mapa[s.task_id as string];
-      if (!r) return;
+      const r = mapa[s.parent_id as string];
+      if (!r || s.status === "cancelled") return;
       r.subtarefasTotal += 1;
       if (s.status === "done") r.subtarefasFeitas += 1;
     });

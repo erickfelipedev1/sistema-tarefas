@@ -558,7 +558,9 @@ export default function CalendarView({
 
       {modalAberto && (
         <TaskModal
+          key={tarefaEditando?.id ?? "nova"}
           task={tarefaEditando}
+          onAbrirOutra={abrirEditar}
           projectId={null}
           projects={projects}
           profiles={profiles}

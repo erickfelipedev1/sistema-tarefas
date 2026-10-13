@@ -57,6 +57,7 @@ export default function TaskModal({
   initialDueDate,
   initialDueTime,
   podeMudarDatas = true,
+  onAbrirOutra,
   onClose,
   onCreated,
   onUpdated,
@@ -76,6 +77,8 @@ export default function TaskModal({
   // Por padrão qualquer pessoa muda o início e a entrega de uma tarefa já
   // criada; passe false pra deixar as datas só pra leitura.
   podeMudarDatas?: boolean;
+  // Abre outra tarefa no lugar desta (da subtarefa pra principal e vice-versa).
+  onAbrirOutra?: (task: Task) => void;
   onClose: () => void;
   onCreated: (task: Task) => void;
   onUpdated: (task: Task) => void;
@@ -269,8 +272,15 @@ export default function TaskModal({
 
   async function excluirTarefa() {
     if (!current) return;
+    // Todas as subtarefas contam (até as canceladas): elas ficam no quadro
+    // como tarefas avulsas.
+    const { count: filhas } = current.parent_id
+      ? { count: 0 }
+      : await supabase.from("tasks").select("id", { count: "exact", head: true }).eq("parent_id", current.id);
     const ok = window.confirm(
-      "Excluir esta tarefa? Essa ação não pode ser desfeita."
+      filhas && filhas > 0
+        ? `Excluir esta tarefa? ${filhas === 1 ? "A subtarefa dela fica" : `As ${filhas} subtarefas dela ficam`} no quadro como tarefa${filhas === 1 ? "" : "s"} avulsa${filhas === 1 ? "" : "s"}. Essa ação não pode ser desfeita.`
+        : "Excluir esta tarefa? Essa ação não pode ser desfeita."
     );
     if (!ok) return;
     await supabase.from("tasks").delete().eq("id", current.id);
@@ -299,6 +309,18 @@ export default function TaskModal({
               ✕
             </button>
           </div>
+          {current?.parent_id && (
+            <button
+              type="button"
+              onClick={async () => {
+                const { data } = await supabase.from("tasks").select("*").eq("id", current.parent_id as string).maybeSingle();
+                if (data) onAbrirOutra?.(data as Task);
+              }}
+              className="mb-1 text-xs font-medium text-brand-forte hover:underline"
+            >
+              ↳ Subtarefa de outra tarefa · abrir a principal
+            </button>
+          )}
           {!isNovo && (
             <p className="mb-4 text-xs text-ink-muted">
               As alterações são salvas automaticamente.
@@ -553,6 +575,8 @@ export default function TaskModal({
                     </label>
                     <select
                       value={taskProjectId}
+                      disabled={!!current?.parent_id}
+                      title={current?.parent_id ? "A subtarefa fica sempre no cliente da tarefa principal." : undefined}
                       onChange={(e) => {
                         setTaskProjectId(e.target.value);
                         if (!isNovo)
@@ -637,10 +661,15 @@ export default function TaskModal({
           {aba === "checklist" && current && (
             <ChecklistTab taskId={current.id} pageId={current.page_id} />
           )}
-          {aba === "subtarefas" && current && (
+          {aba === "subtarefas" && current && !current.parent_id && (
             <SubtarefasTab
-              taskId={current.id}
+              tarefa={current}
               pessoas={profiles}
+              currentUserLabel={currentUserLabel}
+              getNextPosition={getNextPosition}
+              aoCriar={onCreated}
+              aoAtualizar={onUpdated}
+              aoAbrir={(t) => onAbrirOutra?.(t)}
               aoMudar={() =>
                 carregarResumos(supabase, [current.id]).then((m) => setResumo(m[current.id] ?? resumoVazio()))
               }
@@ -691,7 +720,7 @@ export default function TaskModal({
           <p className="hidden px-2 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-ink-muted md:block">
             Menu
           </p>
-          {ABAS.map((item) => (
+          {ABAS.filter((item) => !(item.key === "subtarefas" && current?.parent_id)).map((item) => (
             <button
               key={item.key}
               disabled={item.key !== "detalhes" && isNovo}

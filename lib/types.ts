@@ -8,6 +8,9 @@ export interface Task {
   description: string | null;
   // Texto da aba "Copywrite" (migration 0061): a copy da peça.
   copy_text?: string | null;
+  // Subtarefa (migration 0067): id da tarefa principal. Uma subtarefa é uma
+  // tarefa completa; só existe um nível.
+  parent_id?: string | null;
   status: TaskStatus;
   position: number;
   // Período (migration 0040): início → entrega. Tarefas antigas podem não
@@ -61,26 +64,8 @@ export interface UserNotification {
   actor_id: string | null;
   task_id: string | null;
   comment_id: string | null;
-  subtask_id?: string | null;
   read_at: string | null;
   created_at: string;
-}
-
-// Subtarefa (migration 0065): item menor dentro de uma tarefa, com status,
-// responsável e prazo próprios.
-export type SubtaskStatus = "todo" | "doing" | "approval" | "done";
-
-export interface Subtask {
-  id: string;
-  task_id: string;
-  title: string;
-  status: SubtaskStatus;
-  assigned_to: string | null;
-  due_date: string | null;
-  position: number;
-  created_by: string | null;
-  created_at: string;
-  completed_at: string | null;
 }
 
 export interface TaskAttachment {
