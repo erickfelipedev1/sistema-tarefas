@@ -66,6 +66,12 @@ export default async function ProjetoPage({
     .select("id, username, name, avatar_url")
     .order("name", { ascending: true });
 
+  // Quem cuida do cliente (migration 0055; marcado na lista de clientes).
+  const responsaveisDoCliente = ((project.responsible_ids as string[] | null) ?? []).flatMap((pessoaId) => {
+    const pessoa = (profiles ?? []).find((p) => p.id === pessoaId);
+    return pessoa ? [pessoa.name || pessoa.username || "Sem nome"] : [];
+  });
+
   // O pacote que o cliente tem hoje (migration 0053): nome e o que inclui,
   // sem valor — a função do banco só devolve isso. Sem a migration, ou sem
   // pacote, o cartão não aparece.
@@ -126,8 +132,9 @@ export default async function ProjetoPage({
         </h1>
         <p className="mt-0.5 text-sm text-ink-muted">
           Quadro de tarefas e Wiki próprios
-          {project.created_by_label &&
-            ` · Responsável: ${project.created_by_label}`}
+          {responsaveisDoCliente.length > 0
+            ? ` · ${responsaveisDoCliente.length === 1 ? "Responsável" : "Responsáveis"}: ${responsaveisDoCliente.join(", ")}`
+            : project.created_by_label && ` · Responsável: ${project.created_by_label}`}
         </p>
       </div>
 

@@ -95,6 +95,9 @@ export interface Project {
   status: ProjectStatus;
   responsible_id: string | null;
   responsible_label: string | null;
+  // As pessoas da equipe que cuidam do cliente (migration 0055) — aparecem
+  // no cartão dele na lista de clientes. Ausente = migration não rodada.
+  responsible_ids?: string[] | null;
   start_date: string | null;
   target_end_date: string | null;
   // Item manual do checklist ("Responder informações iniciais") — a

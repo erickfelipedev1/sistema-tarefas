@@ -20,9 +20,13 @@ import {
   PencilIcon,
   PlusIcon,
   Trash2Icon,
+  UsersIcon,
 } from "./ui/icons";
 
-type Ordenacao = "recentes" | "antigos";
+type Ordenacao = "recentes" | "antigos" | "az";
+
+const CHAVE_DA_ORDENACAO = "dhub:clientes:ordenacao";
+const nomeDaPessoa = (p: Profile) => p.name || p.username || "Sem nome";
 
 export default function ProjectsList({
   initialProjects,
@@ -30,6 +34,7 @@ export default function ProjectsList({
   currentUserLabel = "",
   verTudo = false,
   profiles = [],
+  pacotes = {},
   title,
   subtitle,
 }: {
@@ -44,8 +49,13 @@ export default function ProjectsList({
   // Quem tem "ve_tudo" (hoje só a Emily) não filtra nada — vê o projeto de
   // todo mundo assim que é criado.
   verTudo?: boolean;
-  // Usado só pra buscar a fotinha de quem criou cada projeto.
+  // A equipe: a fotinha de quem criou cada cliente e as pessoas que podem
+  // ser marcadas como responsáveis.
   profiles?: Profile[];
+  // O pacote que cada cliente tem neste mês (nome e ordem, sem valor); quem
+  // não está aqui não tem pacote. Com algum cliente em pacote, a lista é
+  // agrupada por pacote.
+  pacotes?: Record<string, { nome: string; posicao: number }>;
   title: string;
   subtitle: string;
 }) {
@@ -58,37 +68,71 @@ export default function ProjectsList({
   const [responsavelFiltro, setResponsavelFiltro] = useState("");
   const [dataFiltro, setDataFiltro] = useState("");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
+  // Cliente com a janela de responsáveis aberta.
+  const [editandoResponsaveis, setEditandoResponsaveis] = useState<Project | null>(null);
+
+  // A ordenação escolhida fica guardada no navegador de cada pessoa.
+  useEffect(() => {
+    try {
+      const salva = window.localStorage.getItem(CHAVE_DA_ORDENACAO);
+      if (salva === "recentes" || salva === "antigos" || salva === "az") setOrdenacao(salva);
+    } catch {
+      // sem localStorage: fica na ordem padrão
+    }
+  }, []);
+  function trocarOrdenacao(nova: Ordenacao) {
+    setOrdenacao(nova);
+    try {
+      window.localStorage.setItem(CHAVE_DA_ORDENACAO, nova);
+    } catch {
+      // só não fica salvo pra próxima visita
+    }
+  }
 
   const avatarPorCriador = useMemo(
     () => new Map(profiles.map((p) => [p.id, p.avatar_url])),
     [profiles]
   );
+  const perfilPorId = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
+  // Os responsáveis de um cliente (migration 0055), só os que ainda existem.
+  const responsaveisDe = (project: Project) =>
+    (project.responsible_ids ?? []).flatMap((id) => perfilPorId.get(id) ?? []);
 
-  // Só lista, no filtro, quem já criou pelo menos um projeto — em vez de
-  // todo mundo cadastrado no sistema.
-  const criadores = useMemo(() => {
-    const ids = new Set(
-      projects.map((p) => p.created_by).filter((id): id is string => !!id)
-    );
+  // No filtro entram os responsáveis de algum cliente e, pros clientes que
+  // ainda não têm responsável marcado, quem criou — em vez de todo mundo
+  // cadastrado no sistema.
+  const pessoasDoFiltro = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of projects) {
+      const responsaveis = p.responsible_ids ?? [];
+      if (responsaveis.length > 0) responsaveis.forEach((id) => ids.add(id));
+      else if (p.created_by) ids.add(p.created_by);
+    }
     return Array.from(ids)
       .map((id) => profiles.find((p) => p.id === id))
       .filter((p): p is Profile => !!p)
-      .sort((a, b) =>
-        (a.name || a.username || "").localeCompare(b.name || b.username || "")
-      );
+      .sort((a, b) => nomeDaPessoa(a).localeCompare(nomeDaPessoa(b), "pt-BR"));
   }, [projects, profiles]);
 
   const projetosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     const filtrados = projects.filter((project) => {
+      const responsaveis = project.responsible_ids ?? [];
       if (termo) {
         const nomeBate = project.name.toLowerCase().includes(termo);
-        const pessoaBate = (project.created_by_label ?? "")
-          .toLowerCase()
-          .includes(termo);
+        const pessoaBate =
+          (project.created_by_label ?? "").toLowerCase().includes(termo) ||
+          responsaveis.some((id) => {
+            const pessoa = perfilPorId.get(id);
+            return !!pessoa && nomeDaPessoa(pessoa).toLowerCase().includes(termo);
+          });
         if (!nomeBate && !pessoaBate) return false;
       }
-      if (responsavelFiltro && project.created_by !== responsavelFiltro) {
+      // Com responsáveis marcados, vale a lista; sem nenhum, vale quem criou.
+      if (
+        responsavelFiltro &&
+        !(responsaveis.length > 0 ? responsaveis.includes(responsavelFiltro) : project.created_by === responsavelFiltro)
+      ) {
         return false;
       }
       if (dataFiltro && project.created_at.slice(0, 10) !== dataFiltro) {
@@ -98,11 +142,38 @@ export default function ProjectsList({
     });
 
     return [...filtrados].sort((a, b) =>
-      ordenacao === "recentes"
-        ? b.created_at.localeCompare(a.created_at)
-        : a.created_at.localeCompare(b.created_at)
+      ordenacao === "az"
+        ? a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base", numeric: true })
+        : ordenacao === "recentes"
+          ? b.created_at.localeCompare(a.created_at)
+          : a.created_at.localeCompare(b.created_at)
     );
-  }, [projects, busca, responsavelFiltro, dataFiltro, ordenacao]);
+  }, [projects, busca, responsavelFiltro, dataFiltro, ordenacao, perfilPorId]);
+
+  // Com algum cliente em pacote, a lista vira um bloco por pacote (na ordem
+  // dos pacotes) e, por último, os clientes sem pacote. Dentro de cada bloco
+  // vale a ordenação escolhida.
+  const grupos = useMemo(() => {
+    if (!projetosFiltrados.some((p) => pacotes[p.id])) return null;
+    const porPacote = new Map<string, { nome: string; posicao: number; clientes: Project[] }>();
+    const semPacote: Project[] = [];
+    for (const project of projetosFiltrados) {
+      const pacote = pacotes[project.id];
+      if (!pacote) {
+        semPacote.push(project);
+        continue;
+      }
+      const grupo = porPacote.get(pacote.nome) ?? { ...pacote, clientes: [] };
+      grupo.clientes.push(project);
+      porPacote.set(pacote.nome, grupo);
+    }
+    return [
+      ...Array.from(porPacote.values())
+        .sort((a, b) => a.posicao - b.posicao || a.nome.localeCompare(b.nome, "pt-BR"))
+        .map((g) => ({ titulo: `Pacote ${g.nome}`, clientes: g.clientes })),
+      ...(semPacote.length > 0 ? [{ titulo: "Sem pacote", clientes: semPacote }] : []),
+    ];
+  }, [projetosFiltrados, pacotes]);
 
   const temFiltroAtivo =
     busca.trim() !== "" || responsavelFiltro !== "" || dataFiltro !== "";
@@ -227,6 +298,17 @@ export default function ProjectsList({
     }
   }
 
+  // Grava os responsáveis do cliente (migration 0055). Devolve o texto do
+  // erro, ou null se salvou.
+  async function salvarResponsaveis(project: Project, ids: string[]): Promise<string | null> {
+    const { error } = await supabase.from("projects").update({ responsible_ids: ids }).eq("id", project.id);
+    if (error) {
+      return "Não deu pra salvar os responsáveis. Confere se a migration 0055_clientes_responsaveis_e_pacote.sql já foi rodada no Supabase.";
+    }
+    setProjects((current) => current.map((p) => (p.id === project.id ? { ...p, responsible_ids: ids } : p)));
+    return null;
+  }
+
   // Projeto público: todo mundo vê, mesmo sem tarefa nele. Todo projeto
   // nasce privado — só vira público quem marcar aqui manualmente.
   async function handleTogglePublic(project: Project) {
@@ -292,9 +374,9 @@ export default function ProjectsList({
           className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="">Todos os responsáveis</option>
-          {criadores.map((p) => (
+          {pessoasDoFiltro.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name || p.username}
+              {nomeDaPessoa(p)}
             </option>
           ))}
         </select>
@@ -306,9 +388,11 @@ export default function ProjectsList({
         />
         <select
           value={ordenacao}
-          onChange={(e) => setOrdenacao(e.target.value as Ordenacao)}
+          onChange={(e) => trocarOrdenacao(e.target.value as Ordenacao)}
+          aria-label="Ordenar clientes"
           className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
+          <option value="az">Ordem alfabética (A–Z)</option>
           <option value="recentes">Mais recentes</option>
           <option value="antigos">Mais antigos</option>
         </select>
@@ -336,39 +420,163 @@ export default function ProjectsList({
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projetosFiltrados.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              avatarUrl={
-                project.created_by
-                  ? avatarPorCriador.get(project.created_by)
-                  : null
-              }
-              onRename={() => handleRename(project)}
-              onDelete={() => handleDelete(project)}
-              onTogglePublic={() => handleTogglePublic(project)}
-            />
-          ))}
-        </div>
+        (grupos ?? [{ titulo: null, clientes: projetosFiltrados }]).map((grupo) => (
+          <section key={grupo.titulo ?? "todos"} className="mb-7 last:mb-0">
+            {grupo.titulo && (
+              <h2 className="mb-3 flex items-baseline gap-2 text-sm font-semibold text-ink">
+                {grupo.titulo}
+                <span className="text-xs font-normal text-ink-muted">
+                  {grupo.clientes.length} {grupo.clientes.length === 1 ? "cliente" : "clientes"}
+                </span>
+              </h2>
+            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {grupo.clientes.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  avatarUrl={project.created_by ? avatarPorCriador.get(project.created_by) : null}
+                  responsaveis={responsaveisDe(project)}
+                  pacote={pacotes[project.id]?.nome ?? null}
+                  onRename={() => handleRename(project)}
+                  onDelete={() => handleDelete(project)}
+                  onTogglePublic={() => handleTogglePublic(project)}
+                  onResponsaveis={() => setEditandoResponsaveis(project)}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+
+      {editandoResponsaveis && (
+        <ResponsaveisDoCliente
+          project={editandoResponsaveis}
+          profiles={profiles}
+          aoSalvar={(ids) => salvarResponsaveis(editandoResponsaveis, ids)}
+          aoFechar={() => setEditandoResponsaveis(null)}
+        />
       )}
     </div>
   );
 }
 
+// Janela pra marcar quem da equipe é responsável pelo cliente. Pode ser mais
+// de uma pessoa; a lista aparece no cartão do cliente.
+function ResponsaveisDoCliente({
+  project,
+  profiles,
+  aoSalvar,
+  aoFechar,
+}: {
+  project: Project;
+  profiles: Profile[];
+  aoSalvar: (ids: string[]) => Promise<string | null>;
+  aoFechar: () => void;
+}) {
+  const [marcados, setMarcados] = useState<Set<string>>(new Set(project.responsible_ids ?? []));
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const pessoas = useMemo(
+    () => [...profiles].sort((a, b) => nomeDaPessoa(a).localeCompare(nomeDaPessoa(b), "pt-BR")),
+    [profiles]
+  );
+
+  useEffect(() => {
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Escape") aoFechar();
+    }
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [aoFechar]);
+
+  async function salvar() {
+    setSalvando(true);
+    setErro(null);
+    // Na ordem da lista, e só quem ainda existe na equipe.
+    const falha = await aoSalvar(pessoas.filter((p) => marcados.has(p.id)).map((p) => p.id));
+    setSalvando(false);
+    if (falha) return setErro(falha);
+    aoFechar();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) aoFechar();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Responsáveis por ${project.name}`}
+        className="flex max-h-[85vh] w-full max-w-sm flex-col rounded-2xl border border-line bg-surface p-5 shadow-dropdown"
+      >
+        <p className="text-sm font-semibold text-ink">Responsáveis por {project.name}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          Marque quem da equipe cuida deste cliente. Eles aparecem no cartão do cliente.
+        </p>
+        <div className="scrollbar-thin mt-3 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+          {pessoas.map((p) => (
+            <label
+              key={p.id}
+              className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-ink hover:bg-surface-hover"
+            >
+              <input
+                type="checkbox"
+                checked={marcados.has(p.id)}
+                onChange={() =>
+                  setMarcados((atual) => {
+                    const novo = new Set(atual);
+                    if (novo.has(p.id)) novo.delete(p.id);
+                    else novo.add(p.id);
+                    return novo;
+                  })
+                }
+                className="h-4 w-4 accent-[rgb(var(--color-brand))]"
+              />
+              <Avatar name={nomeDaPessoa(p)} src={p.avatar_url} size="sm" />
+              <span className="min-w-0 truncate">{nomeDaPessoa(p)}</span>
+            </label>
+          ))}
+        </div>
+        {erro && <p className="mt-2 text-sm text-danger">{erro}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={aoFechar} disabled={salvando}>
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={salvar} disabled={salvando}>
+            {salvando ? "Salvando..." : "Salvar"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const MAXIMO_DE_FOTOS = 4;
+
 function ProjectCard({
   project,
   avatarUrl,
+  responsaveis,
+  pacote,
   onRename,
   onDelete,
   onTogglePublic,
+  onResponsaveis,
 }: {
   project: Project;
   avatarUrl: string | null | undefined;
+  // Quem cuida do cliente; vazio = ninguém marcado ainda (aparece quem criou).
+  responsaveis: Profile[];
+  // Nome do pacote do cliente neste mês, se tiver.
+  pacote: string | null;
   onRename: () => void;
   onDelete: () => void;
   onTogglePublic: () => void;
+  onResponsaveis: () => void;
 }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -397,20 +605,50 @@ function ProjectCard({
           Quadro de tarefas e Wiki próprios
         </p>
 
-        {project.is_public && (
-          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-medium text-brand-forte">
-            <GlobeIcon className="h-3 w-3" />
-            Público
-          </span>
+        {(project.is_public || pacote) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {project.is_public && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-medium text-brand-forte">
+                <GlobeIcon className="h-3 w-3" />
+                Público
+              </span>
+            )}
+            {pacote && (
+              <span className="inline-flex items-center rounded-full bg-surface-hover px-2 py-0.5 text-[11px] font-medium text-ink">
+                Pacote {pacote}
+              </span>
+            )}
+          </div>
         )}
 
-        {project.created_by_label && (
+        {responsaveis.length > 0 ? (
           <div className="mt-4 flex items-center gap-2">
-            <Avatar name={project.created_by_label} src={avatarUrl} size="sm" />
-            <span className="text-xs text-ink-muted">
-              {project.created_by_label}
+            <span className="flex flex-shrink-0 -space-x-1.5">
+              {responsaveis.slice(0, MAXIMO_DE_FOTOS).map((p) => (
+                <Avatar
+                  key={p.id}
+                  name={nomeDaPessoa(p)}
+                  src={p.avatar_url}
+                  size="sm"
+                  className="ring-2 ring-surface"
+                />
+              ))}
+            </span>
+            <span className="min-w-0 truncate text-xs text-ink-muted">
+              {responsaveis
+                .slice(0, 2)
+                .map((p) => nomeDaPessoa(p).split(" ")[0])
+                .join(", ")}
+              {responsaveis.length > 2 && ` +${responsaveis.length - 2}`}
             </span>
           </div>
+        ) : (
+          project.created_by_label && (
+            <div className="mt-4 flex items-center gap-2">
+              <Avatar name={project.created_by_label} src={avatarUrl} size="sm" />
+              <span className="text-xs text-ink-muted">{project.created_by_label}</span>
+            </div>
+          )
         )}
 
         <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
@@ -465,6 +703,17 @@ function ProjectCard({
             >
               <PencilIcon className="h-3.5 w-3.5" />
               Editar
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setMenuAberto(false);
+                onResponsaveis();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
+            >
+              <UsersIcon className="h-3.5 w-3.5" />
+              Responsáveis
             </button>
             <button
               role="menuitem"

@@ -40,14 +40,29 @@ export default async function ProjetosPage() {
       ? `created_by.eq.${user?.id},is_public.eq.true,id.in.(${idsDeProjetos.join(",")})`
       : `created_by.eq.${user?.id},is_public.eq.true`;
 
-    ({ data: projects } = await supabase
+    // Quem é responsável por um cliente (migration 0055) também o vê. Sem a
+    // migration a coluna não existe e a consulta falha: aí vale a regra antiga.
+    const comResponsavel = await supabase
       .from("projects")
       .select("*")
-      .or(filtro)
-      .order("created_at", { ascending: false }));
+      .or(`${filtro},responsible_ids.cs.{${user?.id}}`)
+      .order("created_at", { ascending: false });
+    projects = comResponsavel.error
+      ? (await supabase.from("projects").select("*").or(filtro).order("created_at", { ascending: false })).data
+      : comResponsavel.data;
   }
 
-  // Fotinha de quem criou cada projeto (mostrada no card, junto do nome).
+  // O pacote de cada cliente neste mês (migration 0055), só nome e ordem, sem
+  // valor — pra lista agrupar por pacote. Sem a migration, a lista fica sem
+  // os grupos.
+  const { data: linhasDePacote } = await supabase.rpc("pacotes_dos_clientes");
+  const pacotes: Record<string, { nome: string; posicao: number }> = {};
+  for (const linha of (linhasDePacote ?? []) as { project_id: string; package_name: string; package_position: number }[]) {
+    pacotes[linha.project_id] = { nome: linha.package_name, posicao: linha.package_position };
+  }
+
+  // Fotinha dos responsáveis (ou de quem criou) de cada cliente, mostrada no
+  // card, e a lista de pessoas pra escolher os responsáveis.
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, username, name, avatar_url");
@@ -61,6 +76,7 @@ export default async function ProjetosPage() {
         currentUserLabel={currentUserLabel}
         verTudo={verTudo}
         profiles={profiles ?? []}
+        pacotes={pacotes}
         title={verTudo ? "Todos os clientes" : "Meus clientes"}
         subtitle="Organize seus clientes, equipes e entregas em um só lugar."
       />
