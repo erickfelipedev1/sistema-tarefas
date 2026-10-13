@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Subtask, SubtaskStatus } from "@/lib/types";
 import { nomeParaMencao } from "@/lib/mencoes";
+import { avisarSubtarefa } from "@/lib/actions/push";
 import { XIcon } from "./ui/icons";
 
 const STATUS: { key: SubtaskStatus; label: string }[] = [
@@ -110,6 +111,8 @@ export default function SubtarefasTab({
     }
     setErro(null);
     if ("status" in campos) aoMudar();
+    // Responsável novo: o banco cria o aviso no sininho; aqui sai o push.
+    if ("assigned_to" in campos && campos.assigned_to) avisarSubtarefa(item.id).catch(() => {});
   }
 
   async function remover(item: Subtask) {

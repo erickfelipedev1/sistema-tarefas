@@ -53,7 +53,7 @@ export interface TaskComment {
 export interface UserNotification {
   id: string;
   profile_id: string;
-  type: "mention";
+  type: "mention" | "subtask";
   title: string;
   body: string;
   // Caminho dentro do d.hub pra onde o clique leva.
@@ -61,6 +61,7 @@ export interface UserNotification {
   actor_id: string | null;
   task_id: string | null;
   comment_id: string | null;
+  subtask_id?: string | null;
   read_at: string | null;
   created_at: string;
 }
