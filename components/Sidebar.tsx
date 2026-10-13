@@ -20,6 +20,7 @@ import {
   ClipboardListIcon,
   FileTextIcon,
   FolderIcon,
+  ImageIcon,
   ListChecksIcon,
   MessageCircleIcon,
   MoonIcon,
@@ -53,6 +54,7 @@ const SECOES: {
       // Arquivos não tem mais tela própria — cada projeto tem sua aba
       // "Arquivos" (ver ProjectTabs), então não tem link avulso aqui.
       { href: "/projetos", label: "Clientes", icon: FolderIcon },
+      { href: "/postagens", label: "Calendário de postagem", icon: ImageIcon },
     ],
   },
   {

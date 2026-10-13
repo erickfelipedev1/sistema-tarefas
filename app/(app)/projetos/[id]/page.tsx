@@ -31,7 +31,7 @@ export default async function ProjetoPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams?: { aba?: string };
+  searchParams?: { aba?: string; post?: string; novo?: string };
 }) {
   const { id } = params;
   const supabase = await clienteDaRequisicao();
@@ -189,6 +189,8 @@ export default async function ProjetoPage({
             currentUserLabel={userLabel}
             souLider={souLider}
             profiles={profiles ?? []}
+            postInicial={searchParams?.post}
+            novoEm={searchParams?.novo}
           />
         }
         tarefas={

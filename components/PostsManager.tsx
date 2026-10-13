@@ -22,6 +22,7 @@ import {
   tamanhoLegivel,
 } from "@/lib/posts";
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
+import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -81,6 +82,8 @@ export default function PostsManager({
   currentUserLabel,
   souLider,
   profiles,
+  postInicial,
+  novoEm,
 }: {
   projectId: string;
   projectName: string;
@@ -88,6 +91,10 @@ export default function PostsManager({
   currentUserLabel: string;
   souLider: boolean;
   profiles: Profile[];
+  // Vindos do Calendário de postagem: um post pra já abrir, ou um dia
+  // (AAAA-MM-DD) pra começar um post novo.
+  postInicial?: string;
+  novoEm?: string;
 }) {
   const supabase = createClient();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -96,6 +103,8 @@ export default function PostsManager({
   const [carregando, setCarregando] = useState(true);
   const [erroCarregar, setErroCarregar] = useState<string | null>(null);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  // A aba mostra os posts em lista ou no calendário de postagem.
+  const [visao, setVisao] = useState<"lista" | "calendario">("lista");
   const [avisoDaLista, setAvisoDaLista] = useState<string | null>(null);
 
   // Formulário
@@ -263,6 +272,39 @@ export default function PostsManager({
   function abrirNovo() {
     fecharForm();
     setMostrarForm(true);
+  }
+
+  // Veio do calendário de todos os clientes com um dia escolhido.
+  useEffect(() => {
+    if (novoEm && /^\d{4}-\d{2}-\d{2}$/.test(novoEm)) {
+      setMostrarForm(true);
+      setData(novoEm);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Veio do calendário com um post pra abrir: espera a lista carregar.
+  useEffect(() => {
+    if (!postInicial || carregando) return;
+    setAbertos((a) => new Set(a).add(postInicial));
+    requestAnimationFrame(() => document.getElementById(`post-${postInicial}`)?.scrollIntoView({ block: "start" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregando]);
+
+  // Calendário: arrastar um post pra outro dia muda a data prevista.
+  async function moverData(post: Post, novaData: string): Promise<string | null> {
+    const antes = post.scheduled_date;
+    setPosts((atual) => ordenar(atual.map((p) => (p.id === post.id ? { ...p, scheduled_date: novaData } : p))));
+    const { data: gravado, error } = await supabase
+      .from("posts")
+      .update({ scheduled_date: novaData })
+      .eq("id", post.id)
+      .select("id");
+    if (error || !gravado || gravado.length === 0) {
+      setPosts((atual) => ordenar(atual.map((p) => (p.id === post.id ? { ...p, scheduled_date: antes } : p))));
+      return "Não foi possível mudar a data do post. Tente de novo.";
+    }
+    return null;
   }
 
   function abrirEdicao(post: Post) {
@@ -739,7 +781,51 @@ export default function PostsManager({
       {erroCarregar && <p className="mb-3 text-sm text-danger">{erroCarregar}</p>}
       {avisoDaLista && <p className="mb-3 text-sm text-danger">{avisoDaLista}</p>}
 
-      <div className="space-y-2.5">
+      <div className="mb-3 flex justify-end">
+        <div className="flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5" role="group" aria-label="Visualização">
+          {(
+            [
+              ["lista", "Lista"],
+              ["calendario", "Calendário"],
+            ] as const
+          ).map(([valor, rotulo]) => (
+            <button
+              key={valor}
+              type="button"
+              onClick={() => setVisao(valor)}
+              aria-pressed={visao === valor}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                visao === valor ? "bg-cal text-cal-texto" : "text-ink-muted hover:bg-surface-hover hover:text-ink"
+              }`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {visao === "calendario" && (
+        <div className="mb-4 rounded-2xl border border-line bg-surface p-3 sm:p-4">
+          <CalendarioDePostagem
+            posts={posts}
+            links={links}
+            aoAbrir={(p) => {
+              setVisao("lista");
+              setAbertos((a) => new Set(a).add(p.id));
+              requestAnimationFrame(() => document.getElementById(`post-${p.id}`)?.scrollIntoView({ block: "start" }));
+            }}
+            aoMoverData={moverData}
+            aoNovo={(dia) => {
+              abrirNovo();
+              setData(dia);
+              setVisao("lista");
+              requestAnimationFrame(() => topoDoForm.current?.scrollIntoView({ block: "start" }));
+            }}
+          />
+        </div>
+      )}
+
+      <div className={`space-y-2.5 ${visao === "calendario" ? "hidden" : ""}`}>
         {posts.map((post) => {
           const falas = comentarios.filter((c) => c.post_id === post.id);
           const autor = profiles.find((p) => p.id === post.created_by);
@@ -749,7 +835,7 @@ export default function PostsManager({
           // Na lista, a miniatura é a capa do reel, quando tem.
           const capa = post.cover ?? post.media[0];
           return (
-            <article key={post.id} className="rounded-2xl border border-line bg-surface p-4">
+            <article id={`post-${post.id}`} key={post.id} className="scroll-mt-4 rounded-2xl border border-line bg-surface p-4">
               <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap">
                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-line bg-black">
                   {capa ? (
