@@ -5,12 +5,14 @@ import type { ProjectProgress } from "@/lib/types";
 const STATUS_LABEL: Record<string, string> = {
   todo: "Aberta",
   doing: "Em andamento",
+  approval: "Em aprovação",
   done: "Concluída",
 };
 
 const STATUS_TONE: Record<string, "neutral" | "brand" | "success"> = {
   todo: "neutral",
   doing: "brand",
+  approval: "brand",
   done: "success",
 };
 

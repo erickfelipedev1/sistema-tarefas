@@ -17,6 +17,7 @@ type Tom = "neutral" | "brand" | "success" | "warning" | "danger";
 const TOM_STATUS: Record<string, Tom> = {
   todo: "warning",
   doing: "brand",
+  approval: "brand",
   done: "success",
   cancelled: "neutral",
 };

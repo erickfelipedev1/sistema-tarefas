@@ -5,6 +5,7 @@ import type { RepeatRule, TaskStatus } from "@/lib/types";
 export const STATUS_OPTIONS: { key: TaskStatus; label: string }[] = [
   { key: "todo", label: "Abertas" },
   { key: "doing", label: "Em andamento" },
+  { key: "approval", label: "Em aprovação" },
   { key: "done", label: "Concluída" },
   { key: "cancelled", label: "Cancelada" },
 ];

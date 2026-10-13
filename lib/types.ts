@@ -1,4 +1,4 @@
-export type TaskStatus = "todo" | "doing" | "done" | "cancelled";
+export type TaskStatus = "todo" | "doing" | "approval" | "done" | "cancelled";
 
 export type RepeatRule = "none" | "daily" | "weekly" | "monthly";
 

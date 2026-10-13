@@ -32,6 +32,7 @@ import {
 const COLUNAS: { key: TaskStatus; label: string; dot: string }[] = [
   { key: "todo", label: "A Fazer", dot: "bg-brand-forte" },
   { key: "doing", label: "Em Andamento", dot: "bg-warning" },
+  { key: "approval", label: "Em Aprovação", dot: "bg-cal" },
   { key: "done", label: "Concluído", dot: "bg-success" },
   { key: "cancelled", label: "Cancelada", dot: "bg-slate-400" },
 ];
@@ -367,7 +368,7 @@ export default function TaskBoard({
   // que a busca/filtro abaixo esteja escondendo algumas nas colunas.
   const resumo = useMemo(() => {
     const abertas = tasks.filter(
-      (t) => t.status === "todo" || t.status === "doing"
+      (t) => t.status === "todo" || t.status === "doing" || t.status === "approval"
     ).length;
     const paraHoje = tasks.filter(
       (t) =>
@@ -476,7 +477,7 @@ export default function TaskBoard({
         </Button>
       )}
 
-      <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 scrollbar-thin sm:mx-0 sm:snap-none sm:px-0 xl:grid xl:grid-cols-4 xl:overflow-visible">
+      <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 scrollbar-thin sm:mx-0 sm:snap-none sm:px-0 xl:grid xl:grid-cols-5 xl:overflow-visible">
         {COLUNAS.map((coluna) => {
           const tarefasDaColuna = tasksVisiveis.filter(
             (t) => t.status === coluna.key
