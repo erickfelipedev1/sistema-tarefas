@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/lib/types";
-import { BUCKET_DOS_POSTS, capaValida, midiasValidas } from "@/lib/posts";
+import { BUCKET_DOS_POSTS, capaValida, ehDoDrive, midiasValidas } from "@/lib/posts";
 import { formatarDataBR } from "@/lib/format";
 import { Button } from "../ui/Button";
 import CalendarioDePostagem, { intervaloDaGrade, type PostNoCalendario } from "./CalendarioDePostagem";
@@ -73,7 +73,10 @@ export default function PostagensView({
     const { de, ate } = intervaloDaGrade(mesNaTela.ano, mesNaTela.mes);
     return posts
       .filter((p) => !p.scheduled_date || (p.scheduled_date >= de && p.scheduled_date <= ate))
-      .map((p) => (p.cover ?? p.media[0])?.path)
+      .map((p) => {
+        const mini = p.cover ?? p.media[0];
+        return mini && !ehDoDrive(mini) ? mini.path : undefined;
+      })
       .filter((c): c is string => !!c);
   }, [posts, mesNaTela]);
   const linksRef = useRef(links);

@@ -9,7 +9,7 @@ import { ClientPosts } from "@/components/onboarding/ClientPosts";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { reporteiConfigurado } from "@/lib/reportei";
-import { capaValida, midiasValidas } from "@/lib/posts";
+import { capaValida, ehDoDrive, midiasValidas } from "@/lib/posts";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
   ProjectDocuments,
@@ -99,7 +99,10 @@ export default async function ProgressoPage({
     assinar("invoices", faturas.map((f) => f.file_path).filter((c): c is string => !!c)),
     assinar(
       "post-media",
-      postsSemLink.flatMap((p) => [...p.media.map((m) => m.path), ...(p.cover ? [p.cover.path] : [])])
+      postsSemLink.flatMap((p) => [
+        ...p.media.filter((m) => !ehDoDrive(m)).map((m) => m.path),
+        ...(p.cover ? [p.cover.path] : []),
+      ])
     ),
   ]);
   const posts: PublicPost[] = postsSemLink.map((p) => ({

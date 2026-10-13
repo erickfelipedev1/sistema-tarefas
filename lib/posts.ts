@@ -72,6 +72,51 @@ export function redesValidas(redes: readonly string[] | null | undefined): PostN
   return ORDEM_DAS_REDES.filter((r) => (redes ?? []).includes(r));
 }
 
+// Vídeos grandes ficam no Google Drive (migration 0070): o post guarda só o
+// código do arquivo. O código tem só letras, números, "-" e "_".
+const ID_DO_DRIVE = /^[A-Za-z0-9_-]{10,100}$/;
+
+export function ehDoDrive(m: Pick<PostMedia, "source" | "drive_id"> | null | undefined): boolean {
+  return !!m && m.source === "drive" && !!m.drive_id;
+}
+
+// Tira o código do arquivo de um link do Drive (".../file/d/<id>/view",
+// "open?id=<id>", "uc?id=<id>"...). Devolve null se não parecer um link do Drive.
+export function idDoDriveNoLink(texto: string): string | null {
+  const limpo = texto.trim();
+  if (!limpo) return null;
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(limpo) ? limpo : `https://${limpo}`);
+  } catch {
+    return null;
+  }
+  if (url.hostname !== "drive.google.com" && url.hostname !== "docs.google.com") return null;
+  const dePasta = url.pathname.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
+  const id = dePasta?.[1] ?? url.searchParams.get("id");
+  return id && ID_DO_DRIVE.test(id) ? id : null;
+}
+
+// Endereço do player do Drive (toca o vídeo dentro do d.hub).
+export function urlDoPlayerDoDrive(id: string) {
+  return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;
+}
+
+export function urlDaMiniaturaDoDrive(id: string, largura = 400) {
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${largura}`;
+}
+
+// Miniatura de um item do post: imagem do Drive, ou o arquivo assinado do
+// bucket (vazio se o link ainda não chegou).
+export function miniaturaDoItem(
+  m: PostMedia | null | undefined,
+  links: Record<string, string>
+): { url: string; tipo: "image" | "video" } | null {
+  if (!m) return null;
+  if (ehDoDrive(m)) return { url: urlDaMiniaturaDoDrive(m.drive_id as string), tipo: "image" };
+  return { url: links[m.path] ?? "", tipo: m.type };
+}
+
 // posts.media vem do banco como JSON: só passa o que tem a forma certa, pra
 // um registro torto não derrubar a tela (nem o portal do cliente).
 export function midiasValidas(media: unknown): PostMedia[] {
@@ -79,12 +124,14 @@ export function midiasValidas(media: unknown): PostMedia[] {
   return media.flatMap((m): PostMedia[] => {
     const item = m as Partial<PostMedia> | null;
     if (!item || typeof item.path !== "string" || !item.path) return [];
+    const doDrive = item.source === "drive" && typeof item.drive_id === "string" && ID_DO_DRIVE.test(item.drive_id);
     return [
       {
         path: item.path,
-        type: item.type === "video" ? "video" : "image",
+        type: doDrive || item.type === "video" ? "video" : "image",
         name: typeof item.name === "string" ? item.name : "arquivo",
         size: typeof item.size === "number" ? item.size : 0,
+        ...(doDrive ? { source: "drive" as const, drive_id: item.drive_id } : {}),
       },
     ];
   });

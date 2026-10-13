@@ -11,7 +11,10 @@ import {
   BUCKET_DOS_POSTS,
   CATEGORIAS,
   capaValida,
+  ehDoDrive,
   erroDeArquivoGrande,
+  idDoDriveNoLink,
+  miniaturaDoItem,
   mensagemDeArquivoGrande,
   midiasValidas,
   oQueFaltaProEnvio,
@@ -207,7 +210,11 @@ export default function PostsManager({
   // ainda não tem; "rodada" muda a cada 50 minutos pra refazer todos antes
   // de vencerem, com a aba aberta.
   const caminhos = useMemo(
-    () => posts.flatMap((p) => [...p.media.map((m) => m.path), ...(p.cover ? [p.cover.path] : [])]),
+    () =>
+      posts.flatMap((p) => [
+        ...p.media.filter((m) => !ehDoDrive(m)).map((m) => m.path),
+        ...(p.cover ? [p.cover.path] : []),
+      ]),
     [posts]
   );
   const [rodada, setRodada] = useState(0);
@@ -390,10 +397,49 @@ export default function PostsManager({
   }
 
   const tipoDoItem = (item: ItemDeMidia) => (item.salva ? item.salva.type : item.nova.tipo);
-  const midiasDoForm: MidiaDoPreview[] = itens.map((item) => ({
-    url: item.salva ? links[item.salva.path] ?? "" : item.nova.url,
-    tipo: tipoDoItem(item),
-  }));
+  const midiasDoForm: MidiaDoPreview[] = itens.map((item) =>
+    item.salva && ehDoDrive(item.salva)
+      ? { url: "", tipo: "video", driveId: item.salva.drive_id }
+      : {
+          url: item.salva ? links[item.salva.path] ?? "" : item.nova.url,
+          tipo: tipoDoItem(item),
+        }
+  );
+
+  // Vídeo grande: em vez de enviar o arquivo, cola o link do Google Drive.
+  const [linkDrive, setLinkDrive] = useState("");
+  function usarVideoDoDrive() {
+    const id = idDoDriveNoLink(linkDrive);
+    if (!id) {
+      return setErroForm("Esse link não parece ser de um vídeo do Google Drive. Copie o link de compartilhamento do arquivo.");
+    }
+    if (categoria === "estatico") return setErroForm("Post estático leva uma imagem. O Drive serve pra vídeo (reel ou carrossel).");
+    if (itens.some((i) => i.salva?.drive_id === id)) return setErroForm("Esse vídeo do Drive já está no post.");
+    if (regra.maximo > 1 && itens.length >= regra.maximo) {
+      return setErroForm(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
+    }
+    const item: ItemDeMidia = {
+      chave: `drive-${id}`,
+      salva: {
+        path: `pendente/drive-${id}`,
+        type: "video",
+        name: "Vídeo do Google Drive",
+        size: 0,
+        source: "drive",
+        drive_id: id,
+      },
+    };
+    setItens((atual) => {
+      if (regra.maximo === 1) {
+        // Categoria de um arquivo só: o link troca o que estava.
+        for (const i of atual) if (i.nova) URL.revokeObjectURL(i.nova.url);
+        return [item];
+      }
+      return [...atual, item];
+    });
+    setLinkDrive("");
+    setErroForm(null);
+  }
 
   const urlDaCapa = capa ? (capa.salva ? links[capa.salva.path] ?? "" : capa.nova.url) : "";
 
@@ -429,7 +475,13 @@ export default function PostsManager({
 
     for (const item of itens) {
       if (item.salva) {
-        midias.push(item.salva);
+        // O item do Drive não tem arquivo no bucket: só ganha o identificador
+        // dentro da pasta do post (que o banco exige).
+        midias.push(
+          ehDoDrive(item.salva)
+            ? { ...item.salva, path: `${projectId}/${postId}/drive-${item.salva.drive_id}` }
+            : item.salva
+        );
         continue;
       }
       const { arquivo, tipo } = item.nova;
@@ -666,14 +718,15 @@ export default function PostsManager({
                   <ul className="mb-3 flex flex-wrap gap-2">
                     {itens.map((item, i) => {
                       const tipo = tipoDoItem(item);
-                      const url = item.salva ? links[item.salva.path] ?? "" : item.nova.url;
+                      const mini = item.salva ? miniaturaDoItem(item.salva, links) : null;
+                      const url = item.salva ? mini?.url ?? "" : item.nova.url;
                       const serve = arquivoAceito(categoria, tipo === "video" ? "video/" : "image/");
                       return (
                         <li
                           key={item.chave}
                           className={`relative h-24 w-24 overflow-hidden rounded-xl border bg-black ${serve ? "border-line" : "border-danger"}`}
                         >
-                          <Miniatura url={url} tipo={tipo} />
+                          <Miniatura url={url} tipo={mini ? mini.tipo : tipo} />
                           <span className="absolute left-1 top-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium tabular-nums text-white">
                             {i + 1}
                           </span>
@@ -725,6 +778,34 @@ export default function PostsManager({
                     <PlusIcon className="h-3.5 w-3.5" />
                     {regra.maximo === 1 && itens.length > 0 ? "Trocar arquivo" : "Escolher arquivo" + (regra.maximo > 1 ? "s" : "")}
                   </Button>
+                )}
+
+                {categoria !== "estatico" && (
+                  <div className="mt-4 rounded-lg border border-line bg-canvas p-3">
+                    <p className="text-xs font-medium text-ink">Vídeo grande? Use um link do Google Drive</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <input
+                        value={linkDrive}
+                        onChange={(e) => setLinkDrive(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            usarVideoDoDrive();
+                          }
+                        }}
+                        placeholder="Cole o link de compartilhamento do vídeo"
+                        aria-label="Link do vídeo no Google Drive"
+                        className={`${campoClasse} min-w-[12rem] flex-1`}
+                      />
+                      <Button variant="secondary" size="sm" type="button" onClick={usarVideoDoDrive} disabled={!linkDrive.trim()}>
+                        Usar este vídeo
+                      </Button>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-ink-muted">
+                      No Drive, compartilhe o vídeo como <b>&quot;Qualquer pessoa com o link&quot;</b> (leitor). Sem limite de
+                      tamanho, e o vídeo toca aqui no preview e pro cliente no portal.
+                    </p>
+                  </div>
                 )}
               </Campo>
 
@@ -839,7 +920,10 @@ export default function PostsManager({
               <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap">
                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-line bg-black">
                   {capa ? (
-                    <Miniatura url={links[capa.path] ?? ""} tipo={capa.type} />
+                    <Miniatura
+                      url={miniaturaDoItem(capa, links)?.url ?? ""}
+                      tipo={miniaturaDoItem(capa, links)?.tipo ?? capa.type}
+                    />
                   ) : (
                     <span className="grid h-full w-full place-items-center bg-canvas text-ink-muted">
                       <ImageIcon className="h-5 w-5" />
@@ -986,7 +1070,9 @@ function PostAberto({
           rede={redes.includes(rede) ? rede : redes[0] ?? "instagram"}
           categoria={post.category}
           legenda={post.caption}
-          midias={post.media.map((m) => ({ url: links[m.path] ?? "", tipo: m.type }))}
+          midias={post.media.map((m) =>
+            ehDoDrive(m) ? { url: "", tipo: m.type, driveId: m.drive_id } : { url: links[m.path] ?? "", tipo: m.type }
+          )}
           capa={post.cover ? links[post.cover.path] || null : null}
           conta={projectName}
           data={post.scheduled_date ? formatarDataBR(post.scheduled_date) : null}

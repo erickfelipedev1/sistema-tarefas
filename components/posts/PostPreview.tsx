@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { PostCategory, PostNetwork } from "@/lib/types";
+import { urlDoPlayerDoDrive } from "@/lib/posts";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -19,6 +20,8 @@ import {
 export interface MidiaDoPreview {
   url: string; // vazio = o arquivo não pôde ser aberto
   tipo: "image" | "video";
+  // Vídeo do Google Drive: toca pelo player do Drive (a "url" fica vazia).
+  driveId?: string;
 }
 
 // Como o post vai aparecer em cada rede: a mesma legenda e os mesmos
@@ -305,6 +308,20 @@ function BotaoDoCarrossel({
 }
 
 function Arquivo({ midia, capa = null, className }: { midia: MidiaDoPreview; capa?: string | null; className: string }) {
+  if (midia.driveId) {
+    // O vídeo precisa estar compartilhado como "Qualquer pessoa com o link".
+    const preenche = className.includes("h-full");
+    return (
+      <iframe
+        src={urlDoPlayerDoDrive(midia.driveId)}
+        title="Vídeo do Google Drive"
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        loading="lazy"
+        className={`block w-full border-0 ${preenche ? "h-full" : "aspect-[9/16] max-h-[520px]"}`}
+      />
+    );
+  }
   if (!midia.url) {
     return (
       <div className="grid h-full min-h-[200px] w-full place-items-center px-6 text-center text-xs text-white/70">

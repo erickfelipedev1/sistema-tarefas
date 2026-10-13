@@ -344,6 +344,11 @@ export interface PostMedia {
   type: "image" | "video";
   name: string;
   size: number;
+  // Vídeo do Google Drive (migration 0070): em vez de um arquivo no bucket, o
+  // post guarda o código do arquivo no Drive e o preview toca pelo player do
+  // Drive. "path" fica só como identificador do item.
+  source?: "drive";
+  drive_id?: string;
 }
 
 export interface Post {

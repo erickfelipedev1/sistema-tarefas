@@ -14,8 +14,12 @@ import {
   midiasValidas,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
+  ehDoDrive,
+  idDoDriveNoLink,
+  urlDaMiniaturaDoDrive,
   erroDeArquivoGrande,
   mensagemDeArquivoGrande,
+  miniaturaDoItem,
   ORDEM_DAS_REDES,
   REDES,
   redesValidas,
@@ -79,6 +83,9 @@ export default function PostDaTarefa({
   const [data, setData] = useState(dueDate ?? "");
   const [legenda, setLegenda] = useState(copyText);
   const [escolhidos, setEscolhidos] = useState<Escolhido[]>([]);
+  // Vídeos do Google Drive (pra arquivos grandes): só o código de cada um.
+  const [doDrive, setDoDrive] = useState<string[]>([]);
+  const [linkDrive, setLinkDrive] = useState("");
   const [salvando, setSalvando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -120,7 +127,10 @@ export default function PostDaTarefa({
 
   // Miniatura de cada post enviado (link assinado, o bucket é privado).
   const caminhos = useMemo(
-    () => posts.map((p) => p.cover?.path ?? p.media[0]?.path).filter((c): c is string => !!c),
+    () =>
+      posts
+        .map((p) => (p.cover ?? (p.media[0] && !ehDoDrive(p.media[0]) ? p.media[0] : undefined))?.path)
+        .filter((c): c is string => !!c),
     [posts]
   );
   useEffect(() => {
@@ -153,9 +163,33 @@ export default function PostDaTarefa({
 
   const regra = CATEGORIAS[categoria];
 
+  function usarVideoDoDrive() {
+    const id = idDoDriveNoLink(linkDrive);
+    if (!id) {
+      return setErro("Esse link não parece ser de um vídeo do Google Drive. Copie o link de compartilhamento do arquivo.");
+    }
+    if (categoria === "estatico") return setErro("Post estático leva uma imagem. O Drive serve pra vídeo (reel ou carrossel).");
+    if (doDrive.includes(id)) return setErro("Esse vídeo do Drive já está no post.");
+    if (regra.maximo > 1 && escolhidos.length + doDrive.length >= regra.maximo) {
+      return setErro(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
+    }
+    if (regra.maximo === 1) {
+      // Categoria de um arquivo só: o link troca o que estava.
+      for (const e of escolhidos) URL.revokeObjectURL(e.url);
+      setEscolhidos([]);
+      setDoDrive([id]);
+    } else {
+      setDoDrive((atual) => [...atual, id]);
+    }
+    setLinkDrive("");
+    setErro(null);
+  }
+
   function limpar() {
     for (const e of escolhidos) URL.revokeObjectURL(e.url);
     setEscolhidos([]);
+    setDoDrive([]);
+    setLinkDrive("");
     setCategoria("estatico");
     setRedes(["instagram"]);
     setData(dueDate ?? "");
@@ -183,10 +217,12 @@ export default function PostDaTarefa({
         tipo: arquivo.type.startsWith("video/") ? "video" : "image",
       });
     }
+    if (regra.maximo === 1 && novos.length > 0) setDoDrive([]);
     setEscolhidos((atual) => {
       // Categoria de um arquivo só: o novo troca o que estava.
       const juntos = regra.maximo === 1 ? novos.slice(0, 1) : [...atual, ...novos];
-      const final = regra.maximo === 1 && novos.length === 0 ? atual : juntos.slice(0, regra.maximo);
+      const vagas = regra.maximo === 1 ? 1 : Math.max(0, regra.maximo - doDrive.length);
+      const final = regra.maximo === 1 && novos.length === 0 ? atual : juntos.slice(0, vagas);
       for (const e of [...atual, ...novos]) if (!final.includes(e)) URL.revokeObjectURL(e.url);
       return final;
     });
@@ -220,9 +256,12 @@ export default function PostDaTarefa({
         category: categoria,
         caption: legenda,
         networks: redes,
-        quantasMidias: escolhidos.length,
+        quantasMidias: escolhidos.length + doDrive.length,
       });
       if (falta) return setErro(falta);
+    }
+    if (escolhidos.length + doDrive.length > regra.maximo) {
+      return setErro(`${regra.rotulo} leva no máximo ${regra.maximo} arquivo${regra.maximo === 1 ? "" : "s"}.`);
     }
 
     setErro(null);
@@ -248,6 +287,17 @@ export default function PostDaTarefa({
       }
       subidos.push(caminho);
       midias.push({ path: caminho, type: e.tipo, name: e.arquivo.name, size: e.arquivo.size });
+    }
+    // Vídeos do Drive: não têm arquivo no bucket, só o código.
+    for (const id of doDrive) {
+      midias.push({
+        path: `${projectId}/${postId}/drive-${id}`,
+        type: "video",
+        name: "Vídeo do Google Drive",
+        size: 0,
+        source: "drive",
+        drive_id: id,
+      });
     }
 
     setSalvando("Salvando...");
@@ -275,6 +325,8 @@ export default function PostDaTarefa({
     setPosts((atual) => [arrumar(salvo as Post), ...atual]);
     for (const e of escolhidos) URL.revokeObjectURL(e.url);
     setEscolhidos([]);
+    setDoDrive([]);
+    setLinkDrive("");
     setCriando(false);
     setAviso(enviar ? "Post enviado pros Posts do cliente. Ele já pode ver no portal." : "Rascunho salvo nos Posts do cliente.");
   }
@@ -315,12 +367,13 @@ export default function PostDaTarefa({
         <ul className="space-y-2">
           {posts.map((post) => {
             const miniatura = post.cover ?? post.media[0];
-            const url = miniatura ? links[miniatura.path] : "";
+            const mini = miniaturaDoItem(miniatura, links);
+            const url = mini?.url ?? "";
             return (
               <li key={post.id} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3">
                 <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-black">
                   {url && miniatura ? (
-                    miniatura.type === "video" ? (
+                    mini?.tipo === "video" ? (
                       <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -376,6 +429,7 @@ export default function PostDaTarefa({
                   ativo={c === categoria}
                   onClick={() => {
                     setCategoria(c);
+                    setDoDrive((atual) => (c === "estatico" ? [] : atual.slice(0, CATEGORIAS[c].maximo)));
                     // Arquivos que não servem pra nova categoria saem.
                     setEscolhidos((atual) => {
                       const fica = atual.filter((e) => arquivoAceito(c, e.tipo === "video" ? "video/" : "image/")).slice(0, CATEGORIAS[c].maximo);
@@ -439,8 +493,23 @@ export default function PostDaTarefa({
               {categoria === "reel" ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"}
             </p>
             <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
-            {escolhidos.length > 0 && (
+            {(escolhidos.length > 0 || doDrive.length > 0) && (
               <ul className="mb-3 flex flex-wrap gap-2">
+                {doDrive.map((id, i) => (
+                  <li key={`drive-${id}`} className="relative h-20 w-20 overflow-hidden rounded-xl border border-line bg-black">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={urlDaMiniaturaDoDrive(id, 200)} alt="" className="h-full w-full object-cover" />
+                    <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[9px] font-medium text-white">Drive</span>
+                    <button
+                      type="button"
+                      onClick={() => setDoDrive((atual) => atual.filter((x) => x !== id))}
+                      aria-label={`Tirar o vídeo do Drive ${i + 1}`}
+                      className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-danger"
+                    >
+                      <XIcon className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
                 {escolhidos.map((e, i) => (
                   <li key={e.chave} className="relative h-20 w-20 overflow-hidden rounded-xl border border-line bg-black">
                     {e.tipo === "video" ? (
@@ -469,10 +538,42 @@ export default function PostDaTarefa({
               onChange={(e) => escolherArquivos(e.target.files)}
               className="hidden"
             />
-            {(regra.maximo === 1 || escolhidos.length < regra.maximo) && (
+            {(regra.maximo === 1 || escolhidos.length + doDrive.length < regra.maximo) && (
               <Button variant="secondary" size="sm" type="button" onClick={() => seletor.current?.click()}>
-                {regra.maximo === 1 && escolhidos.length > 0 ? "Trocar arquivo" : regra.maximo > 1 ? "Escolher arquivos" : "Escolher arquivo"}
+                {regra.maximo === 1 && (escolhidos.length > 0 || doDrive.length > 0)
+                  ? "Trocar arquivo"
+                  : regra.maximo > 1
+                  ? "Escolher arquivos"
+                  : "Escolher arquivo"}
               </Button>
+            )}
+
+            {categoria !== "estatico" && (
+              <div className="mt-4 rounded-lg border border-line bg-surface p-3">
+                <p className="text-xs font-medium text-ink">Vídeo grande? Use um link do Google Drive</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <input
+                    value={linkDrive}
+                    onChange={(e) => setLinkDrive(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        usarVideoDoDrive();
+                      }
+                    }}
+                    placeholder="Cole o link de compartilhamento do vídeo"
+                    aria-label="Link do vídeo no Google Drive"
+                    className={`${campoClasse} min-w-[12rem] flex-1`}
+                  />
+                  <Button variant="secondary" size="sm" type="button" onClick={usarVideoDoDrive} disabled={!linkDrive.trim()}>
+                    Usar este vídeo
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-[11px] text-ink-muted">
+                  No Drive, compartilhe o vídeo como <b>&quot;Qualquer pessoa com o link&quot;</b> (leitor). Sem limite de tamanho,
+                  e o vídeo toca no preview e pro cliente no portal.
+                </p>
+              </div>
             )}
           </div>
 

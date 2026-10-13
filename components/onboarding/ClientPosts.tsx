@@ -181,7 +181,9 @@ function PostDoCliente({
             rede={rede}
             categoria={post.category}
             legenda={post.caption}
-            midias={post.media.map((m) => ({ url: m.url, tipo: m.type }))}
+            midias={post.media.map((m) =>
+              m.source === "drive" && m.drive_id ? { url: "", tipo: m.type, driveId: m.drive_id } : { url: m.url, tipo: m.type }
+            )}
             capa={post.cover?.url || null}
             conta={projectName}
             data={post.scheduled_date ? formatarDataBR(post.scheduled_date) : null}

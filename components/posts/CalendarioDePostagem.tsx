@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { Post, PostCategory, PostStatus } from "@/lib/types";
-import { CATEGORIAS, ORDEM_DAS_CATEGORIAS, REDES, redesValidas, STATUS_DO_POST } from "@/lib/posts";
+import { CATEGORIAS, miniaturaDoItem, ORDEM_DAS_CATEGORIAS, REDES, redesValidas, STATUS_DO_POST } from "@/lib/posts";
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "../ui/icons";
 
 export type PostNoCalendario = Post & { projectName?: string };
@@ -138,7 +138,8 @@ export default function CalendarioDePostagem({
   // seria recriado a cada render e reiniciaria o arrasto e os vídeos.)
   function cartao(post: PostNoCalendario) {
     const miniatura = post.cover ?? post.media[0];
-    const url = miniatura ? links[miniatura.path] : "";
+    const mini = miniaturaDoItem(miniatura, links);
+    const url = mini?.url ?? "";
     const redes = redesValidas(post.networks).map((r) => REDES[r]).join(", ");
     return (
       <div
@@ -156,7 +157,7 @@ export default function CalendarioDePostagem({
       >
         <span className="grid h-6 w-6 flex-shrink-0 place-items-center overflow-hidden rounded bg-black text-ink-muted">
           {url && miniatura ? (
-            miniatura.type === "video" ? (
+            mini?.tipo === "video" ? (
               <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
