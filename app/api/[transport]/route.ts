@@ -184,7 +184,7 @@ Args:
   - descricao (string, opcional): detalhes da tarefa. NÃO coloque itens de checklist/lista de passos aqui — use o campo "checklist".
   - checklist (lista de textos, opcional): itens do checklist da tarefa, um por posição (ex: ["Definir o texto", "Montar a arte", "Aprovar com o cliente"]). Sempre que a pessoa pedir checklist, passos, etapas ou itens pra marcar, use ESTE campo — eles vão pra aba "Checklist" da tarefa, onde dá pra marcar cada um como feito.
   - projeto (string, opcional): nome do projeto (ou parte dele). Se não informar, a tarefa entra em "Geral", sem projeto. Use now_listar_projetos se não souber o nome exato.
-  - status (string, opcional): um de "todo" (a fazer, padrão), "doing" (em andamento), "approval" (em aprovação), "done" (concluída), "cancelled" (cancelada).
+  - status (string, opcional): um de "todo" (a fazer, padrão), "doing" (em andamento), "dependency" (em dependência: parada esperando algo), "approval" (em aprovação), "done" (concluída), "cancelled" (cancelada).
   - data_inicio (string, opcional): início do período, no formato AAAA-MM-DD. Se informar o prazo sem o início, a tarefa começa hoje.
   - data_prazo (string, obrigatório): data de entrega (fim do período), no formato AAAA-MM-DD.
   - responsavel (string, opcional): nome de quem deve ficar responsável. Aceita "eu"/"mim" pra atribuir a quem pediu a tarefa. Se não informar, a tarefa fica sem responsável.
@@ -210,7 +210,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
             .optional()
             .describe('Nome do projeto (ou parte dele). Sem isso, vai pra "Geral".'),
           status: z
-            .enum(["todo", "doing", "approval", "done", "cancelled"])
+            .enum(["todo", "doing", "dependency", "approval", "done", "cancelled"])
             .optional()
             .describe('Status inicial (padrão: "todo").'),
           data_inicio: z
@@ -340,14 +340,14 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
 
 Args:
   - projeto (string, opcional): nome do projeto pra filtrar. Sem isso, lista as tarefas "Geral" (sem projeto) dessa pessoa.
-  - status (string, opcional): "todo", "doing", "approval" (em aprovação), "done" ou "cancelled".
+  - status (string, opcional): "todo", "doing", "dependency" (em dependência), "approval" (em aprovação), "done" ou "cancelled".
   - responsavel (string, opcional): "eu"/"mim" pra só as tarefas dessa pessoa, ou o nome de alguém do time.
   - limit (number, opcional): máximo de resultados (padrão 20, máximo 50).
 
 Retorna: lista de tarefas com título, status, projeto e prazo.`,
         inputSchema: {
           projeto: z.string().max(200).optional(),
-          status: z.enum(["todo", "doing", "approval", "done", "cancelled"]).optional(),
+          status: z.enum(["todo", "doing", "dependency", "approval", "done", "cancelled"]).optional(),
           responsavel: z.string().max(200).optional(),
           limit: z.number().int().min(1).max(50).optional(),
         },
@@ -456,7 +456,7 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
 
 Args:
   - tarefa (string, obrigatório): título (ou parte do título) da tarefa.
-  - novo_status (string, obrigatório): "todo", "doing", "approval" (em aprovação), "done" ou "cancelled".
+  - novo_status (string, obrigatório): "todo", "doing", "dependency" (em dependência), "approval" (em aprovação), "done" ou "cancelled".
   - projeto (string, opcional): nome do projeto, pra ajudar a achar a tarefa certa quando o título é ambíguo.
 
 Retorna: confirmação com o novo status.
@@ -464,7 +464,7 @@ Retorna: confirmação com o novo status.
 Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferramenta lista o que encontrou — chame de novo com um título mais específico ou informando o projeto.`,
         inputSchema: {
           tarefa: z.string().min(1).max(200).describe("Título (ou parte do título) da tarefa."),
-          novo_status: z.enum(["todo", "doing", "approval", "done", "cancelled"]).describe("Novo status."),
+          novo_status: z.enum(["todo", "doing", "dependency", "approval", "done", "cancelled"]).describe("Novo status."),
           projeto: z.string().max(200).optional().describe("Nome do projeto, pra desambiguar (opcional)."),
         },
         annotations: {
@@ -550,7 +550,7 @@ Args:
   - data_inicio (string, opcional): novo início do período, no formato AAAA-MM-DD. Pra tirar, mande "remover" ou "".
   - data_prazo (string, opcional): nova data de entrega no formato AAAA-MM-DD. Pra tirar o prazo, mande "remover" ou "".
   - responsavel (string, opcional): nome de quem deve ficar responsável (aceita "eu"/"mim", e substitui quem já estava). Pra tirar o responsável, mande "remover" ou "ninguém".
-  - status (string, opcional): "todo", "doing", "approval" (em aprovação), "done" ou "cancelled".
+  - status (string, opcional): "todo", "doing", "dependency" (em dependência), "approval" (em aprovação), "done" ou "cancelled".
   - projeto (string, opcional): nome do projeto, só pra ajudar a achar a tarefa certa quando o título é ambíguo (não move a tarefa de projeto).
 
 Retorna: confirmação com o que foi alterado.
@@ -579,7 +579,7 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
             .max(200)
             .optional()
             .describe('Nome de quem fica responsável (substitui). Aceita "eu"/"mim". Mande "remover" pra tirar.'),
-          status: z.enum(["todo", "doing", "approval", "done", "cancelled"]).optional().describe("Novo status."),
+          status: z.enum(["todo", "doing", "dependency", "approval", "done", "cancelled"]).optional().describe("Novo status."),
           projeto: z.string().max(200).optional().describe("Nome do projeto, pra desambiguar (opcional)."),
         },
         annotations: {

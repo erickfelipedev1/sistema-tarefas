@@ -81,7 +81,10 @@ export function calcularPainel(
     ? duracoes.reduce((a, b) => a + Math.max(0, b), 0) / duracoes.length
     : null;
 
-  const abertasLista = tarefas.filter((t) => t.status === "todo" || t.status === "doing" || t.status === "approval");
+  // Aberta = ainda não concluída nem cancelada (inclui a que está em dependência).
+  const abertasLista = tarefas.filter(
+    (t) => t.status === "todo" || t.status === "doing" || t.status === "dependency" || t.status === "approval"
+  );
   const limiteVencendo = somarDias(hoje, 7);
   const porPrazo = (a: TarefaMetrica, b: TarefaMetrica) => a.due_date!.localeCompare(b.due_date!);
 
@@ -229,7 +232,7 @@ export function calcularEficiencia(
 
   for (const t of tarefas) {
     const blocos = [geral, idsDeDemandas.has(t.id) ? demandasB : tarefasB];
-    const aberta = t.status === "todo" || t.status === "doing" || t.status === "approval";
+    const aberta = t.status === "todo" || t.status === "doing" || t.status === "dependency" || t.status === "approval";
     const realizada = t.status === "done" && !!t.completed_at && diaSP(t.completed_at) >= inicio;
     if (!aberta && !realizada) continue;
 

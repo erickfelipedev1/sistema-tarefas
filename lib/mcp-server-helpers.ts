@@ -248,11 +248,12 @@ export function urlDoApp(caminho: string): string {
   return `${base.replace(/\/$/, "")}${caminho}`;
 }
 
-export const STATUS_VALIDOS: TaskStatus[] = ["todo", "doing", "approval", "done", "cancelled"];
+export const STATUS_VALIDOS: TaskStatus[] = ["todo", "doing", "dependency", "approval", "done", "cancelled"];
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   todo: "A fazer",
   doing: "Em andamento",
+  dependency: "Em dependência",
   approval: "Em aprovação",
   done: "Concluída",
   cancelled: "Cancelada",
