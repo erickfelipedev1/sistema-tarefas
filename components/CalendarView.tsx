@@ -36,9 +36,12 @@ const DIAS_SEMANA_LONGO = [
   "Sábado",
 ];
 
-// Quantos eventos mostrar antes de resumir em "+N mais" — evita que um dia
-// lotado estoure a altura da célula.
-const MAX_EVENTOS_VISIVEIS = 3;
+// Visão Mês: quantas faixas (linhas de barras) cabem por semana antes de
+// resumir o resto em "+N mais" — evita que uma semana lotada estoure a altura.
+const MAX_FAIXAS = 4;
+const ALTURA_FAIXA = 24; // px
+const ESPACO_ENTRE_FAIXAS = 4; // px
+const TOPO_DAS_FAIXAS = 36; // px: onde acaba o número do dia
 
 // Visões Semana e Dia: uma linha por hora. Abre rolada até as 7h.
 const HORAS = Array.from({ length: 24 }, (_, h) => h);
@@ -124,6 +127,68 @@ function horaDaTarefa(t: Task, dia?: string): number | null {
   if (!t.due_time) return null;
   const h = Number(t.due_time.slice(0, 2));
   return Number.isFinite(h) ? h : null;
+}
+
+// Um pedaço de tarefa dentro de uma semana: as colunas (0 = domingo) que ele
+// ocupa e se a tarefa continua pra trás/pra frente (semana anterior/seguinte).
+type Segmento = {
+  task: Task;
+  col0: number;
+  col1: number;
+  contEsq: boolean;
+  contDir: boolean;
+  faixa: number;
+};
+
+// Visão Mês, uma semana: cada tarefa vira UMA barra contínua por cima dos
+// dias do período dela (e não um bloco repetido por dia), na mesma faixa
+// (linha) do começo ao fim da semana, como no Google Agenda. Quem passa de
+// MAX_FAIXAS entra no "+N mais" dos dias que ocuparia.
+function montarSemana(chaves: string[], tarefas: Task[]) {
+  const inicio = chaves[0];
+  const fim = chaves[6];
+  const brutos: Omit<Segmento, "faixa">[] = [];
+  for (const task of tarefas) {
+    if (!task.due_date) continue;
+    const entrega = task.due_date;
+    const comeco = task.start_date && task.start_date < entrega ? task.start_date : entrega;
+    if (entrega < inicio || comeco > fim) continue;
+    const a = comeco < inicio ? inicio : comeco;
+    const b = entrega > fim ? fim : entrega;
+    brutos.push({
+      task,
+      col0: chaves.indexOf(a),
+      col1: chaves.indexOf(b),
+      contEsq: comeco < inicio,
+      contDir: entrega > fim,
+    });
+  }
+  // Mais cedo na semana primeiro; no mesmo dia, as mais compridas (pra não
+  // ficarem presas embaixo de uma tarefa curta); depois por horário e nome.
+  brutos.sort(
+    (x, y) =>
+      x.col0 - y.col0 ||
+      y.col1 - y.col0 - (x.col1 - x.col0) ||
+      (x.task.due_time ?? "").localeCompare(y.task.due_time ?? "") ||
+      x.task.title.localeCompare(y.task.title)
+  );
+
+  const fimDaFaixa: number[] = []; // última coluna ocupada em cada faixa
+  const segmentos: Segmento[] = [];
+  const ocupados = Array(7).fill(0) as number[]; // tarefas que passam por cada dia
+  const ocultos = Array(7).fill(0) as number[]; // as que não couberam
+  for (const b of brutos) {
+    for (let c = b.col0; c <= b.col1; c++) ocupados[c] += 1;
+    let faixa = fimDaFaixa.findIndex((f) => f < b.col0);
+    if (faixa === -1) faixa = fimDaFaixa.length;
+    if (faixa >= MAX_FAIXAS) {
+      for (let c = b.col0; c <= b.col1; c++) ocultos[c] += 1;
+      continue;
+    }
+    fimDaFaixa[faixa] = b.col1;
+    segmentos.push({ ...b, faixa });
+  }
+  return { segmentos, faixas: fimDaFaixa.length, ocupados, ocultos };
 }
 
 export default function CalendarView({
@@ -223,20 +288,37 @@ export default function CalendarView({
 
   const celulas = useMemo(() => buildGrid(ano, mes), [ano, mes]);
 
-  const tasksPorDia = useMemo(() => {
+  // O que passa pela busca e pelo filtro de pessoa (e tem prazo).
+  const tarefasVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    const mapa: Record<string, Task[]> = {};
-    tasks.forEach((t) => {
-      if (!t.due_date) return;
-      if (termo && !t.title.toLowerCase().includes(termo)) return;
+    return tasks.filter((t) => {
+      if (!t.due_date) return false;
+      if (termo && !t.title.toLowerCase().includes(termo)) return false;
       // Pessoa escolhida: é responsável, ou criou e não tem responsável.
       if (
         pessoaFiltro &&
         !t.assigned_to.includes(pessoaFiltro) &&
         !(t.assigned_to.length === 0 && t.created_by === pessoaFiltro)
       ) {
-        return;
+        return false;
       }
+      return true;
+    });
+  }, [tasks, busca, pessoaFiltro]);
+
+  // Visão Mês: as barras de cada semana.
+  const semanas = useMemo(() => {
+    const lista = [];
+    for (let i = 0; i < celulas.length; i += 7) {
+      const dias = celulas.slice(i, i + 7);
+      lista.push({ dias, ...montarSemana(dias.map((d) => dateKey(d.date)), tarefasVisiveis) });
+    }
+    return lista;
+  }, [celulas, tarefasVisiveis]);
+
+  const tasksPorDia = useMemo(() => {
+    const mapa: Record<string, Task[]> = {};
+    tarefasVisiveis.forEach((t) => {
       for (const dia of diasDoPeriodo(t)) {
         if (!mapa[dia]) mapa[dia] = [];
         mapa[dia].push(t);
@@ -247,7 +329,7 @@ export default function CalendarView({
       lista.sort((a, b) => (a.due_time ?? "").localeCompare(b.due_time ?? ""))
     );
     return mapa;
-  }, [tasks, busca, pessoaFiltro]);
+  }, [tarefasVisiveis]);
 
   // Dias mostrados na visão atual (pro aviso de "calendário livre").
   const diasVisiveis = useMemo(() => {
@@ -443,88 +525,109 @@ export default function CalendarView({
 
         {visao === "mes" ? (
           <div className="overflow-x-auto scrollbar-thin">
-            <div className="grid min-w-[640px] grid-cols-7 gap-px overflow-hidden rounded-xl border border-line bg-line">
-              {DIAS_SEMANA.map((dia) => (
-                <div
-                  key={dia}
-                  className="bg-surface px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide text-ink-muted"
-                >
-                  {dia}
-                </div>
-              ))}
-
-              {celulas.map(({ date, noMesAtual }) => {
-                const key = dateKey(date);
-                const tarefasDoDia = tasksPorDia[key] ?? [];
-                const ehHoje = key === hojeKey;
-
-                const visiveis = tarefasDoDia.slice(0, MAX_EVENTOS_VISIVEIS);
-                const extras = tarefasDoDia.length - visiveis.length;
-
-                const cellBg = "bg-surface hover:bg-surface-hover/60";
-                // No dia 1 o número vem com o mês ("1 nov"), como no Google Agenda.
-                const primeiroDoMes = date.getDate() === 1;
-
-                return (
+            <div className="min-w-[640px] overflow-hidden rounded-xl border border-line">
+              <div className="grid grid-cols-7">
+                {DIAS_SEMANA.map((dia) => (
                   <div
-                    key={key}
-                    onClick={() => abrirCriar(key)}
-                    className={`group relative min-h-[108px] cursor-pointer px-1 pb-1 pt-1.5 transition-colors ${cellBg}`}
-                    title="Clique para criar uma tarefa neste dia"
+                    key={dia}
+                    className="bg-surface px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide text-ink-muted"
                   >
-                    <div className="flex justify-center">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDataRef(date);
-                          setVisao("dia");
-                        }}
-                        title="Ver o dia"
-                        className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full text-xs ${
-                          primeiroDoMes && !ehHoje ? "px-1.5" : ""
-                        } ${
-                          ehHoje
-                            ? "bg-cal px-1.5 font-medium text-cal-texto"
-                            : noMesAtual
-                            ? "font-medium text-ink hover:bg-surface-hover"
-                            : "text-ink-muted hover:bg-surface-hover"
-                        }`}
-                      >
-                        {primeiroDoMes
-                          ? `${date.getDate()} ${MESES[date.getMonth()].slice(0, 3).toLowerCase()}`
-                          : date.getDate()}
-                      </button>
-                    </div>
+                    {dia}
+                  </div>
+                ))}
+              </div>
 
-                    <div className="mt-1 space-y-[3px]">
-                      {visiveis.map((task) => (
-                        <ChipTarefa
-                          key={task.id}
-                          dia={key}
-                          task={task}
-                          onAbrir={() => abrirEditar(task)}
-                          onExcluir={(e) => handleDeleteTask(e, task)}
+              {semanas.map((semana, si) => {
+                const altura = Math.max(
+                  100,
+                  TOPO_DAS_FAIXAS +
+                    semana.faixas * (ALTURA_FAIXA + ESPACO_ENTRE_FAIXAS) +
+                    (semana.ocultos.some((n) => n > 0) ? 20 : 0) +
+                    6
+                );
+                return (
+                  <div key={si} className="relative grid grid-cols-7 border-t border-line">
+                    {semana.dias.map(({ date, noMesAtual }, ci) => {
+                      const key = dateKey(date);
+                      const ehHoje = key === hojeKey;
+                      // No dia 1 o número vem com o mês ("1 nov"), como no Google Agenda.
+                      const primeiroDoMes = date.getDate() === 1;
+                      return (
+                        <div
+                          key={key}
+                          onClick={() => abrirCriar(key)}
+                          style={{ minHeight: altura }}
+                          className={`group relative cursor-pointer bg-surface px-1 pt-1.5 transition-colors hover:bg-surface-hover/60 ${
+                            ci > 0 ? "border-l border-line" : ""
+                          }`}
+                          title="Clique para criar uma tarefa neste dia"
+                        >
+                          <div className="flex justify-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDataRef(date);
+                                setVisao("dia");
+                              }}
+                              title="Ver o dia"
+                              className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full text-xs ${
+                                primeiroDoMes && !ehHoje ? "px-1.5" : ""
+                              } ${
+                                ehHoje
+                                  ? "bg-cal px-1.5 font-medium text-cal-texto"
+                                  : noMesAtual
+                                  ? "font-medium text-ink hover:bg-surface-hover"
+                                  : "text-ink-muted hover:bg-surface-hover"
+                              }`}
+                            >
+                              {primeiroDoMes
+                                ? `${date.getDate()} ${MESES[date.getMonth()].slice(0, 3).toLowerCase()}`
+                                : date.getDate()}
+                            </button>
+                          </div>
+
+                          {semana.ocultos[ci] > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDataRef(date);
+                                setVisao("dia");
+                              }}
+                              className="absolute bottom-1 left-1.5 text-[10px] font-medium text-ink-muted hover:text-ink"
+                            >
+                              +{semana.ocultos[ci]} mais
+                            </button>
+                          )}
+
+                          {semana.ocupados[ci] === 0 && (
+                            <span className="pointer-events-none absolute bottom-1.5 left-1.5 text-[10px] font-medium text-brand-forte opacity-0 transition-opacity group-hover:opacity-100">
+                              + Adicionar
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* As barras ficam numa camada por cima das 7 células, com
+                        as mesmas 7 colunas: o clique em espaço vazio passa
+                        direto pra célula (criar tarefa no dia). */}
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 grid grid-cols-7 content-start"
+                      style={{
+                        top: TOPO_DAS_FAIXAS,
+                        gridAutoRows: ALTURA_FAIXA,
+                        rowGap: ESPACO_ENTRE_FAIXAS,
+                      }}
+                    >
+                      {semana.segmentos.map((seg) => (
+                        <BarraTarefa
+                          key={`${seg.task.id}-${si}`}
+                          seg={seg}
+                          onAbrir={() => abrirEditar(seg.task)}
+                          onExcluir={(e) => handleDeleteTask(e, seg.task)}
                         />
                       ))}
-                      {extras > 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDataRef(date);
-                            setVisao("dia");
-                          }}
-                          className="px-1 text-[10px] text-ink-muted hover:text-ink"
-                        >
-                          +{extras} mais
-                        </button>
-                      )}
                     </div>
-
-                    {tarefasDoDia.length === 0 && (
-                      <span className="pointer-events-none absolute bottom-1.5 left-1.5 text-[10px] font-medium text-brand-forte opacity-0 transition-opacity group-hover:opacity-100">
-                        + Adicionar
-                      </span>
-                    )}
                   </div>
                 );
               })}
@@ -574,6 +677,76 @@ export default function CalendarView({
           onDeleted={handleDeleted}
         />
       )}
+    </div>
+  );
+}
+
+// A barra contínua da visão Mês: uma por tarefa em cada semana, esticada por
+// todas as colunas (dias) do período. Quando a tarefa vem da semana anterior
+// ou segue pra seguinte, a ponta fica reta, encostada na borda, pra parecer
+// uma barra só atravessando a semana.
+function BarraTarefa({
+  seg,
+  onAbrir,
+  onExcluir,
+}: {
+  seg: Segmento;
+  onAbrir: () => void;
+  onExcluir: (e: React.MouseEvent) => void;
+}) {
+  const { task, col0, col1, contEsq, contDir, faixa } = seg;
+  const cor = corTarefa(task.color);
+  const feita = task.status === "done";
+  const maisDeUmDia = !!task.start_date && !!task.due_date && task.start_date < task.due_date;
+  const ate = task.due_date?.split("-").reverse().slice(0, 2).join("/");
+  const periodo = maisDeUmDia
+    ? `${task.start_date?.split("-").reverse().join("/")} → ${task.due_date?.split("-").reverse().join("/")}`
+    : task.due_date?.split("-").reverse().join("/");
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      title={`${task.title} · ${periodo}${task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onAbrir();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.stopPropagation();
+          onAbrir();
+        }
+      }}
+      style={{
+        gridColumn: `${col0 + 1} / ${col1 + 2}`,
+        gridRow: faixa + 1,
+        marginLeft: contEsq ? 0 : 4,
+        marginRight: contDir ? 0 : 4,
+        backgroundColor: cor.fundo,
+        color: cor.texto,
+      }}
+      className={`group/chip pointer-events-auto flex min-w-0 cursor-pointer items-center gap-1.5 px-2.5 transition-[filter] hover:brightness-110 ${
+        contEsq ? "rounded-l-none" : "rounded-l-full"
+      } ${contDir ? "rounded-r-none" : "rounded-r-full"} ${feita ? "opacity-60" : ""}`}
+    >
+      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current opacity-70" aria-hidden="true" />
+      <span className={`min-w-0 flex-1 truncate text-[11px] font-medium leading-none ${feita ? "line-through" : ""}`}>
+        {task.title}
+      </span>
+      {maisDeUmDia && col1 > col0 ? (
+        <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">até {ate}</span>
+      ) : (
+        task.due_time && !maisDeUmDia && (
+          <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">{task.due_time.slice(0, 5)}</span>
+        )
+      )}
+      <button
+        onClick={onExcluir}
+        title="Excluir tarefa"
+        className="hidden flex-shrink-0 opacity-80 hover:opacity-100 group-hover/chip:inline-flex"
+      >
+        <XIcon className="h-3 w-3" />
+      </button>
     </div>
   );
 }
