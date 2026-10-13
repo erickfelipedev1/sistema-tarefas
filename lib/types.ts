@@ -151,7 +151,8 @@ export type ProjectNotificationType =
   | "task_done"
   | "message"
   | "status"
-  | "post";
+  | "post"
+  | "analysis";
 
 // Linha de project_notifications — alimentada só por gatilhos (nunca por
 // texto solto da equipe). Serve tanto pro sino de notificações quanto
@@ -287,6 +288,22 @@ export interface Optimization {
   justification: string | null;
   created_by: string | null;
   created_by_label: string | null;
+  created_at: string;
+  edited_at: string | null;
+}
+
+// Análise de relatório (migration 0058): a leitura que a liderança e o
+// tráfego escrevem sobre os números do Analytics de um cliente. O cliente lê
+// no portal dele.
+export interface ReportAnalysis {
+  id: string;
+  project_id: string;
+  content: string;
+  author_id: string | null;
+  author_label: string;
+  // O período que estava na tela quando a análise foi escrita.
+  period_start: string | null;
+  period_end: string | null;
   created_at: string;
   edited_at: string | null;
 }

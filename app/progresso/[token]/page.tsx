@@ -39,6 +39,7 @@ export default async function ProgressoPage({
     { data: messagesData },
     { data: postsData },
     { data: pacoteData },
+    { data: analisesData },
   ] = await Promise.all([
     supabase.rpc("get_project_progress", { p_token: params.token }),
     supabase.rpc("get_project_documents", { p_token: params.token }),
@@ -51,6 +52,8 @@ export default async function ProgressoPage({
     supabase.rpc("get_project_posts", { p_token: params.token }),
     // O pacote contratado (migration 0056): nome e o que inclui, sem valor.
     supabase.rpc("get_project_package", { p_token: params.token }),
+    // As análises de relatório que a equipe publicou (migration 0058).
+    supabase.rpc("get_project_analyses", { p_token: params.token }),
   ]);
 
   const progresso = progressData as ProjectProgress | null;
@@ -166,7 +169,13 @@ export default async function ProgressoPage({
         posts={<ClientPosts token={params.token} projectName={progresso.project_name} initialPosts={posts} />}
         postsEsperando={posts.filter((p) => p.status === "enviado").length}
         analytics={
-          temAnalytics ? <AnalyticsCliente portalToken={params.token} projectName={progresso.project_name} /> : undefined
+          temAnalytics ? (
+            <AnalyticsCliente
+              portalToken={params.token}
+              projectName={progresso.project_name}
+              analisesDoPortal={Array.isArray(analisesData) ? analisesData : []}
+            />
+          ) : undefined
         }
         documentos={
           <DocumentsPanel

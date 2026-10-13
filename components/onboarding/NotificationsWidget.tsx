@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  BarChartIcon,
   BellIcon,
   CheckCircleIcon,
   ClipboardListIcon,
@@ -22,6 +23,7 @@ const ICONE_POR_TIPO: Record<ProjectNotificationType, typeof FileTextIcon> = {
   message: MessageCircleIcon,
   status: TargetIcon,
   post: ImageIcon,
+  analysis: BarChartIcon,
 };
 
 // "Lido"/"não lido" não existe no banco (o cliente não tem login pra

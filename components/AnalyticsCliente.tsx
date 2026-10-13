@@ -13,6 +13,8 @@ import {
 } from "@/lib/analytics";
 import { formatarDataBR } from "@/lib/format";
 import AnalyticsCanais from "./AnalyticsCanais";
+import AnaliseDeRelatorio from "./analytics/AnaliseDeRelatorio";
+import type { ReportAnalysis } from "@/lib/types";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
 import { BarChartIcon, CalendarIcon, ChevronDownIcon } from "./ui/icons";
@@ -33,10 +35,16 @@ export default function AnalyticsCliente({
   projectId,
   projectName,
   portalToken,
+  analise,
+  analisesDoPortal,
 }: {
   projectId?: string;
   projectName: string;
   portalToken?: string;
+  // "Análise de relatório" (migration 0058). Na equipe: quem está usando e
+  // se pode escrever. No portal: as análises já vêm prontas do servidor.
+  analise?: { podeEscrever: boolean; souLider: boolean; currentUserId: string; autorRotulo: string };
+  analisesDoPortal?: Omit<ReportAnalysis, "project_id" | "author_id">[];
 }) {
   const noPortal = !!portalToken;
   const [dias, setDias] = useState<Periodo>(30);
@@ -270,6 +278,25 @@ export default function AnalyticsCliente({
           )}
         </div>
       )}
+
+      {/* A análise aparece mesmo se os números não carregarem: é texto da
+          equipe, não depende do Reportei. */}
+      {noPortal
+        ? analisesDoPortal && <AnaliseDeRelatorio modo="portal" analises={analisesDoPortal} />
+        : projectId &&
+          analise && (
+            <AnaliseDeRelatorio
+              modo="equipe"
+              projectId={projectId}
+              // O período escolhido na tela (o do resultado pode ser o anterior
+              // enquanto o novo carrega).
+              periodo={ok ? { inicio: escolhidoNaTela.inicio, fim: escolhidoNaTela.fim } : null}
+              podeEscrever={analise.podeEscrever}
+              souLider={analise.souLider}
+              currentUserId={analise.currentUserId}
+              autorRotulo={analise.autorRotulo}
+            />
+          )}
     </div>
   );
 }

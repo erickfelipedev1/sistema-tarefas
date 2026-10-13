@@ -273,7 +273,20 @@ export default async function ProjetoPage({
             <ProjectFeedbackList feedback={feedback ?? []} />
           </div>
         }
-        analytics={<AnalyticsCliente projectId={id} projectName={project.name} />}
+        analytics={
+          <AnalyticsCliente
+            projectId={id}
+            projectName={project.name}
+            analise={{
+              // Escreve a "Análise de relatório": liderança e tráfego.
+              podeEscrever: souLider || perfil?.faz_otimizacoes === true,
+              souLider,
+              currentUserId: user?.id ?? "",
+              autorRotulo:
+                (profiles ?? []).find((p) => p.id === user?.id)?.name || userLabel || "Equipe",
+            }}
+          />
+        }
       />
     </main>
     </Coreografia>
