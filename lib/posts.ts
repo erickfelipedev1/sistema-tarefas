@@ -90,6 +90,12 @@ export function midiasValidas(media: unknown): PostMedia[] {
   });
 }
 
+// posts.cover (capa do reel): uma imagem ou nada.
+export function capaValida(cover: unknown): PostMedia | null {
+  const [capa] = midiasValidas(cover ? [cover] : []);
+  return capa && capa.type === "image" ? capa : null;
+}
+
 // O que falta pra poder enviar ao cliente; null = está pronto.
 export function oQueFaltaProEnvio(post: {
   category: PostCategory;

@@ -566,7 +566,6 @@ export default function CalendarView({
           getNextPosition={getNextPosition}
           initialDueDate={diaSelecionado}
           initialDueTime={horaSelecionada}
-          podeMudarDatas={verTudo}
           onClose={fecharModal}
           onCreated={handleCreated}
           onUpdated={handleUpdated}

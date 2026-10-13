@@ -221,9 +221,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           data_prazo: z
             .string()
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD")
-            .describe(
-              "Data de entrega (fim do período), AAAA-MM-DD. Obrigatória: depois de criada a tarefa, só a liderança muda as datas."
-            ),
+            .describe("Data de entrega (fim do período), AAAA-MM-DD. Obrigatória."),
           responsavel: z
             .string()
             .max(200)
@@ -718,28 +716,6 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
           }
 
           const alvo = candidatas[0];
-
-          // Datas de tarefa já criada: só a liderança (ve_tudo) muda — a mesma
-          // regra da tela e do banco (migration 0057). Aqui o banco não barra,
-          // porque esta rota grava com a chave de serviço.
-          if ("start_date" in atualizacoes || "due_date" in atualizacoes) {
-            const { data: quem } = await admin
-              .from("profiles")
-              .select("ve_tudo")
-              .eq("id", perfil.profileId)
-              .maybeSingle();
-            if (quem?.ve_tudo !== true) {
-              return {
-                isError: true,
-                content: [
-                  {
-                    type: "text",
-                    text: "Não alterei nada: só a liderança pode mudar as datas de uma tarefa já criada. Os outros campos podem ser editados em outra chamada, sem as datas.",
-                  },
-                ],
-              };
-            }
-          }
 
           const { error } = await admin.from("tasks").update(atualizacoes).eq("id", alvo.id);
 

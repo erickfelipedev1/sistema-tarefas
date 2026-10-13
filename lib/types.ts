@@ -6,6 +6,8 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
+  // Texto da aba "Copywrite" (migration 0061): a copy da peça.
+  copy_text?: string | null;
   status: TaskStatus;
   position: number;
   // Período (migration 0040): início → entrega. Tarefas antigas podem não
@@ -331,6 +333,8 @@ export interface Post {
   networks: PostNetwork[];
   scheduled_date: string | null;
   media: PostMedia[];
+  // Capa do reel (migration 0059): uma imagem, opcional, só em reel.
+  cover: PostMedia | null;
   status: PostStatus;
   sent_count: number;
   sent_at: string | null;
@@ -364,6 +368,7 @@ export interface PublicPost {
   networks: PostNetwork[];
   scheduled_date: string | null;
   media: (PostMedia & { url: string })[];
+  cover: (PostMedia & { url: string }) | null;
   status: Exclude<PostStatus, "rascunho">;
   sent_count: number;
   sent_at: string | null;

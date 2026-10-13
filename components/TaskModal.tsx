@@ -3,7 +3,7 @@
 import { linkDoArquivo } from "@/lib/arquivos";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import { nomeSeguro } from "@/lib/nome-arquivo";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -30,7 +30,7 @@ import {
 import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
 
-type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas";
+type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas" | "copy";
 
 const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "detalhes", label: "Detalhes", icone: "📋" },
@@ -38,6 +38,7 @@ const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "anexos", label: "Anexos", icone: "📎" },
   { key: "comentarios", label: "Comentários", icone: "💬" },
   { key: "horas", label: "Horas", icone: "⏱️" },
+  { key: "copy", label: "Copywrite", icone: "✍️" },
 ];
 
 export default function TaskModal({
@@ -49,7 +50,7 @@ export default function TaskModal({
   getNextPosition,
   initialDueDate,
   initialDueTime,
-  podeMudarDatas = false,
+  podeMudarDatas = true,
   onClose,
   onCreated,
   onUpdated,
@@ -66,8 +67,8 @@ export default function TaskModal({
   initialDueDate?: string | null;
   // Idem pro horário ("HH:MM") — ex: clicou num horário na visão Semana/Dia.
   initialDueTime?: string | null;
-  // Depois de criada a tarefa, só a liderança (ve_tudo) muda o início e a
-  // entrega. A mesma trava existe no banco (migration 0057).
+  // Por padrão qualquer pessoa muda o início e a entrega de uma tarefa já
+  // criada; passe false pra deixar as datas só pra leitura.
   podeMudarDatas?: boolean;
   onClose: () => void;
   onCreated: (task: Task) => void;
@@ -110,6 +111,13 @@ export default function TaskModal({
   const isNovo = !current;
   // Tarefa já criada + quem não é da liderança: início e entrega só pra ler.
   const datasTravadas = !isNovo && !podeMudarDatas;
+
+  // O que aparece ao lado de cada item do menu: contagem, ou "✓" na aba
+  // Copywrite quando já tem texto.
+  function contadorDoMenu(key: Aba): string | null {
+    if (key === "copy") return current?.copy_text?.trim() ? "✓" : null;
+    return contadorDaAba(key, resumo);
+  }
 
   // Recarrega ao abrir e a cada troca de aba (a pessoa pode ter mexido
   // no checklist/comentários na aba anterior).
@@ -627,6 +635,13 @@ export default function TaskModal({
               currentUserLabel={currentUserLabel}
             />
           )}
+          {aba === "copy" && current && (
+            <CopyTab
+              key={current.id}
+              valor={current.copy_text ?? ""}
+              onSalvar={(texto) => salvarCampo({ copy_text: texto.trim() || null })}
+            />
+          )}
           {aba === "horas" && current && (
             <HorasTab
               taskId={current.id}
@@ -653,13 +668,13 @@ export default function TaskModal({
             >
               <span>{item.icone}</span>
               <span className="hidden md:inline">{item.label}</span>
-              {!isNovo && contadorDaAba(item.key, resumo) && (
+              {!isNovo && contadorDoMenu(item.key) && (
                 <span
                   className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                     aba === item.key ? "bg-navy/15 text-navy" : "bg-surface-hover text-ink"
                   }`}
                 >
-                  {contadorDaAba(item.key, resumo)}
+                  {contadorDoMenu(item.key)}
                 </span>
               )}
             </button>
@@ -1343,6 +1358,72 @@ function HorasTab({
         {lancamentos.length === 0 && (
           <p className="text-xs text-ink-muted">Nenhum lançamento ainda.</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Aba "Copywrite": o texto da peça (legenda, roteiro, chamada) escrito e
+// revisado dentro da própria tarefa. Salva sozinho ao sair do campo.
+function CopyTab({ valor, onSalvar }: { valor: string; onSalvar: (texto: string) => Promise<void> | void }) {
+  const [texto, setTexto] = useState(valor);
+  const [estado, setEstado] = useState<"salvo" | "salvando" | "sujo">("salvo");
+  const [copiado, setCopiado] = useState(false);
+  const ultimoSalvo = useRef(valor);
+
+  async function salvar() {
+    if (texto === ultimoSalvo.current) return;
+    setEstado("salvando");
+    await onSalvar(texto);
+    ultimoSalvo.current = texto;
+    setEstado("salvo");
+  }
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1800);
+    } catch {
+      // Sem permissão da área de transferência: a pessoa copia na mão.
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <label htmlFor="copy-da-tarefa" className="block text-xs font-medium text-ink-muted">
+          Copywrite
+        </label>
+        <span className="text-[11px] text-ink-muted">
+          {estado === "salvando" ? "Salvando..." : estado === "sujo" ? "Alterações não salvas" : "Salvo"}
+        </span>
+      </div>
+      <textarea
+        id="copy-da-tarefa"
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setEstado("sujo");
+        }}
+        onBlur={salvar}
+        rows={14}
+        maxLength={20000}
+        placeholder="Escreva aqui a copy da peça: legenda, roteiro, headline, chamada..."
+        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm leading-relaxed text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+      />
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] tabular-nums text-ink-muted">
+          {texto.length.toLocaleString("pt-BR")} caracteres
+        </span>
+        <button
+          type="button"
+          onClick={copiar}
+          disabled={!texto.trim()}
+          className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {copiado ? "Copiado!" : "Copiar texto"}
+        </button>
       </div>
     </div>
   );

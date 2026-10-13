@@ -9,7 +9,7 @@ import { ClientPosts } from "@/components/onboarding/ClientPosts";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { reporteiConfigurado } from "@/lib/reportei";
-import { midiasValidas } from "@/lib/posts";
+import { capaValida, midiasValidas } from "@/lib/posts";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
   ProjectDocuments,
@@ -91,21 +91,22 @@ export default async function ProgressoPage({
   const faturas = (invoicesData as PublicInvoice[] | null) ?? [];
   // Posts enviados pela equipe (aba "Posts"): os arquivos de cada um também
   // saem daqui com link assinado.
-  const postsSemLink = ((Array.isArray(postsData) ? postsData : []) as (Omit<PublicPost, "media"> & { media: unknown })[]).map(
-    (p) => ({ ...p, media: midiasValidas(p.media) })
-  );
+  const postsSemLink = (
+    (Array.isArray(postsData) ? postsData : []) as (Omit<PublicPost, "media" | "cover"> & { media: unknown; cover: unknown })[]
+  ).map((p) => ({ ...p, media: midiasValidas(p.media), cover: capaValida(p.cover) }));
   const [linksArquivos, linksFaturas, linksPosts] = await Promise.all([
     assinar("drive-files", arquivos.map((a) => a.file_path)),
     assinar("invoices", faturas.map((f) => f.file_path).filter((c): c is string => !!c)),
     assinar(
       "post-media",
-      postsSemLink.flatMap((p) => p.media.map((m) => m.path))
+      postsSemLink.flatMap((p) => [...p.media.map((m) => m.path), ...(p.cover ? [p.cover.path] : [])])
     ),
   ]);
   const posts: PublicPost[] = postsSemLink.map((p) => ({
     ...p,
     comments: Array.isArray(p.comments) ? p.comments : [],
     media: p.media.map((m) => ({ ...m, url: linksPosts.get(m.path) ?? "" })),
+    cover: p.cover ? { ...p.cover, url: linksPosts.get(p.cover.path) ?? "" } : null,
   }));
 
   const arquivosComLink = arquivos.map((arquivo) => ({

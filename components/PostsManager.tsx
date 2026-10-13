@@ -10,6 +10,7 @@ import {
   arquivoAceito,
   BUCKET_DOS_POSTS,
   CATEGORIAS,
+  capaValida,
   midiasValidas,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
@@ -20,6 +21,7 @@ import {
   STATUS_DO_POST,
   tamanhoLegivel,
 } from "@/lib/posts";
+import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -49,7 +51,12 @@ type ItemDeMidia =
 
 // O post como veio do banco, com os arquivos conferidos.
 function arrumar(post: Post): Post {
-  return { ...post, media: midiasValidas(post.media), networks: Array.isArray(post.networks) ? post.networks : [] };
+  return {
+    ...post,
+    media: midiasValidas(post.media),
+    cover: capaValida(post.cover),
+    networks: Array.isArray(post.networks) ? post.networks : [],
+  };
 }
 
 // Posts com data primeiro, na ordem do calendário; os sem data por último.
@@ -99,6 +106,7 @@ export default function PostsManager({
   const [data, setData] = useState("");
   const [legenda, setLegenda] = useState("");
   const [itens, setItens] = useState<ItemDeMidia[]>([]);
+  const [capa, setCapa] = useState<CapaDoForm | null>(null);
   const [redeDoPreview, setRedeDoPreview] = useState<PostNetwork>("instagram");
   const [salvando, setSalvando] = useState<string | null>(null); // texto do andamento
   const [erroForm, setErroForm] = useState<string | null>(null);
@@ -188,7 +196,10 @@ export default function PostsManager({
   // Links assinados (1h) dos arquivos — o bucket é privado. Só pede os que
   // ainda não tem; "rodada" muda a cada 50 minutos pra refazer todos antes
   // de vencerem, com a aba aberta.
-  const caminhos = useMemo(() => posts.flatMap((p) => p.media.map((m) => m.path)), [posts]);
+  const caminhos = useMemo(
+    () => posts.flatMap((p) => [...p.media.map((m) => m.path), ...(p.cover ? [p.cover.path] : [])]),
+    [posts]
+  );
   const [rodada, setRodada] = useState(0);
   const rodadaDosLinks = useRef(0);
   useEffect(() => {
@@ -223,9 +234,12 @@ export default function PostsManager({
   // Os endereços locais dos arquivos escolhidos morrem com a tela.
   const itensRef = useRef(itens);
   itensRef.current = itens;
+  const capaRef = useRef(capa);
+  capaRef.current = capa;
   useEffect(
     () => () => {
       for (const item of itensRef.current) if (item.nova) URL.revokeObjectURL(item.nova.url);
+      if (capaRef.current?.nova) URL.revokeObjectURL(capaRef.current.nova.url);
     },
     []
   );
@@ -233,7 +247,9 @@ export default function PostsManager({
   // ---------- Formulário ----------
   function fecharForm() {
     for (const item of itens) if (item.nova) URL.revokeObjectURL(item.nova.url);
+    if (capa?.nova) URL.revokeObjectURL(capa.nova.url);
     setItens([]);
+    setCapa(null);
     setEditando(null);
     setCategoria("estatico");
     setRedes(["instagram"]);
@@ -251,6 +267,7 @@ export default function PostsManager({
 
   function abrirEdicao(post: Post) {
     for (const item of itens) if (item.nova) URL.revokeObjectURL(item.nova.url);
+    if (capa?.nova) URL.revokeObjectURL(capa.nova.url);
     const redesDoPost = redesValidas(post.networks);
     setEditando(post);
     setCategoria(post.category);
@@ -259,6 +276,7 @@ export default function PostsManager({
     setData(post.scheduled_date ?? "");
     setLegenda(post.caption);
     setItens(post.media.map((m) => ({ chave: m.path, salva: m })));
+    setCapa(post.cover ? { salva: post.cover } : null);
     setErroForm(null);
     setMostrarForm(true);
     requestAnimationFrame(() => topoDoForm.current?.scrollIntoView({ block: "start" }));
@@ -334,6 +352,8 @@ export default function PostsManager({
     tipo: tipoDoItem(item),
   }));
 
+  const urlDaCapa = capa ? (capa.salva ? links[capa.salva.path] ?? "" : capa.nova.url) : "";
+
   async function salvar(enviarAoCliente: boolean) {
     if (salvando) return;
     const foraDaCategoria = itens.some((item) => !arquivoAceito(categoria, tipoDoItem(item) === "video" ? "video/" : "image/"));
@@ -391,6 +411,34 @@ export default function PostsManager({
       midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size });
     }
 
+    // Capa do reel: só vale em reel; uma imagem nova sobe junto.
+    let capaFinal: PostMedia | null = null;
+    if (categoria === "reel" && capa) {
+      if (capa.salva) {
+        capaFinal = capa.salva;
+      } else {
+        setSalvando("Enviando a capa...");
+        const caminhoDaCapa = `${projectId}/${postId}/capa-${Date.now()}-${nomeSeguro(capa.nova.arquivo.name)}`;
+        const { error } = await supabase.storage
+          .from(BUCKET_DOS_POSTS)
+          .upload(caminhoDaCapa, capa.nova.arquivo, { contentType: capa.nova.arquivo.type || undefined });
+        if (error) {
+          if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+          setSalvando(null);
+          return setErroForm(
+            `Não deu pra enviar a capa. ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`
+          );
+        }
+        subidos.push(caminhoDaCapa);
+        capaFinal = {
+          path: caminhoDaCapa,
+          type: "image",
+          name: capa.nova.arquivo.name,
+          size: capa.nova.arquivo.size,
+        };
+      }
+    }
+
     setSalvando("Salvando...");
     const campos = {
       category: categoria,
@@ -398,6 +446,9 @@ export default function PostsManager({
       networks: redesValidas(redes),
       scheduled_date: data || null,
       media: midias,
+      // A capa só entra na gravação de reel (ou de post que já tinha capa,
+      // pra limpar): os outros posts salvam como antes.
+      ...(categoria === "reel" || editando?.cover ? { cover: capaFinal } : {}),
     };
     const gravacao = editando
       ? await supabase
@@ -417,7 +468,10 @@ export default function PostsManager({
       // A gravação pode ter dado certo e só a resposta ter se perdido: antes
       // de apagar o que subiu, confere se o post já aponta pra esses arquivos.
       const { data: noBanco } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
-      const gravados = new Set(midiasValidas((noBanco as Post | null)?.media).map((m) => m.path));
+      const gravados = new Set([
+        ...midiasValidas((noBanco as Post | null)?.media).map((m) => m.path),
+        ...((noBanco as Post | null)?.cover?.path ? [(noBanco as Post).cover!.path] : []),
+      ]);
       if (noBanco && subidos.length > 0 && subidos.every((c) => gravados.has(c))) {
         salvo = noBanco as Post;
       } else {
@@ -428,8 +482,13 @@ export default function PostsManager({
     }
 
     // Arquivos que saíram do post nesta edição deixam de ocupar espaço.
-    const mantidos = new Set(midias.map((m) => m.path));
-    const sobras = (editando?.media ?? []).map((m) => m.path).filter((c) => !mantidos.has(c));
+    const mantidos = new Set([...midias.map((m) => m.path), ...(capaFinal ? [capaFinal.path] : [])]);
+    // Parte do que a tela conhece agora (um colega pode ter trocado arquivos
+    // com o formulário aberto), não do que estava quando ele abriu.
+    const antes = editando ? posts.find((p) => p.id === editando.id) ?? editando : null;
+    const sobras = [...(antes?.media ?? []).map((m) => m.path), ...(antes?.cover ? [antes.cover.path] : [])].filter(
+      (c) => !mantidos.has(c)
+    );
     if (sobras.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(sobras);
 
     const post = arrumar(salvo);
@@ -463,7 +522,8 @@ export default function PostsManager({
     setAvisoDaLista(null);
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
     if (error) return setAvisoDaLista("Não foi possível excluir o post. Tente de novo.");
-    if (post.media.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(post.media.map((m) => m.path));
+    const arquivosDoPost = [...post.media.map((m) => m.path), ...(post.cover ? [post.cover.path] : [])];
+    if (arquivosDoPost.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(arquivosDoPost);
     setPosts((atual) => atual.filter((p) => p.id !== post.id));
     setComentarios((atual) => atual.filter((c) => c.post_id !== post.id));
     if (editando?.id === post.id) fecharForm();
@@ -625,6 +685,18 @@ export default function PostsManager({
                   </Button>
                 )}
               </Campo>
+
+              {categoria === "reel" && (
+                <Campo label="Capa do reel">
+                  <CapaDoReel
+                    capa={capa}
+                    urlDaCapa={urlDaCapa}
+                    urlDoVideo={midiasDoForm[0]?.tipo === "video" ? midiasDoForm[0].url : ""}
+                    aoMudar={setCapa}
+                    aoErro={setErroForm}
+                  />
+                </Campo>
+              )}
             </div>
 
             <div>
@@ -637,6 +709,7 @@ export default function PostsManager({
                 categoria={categoria}
                 legenda={legenda}
                 midias={midiasDoForm}
+                capa={categoria === "reel" ? urlDaCapa || null : null}
                 conta={projectName}
                 data={data ? formatarDataBR(data) : null}
               />
@@ -673,7 +746,8 @@ export default function PostsManager({
           const nomeAutor = autor?.name || autor?.username || post.created_by_label || "Alguém";
           const aberto = abertos.has(post.id);
           const podeExcluir = souLider || post.created_by === currentUserId;
-          const capa = post.media[0];
+          // Na lista, a miniatura é a capa do reel, quando tem.
+          const capa = post.cover ?? post.media[0];
           return (
             <article key={post.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap">
@@ -827,6 +901,7 @@ function PostAberto({
           categoria={post.category}
           legenda={post.caption}
           midias={post.media.map((m) => ({ url: links[m.path] ?? "", tipo: m.type }))}
+          capa={post.cover ? links[post.cover.path] || null : null}
           conta={projectName}
           data={post.scheduled_date ? formatarDataBR(post.scheduled_date) : null}
         />

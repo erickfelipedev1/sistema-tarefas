@@ -32,6 +32,7 @@ export default function PostPreview({
   categoria,
   legenda,
   midias,
+  capa = null,
   conta,
   data,
 }: {
@@ -39,6 +40,8 @@ export default function PostPreview({
   categoria: PostCategory;
   legenda: string;
   midias: MidiaDoPreview[];
+  // Capa do reel (endereço da imagem): aparece no vídeo antes do play.
+  capa?: string | null;
   conta: string;
   data: string | null; // já formatada ("12/10/2026")
 }) {
@@ -48,7 +51,7 @@ export default function PostPreview({
   if (rede === "tiktok") {
     return (
       <div className="relative mx-auto aspect-[9/16] w-full max-w-[340px] overflow-hidden rounded-2xl border border-line bg-black text-white">
-        <Midias midias={midias} preencher />
+        <Midias midias={midias} capa={capa} preencher />
         {/* Tudo que fica por cima do vídeo deixa o clique passar pros controles. */}
         <div className="pointer-events-none absolute bottom-24 right-2.5 flex flex-col items-center gap-4">
           <Inicial conta={conta} className="h-9 w-9 border border-white/70 bg-white/20 text-white" />
@@ -69,7 +72,7 @@ export default function PostPreview({
     return (
       <Moldura>
         <Topo conta={conta} />
-        <Midias midias={midias} proporcao={proporcao} />
+        <Midias midias={midias} capa={capa} proporcao={proporcao} />
         <div className="flex items-center gap-3.5 px-3.5 pt-3 text-ink">
           <HeartIcon className="h-5 w-5" />
           <MessageCircleIcon className="h-5 w-5" />
@@ -104,7 +107,7 @@ export default function PostPreview({
         quadrado={rede === "linkedin"}
       />
       <Legenda texto={legenda} className="px-3.5 pb-3 text-sm text-ink" />
-      <Midias midias={midias} proporcao={proporcao} />
+      <Midias midias={midias} capa={capa} proporcao={proporcao} />
       <div className="flex items-center justify-around border-t border-line px-2 py-2.5 text-ink-muted">
         {acoes.map(({ rotulo, icone: Icone }) => (
           <span key={rotulo} className="flex items-center gap-1 text-[11px] font-medium">
@@ -187,10 +190,12 @@ function Legenda({
 // cliente precisa ver a arte toda, mesmo que a rede vá cortar um pouco.
 function Midias({
   midias,
+  capa = null,
   proporcao = null,
   preencher,
 }: {
   midias: MidiaDoPreview[];
+  capa?: string | null;
   proporcao?: string | null;
   preencher?: boolean;
 }) {
@@ -228,7 +233,7 @@ function Midias({
   if (!varias && !preencher && !proporcao) {
     return (
       <div className="relative bg-black">
-        <Arquivo midia={midias[0]} className="max-h-[520px] w-full object-contain" />
+        <Arquivo midia={midias[0]} capa={capa} className="max-h-[520px] w-full object-contain" />
       </div>
     );
   }
@@ -245,7 +250,7 @@ function Midias({
       >
         {midias.map((midia, i) => (
           <div key={`${midia.url}-${i}`} className="h-full w-full flex-shrink-0 snap-center">
-            <Arquivo midia={midia} className="h-full w-full object-contain" />
+            <Arquivo midia={midia} capa={i === 0 ? capa : null} className="h-full w-full object-contain" />
           </div>
         ))}
       </div>
@@ -299,7 +304,7 @@ function BotaoDoCarrossel({
   );
 }
 
-function Arquivo({ midia, className }: { midia: MidiaDoPreview; className: string }) {
+function Arquivo({ midia, capa = null, className }: { midia: MidiaDoPreview; capa?: string | null; className: string }) {
   if (!midia.url) {
     return (
       <div className="grid h-full min-h-[200px] w-full place-items-center px-6 text-center text-xs text-white/70">
@@ -308,7 +313,16 @@ function Arquivo({ midia, className }: { midia: MidiaDoPreview; className: strin
     );
   }
   if (midia.tipo === "video") {
-    return <video src={midia.url} controls playsInline preload="metadata" className={`block ${className}`} />;
+    return (
+      <video
+        src={midia.url}
+        poster={capa || undefined}
+        controls
+        playsInline
+        preload="metadata"
+        className={`block ${className}`}
+      />
+    );
   }
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={midia.url} alt="" loading="lazy" className={`block ${className}`} />;
