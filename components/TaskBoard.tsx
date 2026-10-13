@@ -22,6 +22,7 @@ import {
   AlertTriangleIcon,
   CalendarIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ClipboardListIcon,
@@ -44,6 +45,38 @@ const COLUNAS: { key: TaskStatus; label: string; dot: string }[] = [
 // fuso horário local em vez de UTC.
 function hojeISO() {
   return new Date().toLocaleDateString("en-CA");
+}
+
+// Subtarefas por tarefa principal: { idDaMae: [subtarefas] }.
+type FilhasPorMae = Record<string, Task[]>;
+
+// Põe (ou atualiza) uma subtarefa na lista da mãe dela, tirando-a de onde
+// estava antes (ela pode ter mudado de mãe ou deixado de ser subtarefa).
+function comFilha(atual: FilhasPorMae, tarefa: Task): FilhasPorMae {
+  const sem: FilhasPorMae = {};
+  let estava = false;
+  for (const [mae, lista] of Object.entries(atual)) {
+    const tinha = lista.some((f) => f.id === tarefa.id);
+    estava = estava || tinha;
+    sem[mae] = tinha ? lista.filter((f) => f.id !== tarefa.id) : lista;
+  }
+  // Tarefa comum que nunca foi subtarefa: nada muda (evita redesenhar à toa).
+  if (!tarefa.parent_id) return estava ? sem : atual;
+  const antigas = atual[tarefa.parent_id] ?? [];
+  const anterior = antigas.find((f) => f.id === tarefa.id);
+  const nova = anterior ? { ...anterior, ...tarefa } : tarefa;
+  sem[tarefa.parent_id] = [...(sem[tarefa.parent_id] ?? []), nova].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
+  return sem;
+}
+
+function semFilha(atual: FilhasPorMae, id: string): FilhasPorMae {
+  const proximo: FilhasPorMae = {};
+  for (const [mae, lista] of Object.entries(atual)) {
+    proximo[mae] = lista.some((f) => f.id === id) ? lista.filter((f) => f.id !== id) : lista;
+  }
+  return proximo;
 }
 
 export default function TaskBoard({
@@ -102,6 +135,10 @@ export default function TaskBoard({
   const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
   const [ligacoes, setLigacoes] = useState<Record<string, string[]>>({});
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
+  // Subtarefas de cada tarefa principal (aparecem dentro do cartão da mãe) e
+  // quais mães estão com a lista recolhida.
+  const [filhas, setFilhas] = useState<FilhasPorMae>({});
+  const [recolhidas, setRecolhidas] = useState<Set<string>>(new Set());
   // Checklist/comentários/anexos de cada cartão (✅ 2/5 · 💬 3 · 📎 1).
   const [resumos, setResumos] = useState<Record<string, ResumoTarefa>>({});
   const idsDasTarefas = useMemo(() => tasks.map((t) => t.id).sort().join(","), [tasks]);
@@ -120,6 +157,42 @@ export default function TaskBoard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsDasTarefas]);
+
+  // As subtarefas vêm numa consulta própria: o quadro individual só traz as
+  // tarefas "minhas", mas dentro do cartão da principal aparecem todas.
+  const idsDasMaes = useMemo(
+    () =>
+      tasks
+        .filter((t) => !t.parent_id)
+        .map((t) => t.id)
+        .sort()
+        .join(","),
+    [tasks]
+  );
+  useEffect(() => {
+    if (!idsDasMaes) return;
+    let ativo = true;
+    (async () => {
+      const ids = idsDasMaes.split(",");
+      const todas: Task[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data } = await supabase
+          .from("tasks")
+          .select("*")
+          .in("parent_id", ids.slice(i, i + 100))
+          .order("created_at", { ascending: true });
+        todas.push(...((data ?? []) as Task[]));
+      }
+      if (!ativo) return;
+      const mapa: FilhasPorMae = {};
+      for (const f of todas) (mapa[f.parent_id as string] ??= []).push(f);
+      setFilhas(mapa);
+    })();
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsDasMaes]);
 
   useEffect(() => {
     let ativo = true;
@@ -171,6 +244,13 @@ export default function TaskBoard({
         "postgres_changes",
         { event: "*", schema: "public", table: "tasks" },
         (payload) => {
+          // Subtarefas mudam na lista de dentro do cartão da mãe, seja de
+          // quem for a subtarefa.
+          setFilhas((atual) =>
+            payload.eventType === "DELETE"
+              ? semFilha(atual, (payload.old as Task).id)
+              : comFilha(atual, payload.new as Task)
+          );
           setTasks((current) => {
             if (payload.eventType === "INSERT") {
               const novo = payload.new as Task;
@@ -274,19 +354,35 @@ export default function TaskBoard({
   }
 
   function handleCreated(nova: Task) {
+    if (nova.parent_id) setFilhas((atual) => comFilha(atual, nova));
     setTasks((current) =>
       current.some((t) => t.id === nova.id) ? current : [...current, nova]
     );
   }
 
   function handleUpdated(atualizada: Task) {
+    setFilhas((atual) => comFilha(atual, atualizada));
     setTasks((current) =>
       current.map((t) => (t.id === atualizada.id ? atualizada : t))
     );
   }
 
   function handleDeleted(taskId: string) {
+    setFilhas((atual) => semFilha(atual, taskId));
     setTasks((current) => current.filter((t) => t.id !== taskId));
+  }
+
+  async function alternarSubtarefa(sub: Task) {
+    const status: TaskStatus = sub.status === "done" ? "todo" : "done";
+    setFilhas((atual) => comFilha(atual, { ...sub, status }));
+    const { error } = await supabase.from("tasks").update({ status }).eq("id", sub.id);
+    if (error) {
+      setFilhas((atual) => comFilha(atual, sub));
+      return;
+    }
+    if (sub.parent_id) {
+      carregarResumos(supabase, [sub.parent_id]).then((m) => setResumos((atual) => ({ ...atual, ...m })));
+    }
   }
 
   async function moveTaskTo(task: Task, novoStatus: TaskStatus) {
@@ -452,7 +548,7 @@ export default function TaskBoard({
 
   const tasksVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    return tasks.filter((t) => {
+    const passa = (t: Task) => {
       if (termo && !t.title.toLowerCase().includes(termo)) return false;
       if (filtroResponsavel && !t.assigned_to.includes(filtroResponsavel)) {
         return false;
@@ -461,7 +557,12 @@ export default function TaskBoard({
         return false;
       }
       return true;
-    });
+    };
+    // Subtarefa aparece dentro do cartão da principal, não solta na coluna.
+    // Só fica solta quando a principal não está no quadro (é de outra pessoa)
+    // ou não passa pelo filtro/busca atual.
+    const principaisNaTela = new Set(tasks.filter((t) => !t.parent_id && passa(t)).map((t) => t.id));
+    return tasks.filter((t) => passa(t) && (!t.parent_id || !principaisNaTela.has(t.parent_id)));
   }, [tasks, busca, filtroResponsavel, filtroEtiqueta, ligacoes]);
 
   return (
@@ -694,6 +795,25 @@ export default function TaskBoard({
                         <IndicadoresTarefa resumo={resumos[task.id]} />
                       )}
 
+                      {(filhas[task.id] ?? []).length > 0 && (
+                        <SubtarefasNoCartao
+                          subtarefas={filhas[task.id]}
+                          hoje={hoje}
+                          perfis={profileById}
+                          recolhida={recolhidas.has(task.id)}
+                          aoRecolher={() =>
+                            setRecolhidas((atual) => {
+                              const novo = new Set(atual);
+                              if (novo.has(task.id)) novo.delete(task.id);
+                              else novo.add(task.id);
+                              return novo;
+                            })
+                          }
+                          aoAbrir={abrirEditar}
+                          aoAlternar={alternarSubtarefa}
+                        />
+                      )}
+
                       <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5">
                         <div className="flex items-center gap-1">
                           <button
@@ -788,6 +908,119 @@ export default function TaskBoard({
           onUpdated={handleUpdated}
           onDeleted={handleDeleted}
         />
+      )}
+    </div>
+  );
+}
+
+// As subtarefas dentro do cartão da tarefa principal: uma linha por subtarefa
+// (concluir, abrir, responsáveis e prazo), com a lista recolhível. Clicar numa
+// linha abre a subtarefa inteira; o resto do cartão continua abrindo a
+// principal.
+function SubtarefasNoCartao({
+  subtarefas,
+  hoje,
+  perfis,
+  recolhida,
+  aoRecolher,
+  aoAbrir,
+  aoAlternar,
+}: {
+  subtarefas: Task[];
+  hoje: string;
+  perfis: Map<string, Profile>;
+  recolhida: boolean;
+  aoRecolher: () => void;
+  aoAbrir: (t: Task) => void;
+  aoAlternar: (t: Task) => void;
+}) {
+  const ativas = subtarefas.filter((s) => s.status !== "cancelled");
+  const feitas = ativas.filter((s) => s.status === "done").length;
+  const MAX = 6;
+  const [verTodas, setVerTodas] = useState(false);
+  const mostradas = verTodas ? ativas : ativas.slice(0, MAX);
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="mt-2.5 rounded-lg border border-line bg-canvas/60 p-1.5"
+    >
+      <button
+        type="button"
+        onClick={aoRecolher}
+        aria-expanded={!recolhida}
+        className="flex w-full items-center justify-between gap-2 px-1 py-0.5 text-left text-[11px] font-medium text-ink-muted hover:text-ink"
+      >
+        <span>
+          🧩 Subtarefas · {feitas}/{ativas.length}
+        </span>
+        <ChevronDownIcon className={`h-3 w-3 transition-transform ${recolhida ? "-rotate-90" : ""}`} />
+      </button>
+      {!recolhida && (
+        <ul className="mt-1 space-y-0.5">
+          {mostradas.map((s) => {
+            const feita = s.status === "done";
+            const atrasada = !!s.due_date && s.due_date < hoje && !feita;
+            return (
+              <li key={s.id} className="rounded-md px-1 py-1 hover:bg-surface-hover">
+                <div className="flex items-start gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={feita}
+                    onChange={() => aoAlternar(s)}
+                    aria-label={feita ? "Reabrir subtarefa" : "Concluir subtarefa"}
+                    className="mt-0.5 flex-shrink-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => aoAbrir(s)}
+                    title="Abrir a subtarefa"
+                    className={`min-w-0 flex-1 text-left text-xs leading-snug ${
+                      feita ? "text-ink-muted line-through" : "text-ink"
+                    }`}
+                  >
+                    {s.title}
+                  </button>
+                </div>
+                {(s.due_date || s.assigned_to.length > 0 || (s.status !== "todo" && s.status !== "done")) && (
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[22px] text-[10px] text-ink-muted">
+                    {s.status !== "todo" && s.status !== "done" && (
+                      <span>{COLUNAS.find((c) => c.key === s.status)?.label ?? ""}</span>
+                    )}
+                    {s.due_date && (
+                      <span className={atrasada ? "font-medium text-danger" : ""}>
+                        {s.due_date.split("-").reverse().slice(0, 2).join("/")}
+                      </span>
+                    )}
+                    {s.assigned_to.length > 0 && (
+                      <span className="flex -space-x-1">
+                        {s.assigned_to.slice(0, 3).map((id) => (
+                          <Avatar
+                            key={id}
+                            name={perfis.get(id)?.name || perfis.get(id)?.username || "?"}
+                            src={perfis.get(id)?.avatar_url}
+                            size="xs"
+                            className="ring-1 ring-surface"
+                          />
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+          {ativas.length > MAX && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setVerTodas((v) => !v)}
+                className="px-1 text-[10px] font-medium text-brand-forte hover:underline"
+              >
+                {verTodas ? "Mostrar menos" : `+${ativas.length - MAX} mais`}
+              </button>
+            </li>
+          )}
+        </ul>
       )}
     </div>
   );
