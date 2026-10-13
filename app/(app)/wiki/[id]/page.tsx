@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
-import { podeVerTudo } from "@/lib/permissions";
 import { getMinhasPaginas } from "@/lib/wiki";
 import PageEditor from "@/components/PageEditor";
 import WikiSidebar from "@/components/WikiSidebar";
@@ -36,13 +35,7 @@ export default async function WikiDocPage({
   // mostrá-la aqui — quem volta, volta pro próprio projeto.
   const ehPaginaDeProjeto = !!page.project_id;
 
-  const pages = ehPaginaDeProjeto
-    ? []
-    : await getMinhasPaginas(
-        supabase,
-        user?.id,
-        await podeVerTudo(supabase, user?.id)
-      );
+  const pages = ehPaginaDeProjeto ? [] : await getMinhasPaginas(supabase, user?.id);
 
   const voltarHref = ehPaginaDeProjeto ? `/projetos/${page.project_id}` : "/wiki";
   const voltarLabel = ehPaginaDeProjeto ? "Voltar para o cliente" : "Wiki";

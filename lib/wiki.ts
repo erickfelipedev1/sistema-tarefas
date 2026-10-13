@@ -7,25 +7,17 @@ export interface PaginaResumo {
   updated_at: string;
 }
 
-// Mesma regra de "Wiki individual" que já existia na tela principal: só
-// entram páginas que eu criei, ou que estão ligadas a uma tarefa minha
-// (criada por mim ou atribuída a mim) — exceto pra quem tem "ve_tudo" (hoje
-// só a Emily), que enxerga a wiki de todo mundo. Extraído aqui pra ser
-// reaproveitado tanto pela lista principal quanto pela navegação lateral
-// dentro de uma página — mesma consulta, sem duplicar a regra.
+// A Wiki do menu é individual, pra todo mundo: só entram páginas que eu
+// criei, ou que estão ligadas a uma tarefa minha (criada por mim ou atribuída
+// a mim). Não existe mais a visão "de todo mundo" — nem pra quem tem
+// "ve_tudo": a wiki de um cliente se vê entrando no cliente (aba "Wiki" em
+// /projetos/[id]). Fica aqui pra ser a mesma consulta na lista principal e
+// na navegação lateral de dentro de uma página.
 export async function getMinhasPaginas(
   supabase: SupabaseClient,
-  userId: string | undefined,
-  verTudo: boolean
+  userId: string | undefined
 ): Promise<PaginaResumo[]> {
-  if (verTudo) {
-    const { data } = await supabase
-      .from("pages")
-      .select("id, title, created_by_label, updated_at")
-      .is("project_id", null)
-      .order("updated_at", { ascending: false });
-    return data ?? [];
-  }
+  if (!userId) return [];
 
   const { data: minhasTarefas } = await supabase
     .from("tasks")
