@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -53,6 +53,7 @@ export default function TaskBoard({
   projects = [],
   profiles = [],
   podeMudarDatas = true,
+  tarefaInicial = null,
   title,
   subtitle,
   showHeader = true,
@@ -75,6 +76,8 @@ export default function TaskBoard({
   // Pode mudar o início e a entrega de uma tarefa já criada. Por padrão
   // todo mundo pode; passe false pra travar as datas.
   podeMudarDatas?: boolean;
+  // Tarefa pra abrir assim que a tela carrega (link de um aviso do sininho).
+  tarefaInicial?: Task | null;
   // Cabeçalho completo (título, resumo em números, busca e filtro) — usado
   // na tela "Minhas tarefas". Dentro de um projeto específico o quadro fica
   // mais enxuto (showHeader=false), já que a página ali tem seu próprio
@@ -207,11 +210,25 @@ export default function TaskBoard({
     setModalAberto(true);
   }
 
+  // Abre a tarefa do link. Cada navegação traz um objeto novo do servidor,
+  // então abrir a mesma tarefa de novo (depois de fechar) também funciona.
+  const inicialAberta = useRef<Task | null>(null);
+  useEffect(() => {
+    if (!tarefaInicial || inicialAberta.current === tarefaInicial) return;
+    inicialAberta.current = tarefaInicial;
+    abrirEditar(tarefaInicial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tarefaInicial]);
+
   function fecharModal() {
     // A pessoa pode ter mexido no checklist/comentários: atualiza o cartão.
     const aberta = tarefaEditando?.id;
     setModalAberto(false);
     setTarefaEditando(null);
+    // Tira o "?tarefa=" do endereço pra um F5 não reabrir a tarefa.
+    if (tarefaInicial && typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
     if (aberta) {
       carregarResumos(supabase, [aberta]).then((m) =>
         setResumos((atual) => ({ ...atual, ...m }))

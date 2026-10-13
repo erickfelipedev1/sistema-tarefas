@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import BotaoAtualizar from "./BotaoAtualizar";
+import Sininho from "./Sininho";
 import { Logo } from "./ui/Logo";
 import { MenuIcon, XIcon } from "./ui/icons";
 import type { Project } from "@/lib/types";
@@ -52,7 +53,10 @@ export default function AppShell({
           <MenuIcon className="h-5 w-5" />
         </button>
         <Logo tamanho="sm" />
-        <BotaoAtualizar className="ml-auto text-ink-muted hover:bg-surface-hover hover:text-ink" />
+        <div className="ml-auto flex items-center gap-0.5">
+          <Sininho currentUserId={currentUserId} className="text-ink-muted hover:bg-surface-hover hover:text-ink" />
+          <BotaoAtualizar className="text-ink-muted hover:bg-surface-hover hover:text-ink" />
+        </div>
       </div>
 
       <div className="nao-imprime hidden lg:flex">

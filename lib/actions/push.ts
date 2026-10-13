@@ -121,6 +121,57 @@ export async function avisarTarefaAtribuida(taskId: string, apenas?: string[]) {
   await avisarTarefaParaResponsaveis(taskId, user.id, apenas);
 }
 
+// Depois de comentar numa tarefa mencionando alguém: avisa no celular. O
+// aviso do sininho já foi criado pelo banco (trigger da migration 0064). Só
+// quem escreveu o comentário dispara, e só pra quem está na lista de menções
+// dele — nada de avisar gente que o comentário não citou.
+export async function avisarMencao(commentId: string, apenas?: string[]) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("task_comments")
+    .select("id, task_id, content, created_by, mentions")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!c || c.created_by !== user.id) return;
+  const citados = ((c.mentions as string[] | null) ?? []).filter((id) => id !== user.id);
+  const desejados = apenas ? citados.filter((id) => apenas.includes(id)) : citados;
+  if (desejados.length === 0) return;
+
+  // O push segue o aviso do sininho (criado pelo banco): só vai pra quem tem
+  // um aviso deste comentário que ainda não foi pro celular. Assim chamar de
+  // novo (ou tirar e pôr a menção) não manda o mesmo push duas vezes.
+  const { data: pendentes } = await admin
+    .from("user_notifications")
+    .select("id, profile_id")
+    .eq("comment_id", commentId)
+    .eq("type", "mention")
+    .is("pushed_at", null)
+    .in("profile_id", desejados);
+  const destinatarios = (pendentes ?? []).map((n) => n.profile_id as string);
+  if (destinatarios.length === 0) return;
+  await admin
+    .from("user_notifications")
+    .update({ pushed_at: new Date().toISOString() })
+    .in(
+      "id",
+      (pendentes ?? []).map((n) => n.id as string)
+    );
+
+  const [{ data: tarefa }, { data: autor }] = await Promise.all([
+    admin.from("tasks").select("title").eq("id", c.task_id).maybeSingle(),
+    admin.from("profiles").select("name, username").eq("id", user.id).maybeSingle(),
+  ]);
+  const nome = autor?.name || autor?.username || "Alguém";
+  await enviarPush(destinatarios, {
+    titulo: `${nome} mencionou você`,
+    corpo: `${tarefa?.title ? `${tarefa.title}: ` : ""}${c.content as string}`,
+    url: `/board?tarefa=${c.task_id}`,
+    tag: `mencao-${commentId}`,
+  });
+}
+
 // Botão "Testar notificação": manda um aviso pra todos os aparelhos de quem
 // clicou e devolve o que aconteceu (pra achar o problema sem adivinhar).
 export async function testarPush(): Promise<string> {

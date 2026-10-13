@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import BotaoAtualizar from "./BotaoAtualizar";
+import Sininho from "./Sininho";
 import { Avatar } from "./ui/Avatar";
 import { Logo } from "./ui/Logo";
 import { ehIphoneForaDoApp } from "@/lib/push-client";
@@ -195,7 +196,12 @@ export default function Sidebar({
         <Logo tamanho="md" />
         {/* No celular o menu abre como gaveta, com o "X" de fechar neste
             canto: lá o botão de atualizar fica na barra de cima (AppShell). */}
-        {!onNavigate && <BotaoAtualizar className="ml-auto text-slate-400 hover:bg-white/5 hover:text-white" />}
+        {!onNavigate && (
+          <div className="ml-auto flex items-center gap-0.5">
+            <Sininho currentUserId={currentUserId} className="text-slate-400 hover:bg-white/5 hover:text-white" />
+            <BotaoAtualizar className="text-slate-400 hover:bg-white/5 hover:text-white" />
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 pb-4 scrollbar-thin">

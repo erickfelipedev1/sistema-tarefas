@@ -4,7 +4,9 @@ import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
 import { comPacote, pacotesDosClientes } from "@/lib/pacotes";
 
-export default async function BoardPage() {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function BoardPage({ searchParams }: { searchParams: { tarefa?: string } }) {
   const supabase = await clienteDaRequisicao();
   const user = await usuarioAtual();
 
@@ -30,6 +32,15 @@ export default async function BoardPage() {
     pacotesDosClientes(supabase),
   ]);
 
+  // Link de um aviso (menção no comentário): abre essa tarefa, esteja ela ou
+  // não no meu quadro.
+  const idPedido = typeof searchParams.tarefa === "string" && UUID.test(searchParams.tarefa) ? searchParams.tarefa : null;
+  const tarefaPedida = idPedido
+    ? (tasks ?? []).find((t) => t.id === idPedido) ??
+      (await supabase.from("tasks").select("*").eq("id", idPedido).maybeSingle()).data ??
+      null
+    : null;
+
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ??
     user?.email?.split("@")[0] ??
@@ -40,6 +51,7 @@ export default async function BoardPage() {
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <TaskBoard
         initialTasks={tasks ?? []}
+        tarefaInicial={tarefaPedida}
         currentUserId={user?.id ?? null}
         currentUserLabel={userLabel}
         allProjects

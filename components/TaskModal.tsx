@@ -28,8 +28,10 @@ import {
   syncHorasWiki,
 } from "@/lib/task-wiki-sync";
 import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
-import { avisarTarefaAtribuida } from "@/lib/actions/push";
+import { avisarMencao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
+import MencaoInput from "./MencaoInput";
+import { idsMencionados, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
 
 type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas" | "copy" | "post";
 
@@ -635,6 +637,7 @@ export default function TaskModal({
               taskId={current.id}
               pageId={current.page_id}
               currentUserLabel={currentUserLabel}
+              pessoas={profiles}
             />
           )}
           {aba === "copy" && current && (
@@ -1004,10 +1007,13 @@ function ComentariosTab({
   taskId,
   pageId,
   currentUserLabel,
+  pessoas,
 }: {
   taskId: string;
   pageId: string | null;
   currentUserLabel: string;
+  // A equipe que dá pra mencionar com "@".
+  pessoas: Profile[];
 }) {
   const supabase = createClient();
   const [comentarios, setComentarios] = useState<TaskComment[]>([]);
@@ -1017,6 +1023,9 @@ function ComentariosTab({
   const [souLider, setSouLider] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [textoEditado, setTextoEditado] = useState("");
+  // Quem foi escolhido na lista do "@" (ao escrever e ao editar).
+  const [escolhidos, setEscolhidos] = useState<string[]>([]);
+  const [escolhidosEdicao, setEscolhidosEdicao] = useState<string[]>([]);
 
   useEffect(() => {
     let ativo = true;
@@ -1087,9 +1096,12 @@ function ComentariosTab({
       setEditandoId(null);
       return;
     }
+    // Menções que já havia e continuam escritas, mais as novas escolhidas.
+    const mencoes = idsMencionados(texto, pessoas, [...(c.mentions ?? []), ...escolhidosEdicao]);
+    const novasMencoes = mencoes.filter((id) => !(c.mentions ?? []).includes(id));
     const { data, error } = await supabase
       .from("task_comments")
-      .update({ content: texto, edited_at: new Date().toISOString() })
+      .update({ content: texto, edited_at: new Date().toISOString(), mentions: mencoes })
       .eq("id", c.id)
       .select()
       .maybeSingle();
@@ -1104,6 +1116,7 @@ function ComentariosTab({
     setComentarios((cur) => cur.map((x) => (x.id === c.id ? (data as TaskComment) : x)));
     setEditandoId(null);
     sincronizarWiki();
+    if (novasMencoes.length > 0) avisarMencao(c.id, novasMencoes).catch(() => {});
   }
 
   // Relê a lista do banco antes de atualizar a Wiki — assim não perde um
@@ -1131,16 +1144,21 @@ function ComentariosTab({
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     if (!novoComentario.trim()) return;
+    const texto = novoComentario.trim();
+    const mencoes = idsMencionados(texto, pessoas, escolhidos);
     const { data, error } = await supabase
       .from("task_comments")
       .insert({
         task_id: taskId,
-        content: novoComentario.trim(),
+        content: texto,
         created_by_label: currentUserLabel,
+        mentions: mencoes,
       })
       .select()
       .single();
     if (!error && data) {
+      if (mencoes.length > 0) avisarMencao(data.id).catch(() => {});
+      setEscolhidos([]);
       const proximos = comentarios.some((cm) => cm.id === data.id)
         ? comentarios
         : [...comentarios, data];
@@ -1157,12 +1175,16 @@ function ComentariosTab({
           <div key={c.id} className="group rounded-lg bg-canvas px-3 py-2">
             {editandoId === c.id ? (
               <div>
-                <textarea
-                  value={textoEditado}
+                <MencaoInput
+                  multilinha
+                  linhas={3}
                   autoFocus
-                  rows={3}
-                  onChange={(e) => setTextoEditado(e.target.value)}
-                  onKeyDown={(e) => {
+                  value={textoEditado}
+                  onChange={setTextoEditado}
+                  pessoas={pessoas}
+                  aoEscolher={(id) => setEscolhidosEdicao((atual) => [...atual, id])}
+                  ariaLabel="Editar comentário"
+                  aoTeclar={(e) => {
                     if (e.key === "Escape") setEditandoId(null);
                     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) salvarEdicao(c);
                   }}
@@ -1178,7 +1200,15 @@ function ComentariosTab({
                 </div>
               </div>
             ) : (
-              <p className="whitespace-pre-wrap break-words text-sm text-ink"><TextoComLinks texto={c.content} /></p>
+              <p className="whitespace-pre-wrap break-words text-sm text-ink">
+                <TextoComMencoes
+                  texto={c.content}
+                  nomes={(c.mentions ?? []).flatMap((id) => {
+                    const p = pessoas.find((x) => x.id === id);
+                    return p ? [nomeParaMencao(p)] : [];
+                  })}
+                />
+              </p>
             )}
             <div className="mt-1 flex items-center justify-between gap-2">
               <p className="text-[10px] text-ink-muted">
@@ -1192,6 +1222,7 @@ function ComentariosTab({
                     onClick={() => {
                       setEditandoId(c.id);
                       setTextoEditado(c.content);
+                      setEscolhidosEdicao([]);
                     }}
                     className="hover:text-ink hover:underline"
                   >
@@ -1210,11 +1241,14 @@ function ComentariosTab({
         )}
       </div>
       <form onSubmit={enviar} className="flex gap-2">
-        <input
+        <MencaoInput
           value={novoComentario}
-          onChange={(e) => setNovoComentario(e.target.value)}
-          placeholder="Escreva um comentário..."
-          className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          onChange={setNovoComentario}
+          pessoas={pessoas}
+          aoEscolher={(id) => setEscolhidos((atual) => [...atual, id])}
+          ariaLabel="Novo comentário"
+          placeholder="Escreva um comentário... (use @ pra mencionar alguém)"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <button
           type="submit"
@@ -1224,6 +1258,24 @@ function ComentariosTab({
         </button>
       </form>
     </div>
+  );
+}
+
+// Texto do comentário com os nomes mencionados em destaque (e os links
+// clicáveis, como antes).
+function TextoComMencoes({ texto, nomes }: { texto: string; nomes: string[] }) {
+  return (
+    <>
+      {partirPorMencoes(texto, nomes).map((parte, i) =>
+        parte.mencao ? (
+          <span key={i} className="rounded bg-cal/15 px-1 font-medium text-cal">
+            {parte.texto}
+          </span>
+        ) : (
+          <TextoComLinks key={i} texto={parte.texto} />
+        )
+      )}
+    </>
   );
 }
 

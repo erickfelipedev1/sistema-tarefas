@@ -45,6 +45,24 @@ export interface TaskComment {
   // Migration 0039: autor e data da última edição.
   created_by?: string | null;
   edited_at?: string | null;
+  // Migration 0064: pessoas mencionadas com "@" no comentário.
+  mentions?: string[];
+}
+
+// Aviso do sininho da equipe (migration 0064).
+export interface UserNotification {
+  id: string;
+  profile_id: string;
+  type: "mention";
+  title: string;
+  body: string;
+  // Caminho dentro do d.hub pra onde o clique leva.
+  url: string;
+  actor_id: string | null;
+  task_id: string | null;
+  comment_id: string | null;
+  read_at: string | null;
+  created_at: string;
 }
 
 export interface TaskAttachment {
