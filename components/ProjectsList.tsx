@@ -29,6 +29,13 @@ import {
 type Ordenacao = "recentes" | "antigos" | "az";
 
 const CHAVE_DA_ORDENACAO = "dhub:clientes:ordenacao";
+
+// Entre os responsáveis marcados, quem é o principal (o que o cliente vê no
+// portal e que recebe as solicitações dele): quem já era, se continua na
+// lista; senão, o primeiro marcado. Ninguém marcado = sem principal.
+function responsavelPrincipal(atual: string | null | undefined, ids: string[]) {
+  return atual && ids.includes(atual) ? atual : ids[0] ?? null;
+}
 const nomeDaPessoa = (p: Profile) => p.name || p.username || "Sem nome";
 
 export default function ProjectsList({
@@ -307,14 +314,35 @@ export default function ProjectsList({
     }
   }
 
-  // Grava os responsáveis do cliente (migration 0055). Devolve o texto do
-  // erro, ou null se salvou.
+  // Grava os responsáveis do cliente (migration 0055) e, junto, o
+  // responsável "principal" — o único que o cliente vê no portal e que
+  // recebe as solicitações dele (projects.responsible_id). Antes o principal
+  // era escolhido no cartão "Portal do cliente"; agora sai daqui. Devolve o
+  // texto do erro, ou null se salvou.
   async function salvarResponsaveis(project: Project, ids: string[]): Promise<string | null> {
-    const { error } = await supabase.from("projects").update({ responsible_ids: ids }).eq("id", project.id);
+    const principalId = responsavelPrincipal(project.responsible_id, ids);
+    const pessoa = principalId ? perfilPorId.get(principalId) : undefined;
+    const principal = {
+      responsible_id: principalId,
+      responsible_label: pessoa ? nomeDaPessoa(pessoa) : null,
+    };
+    const { error } = await supabase
+      .from("projects")
+      .update({ responsible_ids: ids, ...principal })
+      .eq("id", project.id);
     if (error) {
-      return "Não deu pra salvar os responsáveis. Confere se a migration 0055_clientes_responsaveis_e_pacote.sql já foi rodada no Supabase.";
+      // Sem a 0055 a lista não tem onde ficar, mas o principal tem: salva só
+      // ele, pra o portal e as solicitações do cliente não ficarem sem dono.
+      const soPrincipal = await supabase.from("projects").update(principal).eq("id", project.id);
+      if (soPrincipal.error) return "Não deu pra salvar os responsáveis. Tenta de novo.";
+      setProjects((current) => current.map((p) => (p.id === project.id ? { ...p, ...principal } : p)));
+      return `Salvei só ${
+        principal.responsible_label ?? "que o cliente ficou sem responsável"
+      } como responsável no portal do cliente. Pra marcar mais de um, falta rodar a migration 0055_clientes_responsaveis_e_pacote.sql no Supabase.`;
     }
-    setProjects((current) => current.map((p) => (p.id === project.id ? { ...p, responsible_ids: ids } : p)));
+    setProjects((current) =>
+      current.map((p) => (p.id === project.id ? { ...p, responsible_ids: ids, ...principal } : p))
+    );
     return null;
   }
 
@@ -494,13 +522,26 @@ function ResponsaveisDoCliente({
   aoSalvar: (ids: string[]) => Promise<string | null>;
   aoFechar: () => void;
 }) {
-  const [marcados, setMarcados] = useState<Set<string>>(new Set(project.responsible_ids ?? []));
+  // Cliente que só tem o responsável antigo do portal (sem a lista) abre com ele marcado.
+  const [marcados, setMarcados] = useState<Set<string>>(
+    new Set(
+      (project.responsible_ids ?? []).length > 0
+        ? project.responsible_ids
+        : project.responsible_id
+          ? [project.responsible_id]
+          : []
+    )
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const pessoas = useMemo(
     () => [...profiles].sort((a, b) => nomeDaPessoa(a).localeCompare(nomeDaPessoa(b), "pt-BR")),
     [profiles]
   );
+  // Na ordem da lista, e só quem ainda existe na equipe.
+  const idsMarcados = pessoas.filter((p) => marcados.has(p.id)).map((p) => p.id);
+  const principalId = responsavelPrincipal(project.responsible_id, idsMarcados);
+  const principal = pessoas.find((p) => p.id === principalId) ?? null;
 
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -513,8 +554,7 @@ function ResponsaveisDoCliente({
   async function salvar() {
     setSalvando(true);
     setErro(null);
-    // Na ordem da lista, e só quem ainda existe na equipe.
-    const falha = await aoSalvar(pessoas.filter((p) => marcados.has(p.id)).map((p) => p.id));
+    const falha = await aoSalvar(idsMarcados);
     setSalvando(false);
     if (falha) return setErro(falha);
     aoFechar();
@@ -536,6 +576,11 @@ function ResponsaveisDoCliente({
         <p className="text-sm font-semibold text-ink">Responsáveis por {project.name}</p>
         <p className="mt-0.5 text-xs text-ink-muted">
           Marque quem da equipe cuida deste cliente. Eles aparecem no cartão do cliente.
+        </p>
+        <p className="mt-1.5 rounded-lg bg-canvas px-2.5 py-1.5 text-xs text-ink-muted">
+          {principal
+            ? `No portal, o cliente vê ${nomeDaPessoa(principal)} como responsável, e é pra essa pessoa que vão as solicitações dele.`
+            : "Sem ninguém marcado, o portal fica sem responsável e as solicitações do cliente vão pra quem criou o cliente."}
         </p>
         <div className="scrollbar-thin mt-3 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
           {pessoas.map((p) => (

@@ -172,9 +172,7 @@ export default async function ProjetoPage({
       <div data-mov="card">
         <ProjectDetailsCard
           projectId={id}
-          profiles={profiles ?? []}
           initialStatus={project.status}
-          initialResponsibleId={project.responsible_id}
           initialStartDate={project.start_date}
           initialTargetEndDate={project.target_end_date}
           initialInfoConfirmed={project.initial_info_confirmed}

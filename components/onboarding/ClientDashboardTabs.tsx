@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
   BarChartIcon,
-  CalendarIcon,
   ClipboardListIcon,
   FileStackIcon,
   HomeIcon,
@@ -16,7 +15,6 @@ import { CLIENT_TAB_SWITCH_EVENT, type ClientPortalTab } from "./client-tab-swit
 const ABAS = [
   { key: "visaoGeral", label: "Visão geral", icon: HomeIcon },
   { key: "andamento", label: "Andamento", icon: ClipboardListIcon },
-  { key: "calendario", label: "Calendário", icon: CalendarIcon },
   { key: "posts", label: "Posts", icon: ImageIcon },
   { key: "analytics", label: "Analytics", icon: BarChartIcon },
   { key: "documentos", label: "Documentos", icon: FileStackIcon },
@@ -35,7 +33,6 @@ const ABAS = [
 export function ClientDashboardTabs({
   visaoGeral,
   andamento,
-  calendario,
   posts,
   postsEsperando = 0,
   analytics,
@@ -44,7 +41,6 @@ export function ClientDashboardTabs({
 }: {
   visaoGeral: ReactNode;
   andamento: ReactNode;
-  calendario: ReactNode;
   posts: ReactNode;
   // Quantos posts esperam o comentário do cliente (vira o número na aba).
   postsEsperando?: number;
@@ -102,7 +98,6 @@ export function ClientDashboardTabs({
 
       <div className={aba === "visaoGeral" ? "" : "hidden"}>{visaoGeral}</div>
       <div className={aba === "andamento" ? "" : "hidden"}>{andamento}</div>
-      <div className={aba === "calendario" ? "" : "hidden"}>{calendario}</div>
       <div className={aba === "posts" ? "" : "hidden"}>{posts}</div>
       {analytics && abriuAnalytics && <div className={aba === "analytics" ? "" : "hidden"}>{analytics}</div>}
       <div className={aba === "documentos" ? "" : "hidden"}>{documentos}</div>

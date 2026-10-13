@@ -30,10 +30,10 @@ export function UpcomingDeliveries({
           </p>
         </div>
         <button
-          onClick={() => irParaAba("calendario")}
+          onClick={() => irParaAba("andamento")}
           className="inline-flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand-forte hover:underline"
         >
-          Ver calendário
+          Ver andamento
           <ChevronRightIcon className="h-3 w-3" />
         </button>
       </div>

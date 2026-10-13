@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, ProjectStatus } from "@/lib/types";
+import type { ProjectStatus } from "@/lib/types";
 import { PROJECT_STAGES } from "@/lib/project-status";
 import { Button } from "./ui/Button";
 
@@ -10,28 +10,25 @@ const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
 // Dados que alimentam o portal do cliente (Visão geral em
-// /progresso/<token>): etapa, responsável, datas e o "informações
-// iniciais confirmadas". A equipe edita aqui — o cliente só visualiza.
+// /progresso/<token>): etapa, datas e o "informações iniciais confirmadas".
+// A equipe edita aqui — o cliente só visualiza. O responsável que o cliente
+// vê não é mais escolhido aqui: vem dos responsáveis marcados no cliente (ver
+// salvarResponsaveis em ProjectsList.tsx).
 export default function ProjectDetailsCard({
   projectId,
-  profiles,
   initialStatus,
-  initialResponsibleId,
   initialStartDate,
   initialTargetEndDate,
   initialInfoConfirmed,
 }: {
   projectId: string;
-  profiles: Profile[];
   initialStatus: ProjectStatus;
-  initialResponsibleId: string | null;
   initialStartDate: string | null;
   initialTargetEndDate: string | null;
   initialInfoConfirmed: boolean;
 }) {
   const supabase = createClient();
   const [status, setStatus] = useState<ProjectStatus>(initialStatus);
-  const [responsibleId, setResponsibleId] = useState(initialResponsibleId ?? "");
   const [startDate, setStartDate] = useState(initialStartDate ?? "");
   const [targetEndDate, setTargetEndDate] = useState(initialTargetEndDate ?? "");
   const [infoConfirmed, setInfoConfirmed] = useState(initialInfoConfirmed);
@@ -44,14 +41,10 @@ export default function ProjectDetailsCard({
     setErro(null);
     setSalvo(false);
 
-    const responsavel = profiles.find((p) => p.id === responsibleId);
-
     const { error } = await supabase
       .from("projects")
       .update({
         status,
-        responsible_id: responsibleId || null,
-        responsible_label: responsavel ? responsavel.name || responsavel.username : null,
         start_date: startDate || null,
         target_end_date: targetEndDate || null,
         initial_info_confirmed: infoConfirmed,
@@ -77,7 +70,7 @@ export default function ProjectDetailsCard({
         (/progresso/…) — o cliente só visualiza, quem edita é a equipe.
       </p>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-muted">Etapa</label>
           <select
@@ -88,22 +81,6 @@ export default function ProjectDetailsCard({
             {PROJECT_STAGES.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-ink-muted">Responsável</label>
-          <select
-            value={responsibleId}
-            onChange={(e) => setResponsibleId(e.target.value)}
-            className={campoClasse}
-          >
-            <option value="">Não definido</option>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name || p.username}
               </option>
             ))}
           </select>

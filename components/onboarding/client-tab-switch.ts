@@ -7,7 +7,6 @@ export const CLIENT_TAB_SWITCH_EVENT = "client-portal:switch-tab";
 export type ClientPortalTab =
   | "visaoGeral"
   | "andamento"
-  | "calendario"
   | "posts"
   | "analytics"
   | "documentos"

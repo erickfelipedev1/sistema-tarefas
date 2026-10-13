@@ -111,7 +111,8 @@ export default function ClientRequestAccess({
       {semResponsavel && (
         <p className="mt-2 text-xs text-warning">
           Este cliente ainda não tem responsável. As solicitações vão para quem criou o
-          cliente — defina um responsável abaixo pra elas irem pra pessoa certa.
+          cliente — marque os responsáveis na lista de Clientes (menu do cartão, &quot;Responsáveis&quot;)
+          pra elas irem pra pessoa certa.
         </p>
       )}
 

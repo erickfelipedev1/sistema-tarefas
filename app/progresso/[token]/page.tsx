@@ -5,7 +5,6 @@ import { ProjectProgressPanel } from "@/components/onboarding/ProjectProgressPan
 import { DocumentsPanel } from "@/components/onboarding/DocumentsPanel";
 import { InvoicesPanel } from "@/components/onboarding/InvoicesPanel";
 import { ProjectOverviewPanel } from "@/components/onboarding/ProjectOverviewPanel";
-import { ClientCalendar } from "@/components/onboarding/ClientCalendar";
 import { ClientPosts } from "@/components/onboarding/ClientPosts";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
@@ -164,7 +163,6 @@ export default async function ProgressoPage({
           </>
         }
         andamento={<ProjectProgressPanel data={progresso} />}
-        calendario={<ClientCalendar tasks={progresso.tasks} />}
         posts={<ClientPosts token={params.token} projectName={progresso.project_name} initialPosts={posts} />}
         postsEsperando={posts.filter((p) => p.status === "enviado").length}
         analytics={
