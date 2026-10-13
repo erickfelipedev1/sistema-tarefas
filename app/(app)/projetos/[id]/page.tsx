@@ -14,6 +14,7 @@ import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
 import PostsManager from "@/components/PostsManager";
+import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
@@ -63,6 +64,11 @@ export default async function ProjetoPage({
     .from("profiles")
     .select("id, username, name, avatar_url")
     .order("name", { ascending: true });
+
+  // O pacote que o cliente tem hoje (migration 0053): nome e o que inclui,
+  // sem valor — a função do banco só devolve isso. Sem a migration, ou sem
+  // pacote, o cartão não aparece.
+  const { data: pacoteDoCliente } = await supabase.rpc("pacote_do_cliente", { p_project_id: id });
 
   const { data: pages } = await supabase
     .from("pages")
@@ -115,6 +121,12 @@ export default async function ProjetoPage({
             ` · Responsável: ${project.created_by_label}`}
         </p>
       </div>
+
+      {pacoteDoCliente && (
+        <div data-mov="card">
+          <PacoteDoClienteCard pacote={pacoteDoCliente as PacoteDoCliente} />
+        </div>
+      )}
 
       <div data-mov="card">
         <ShareProjectLink projectId={id} shareToken={project.share_token} />

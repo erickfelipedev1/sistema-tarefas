@@ -1,25 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buscarTudo } from "@/lib/buscar-tudo";
-import { montarFaturamento, type Envio, type Lancamento, type Servico } from "@/lib/faturamento";
-import { diaSP } from "@/lib/painel";
-import { limitesDoMes, mesAtual, nomeDoMes, somarMes } from "@/lib/relatorio";
+import {
+  montarFaturamento,
+  pacoteValeNoMes,
+  type Envio,
+  type Lancamento,
+  type Pacote,
+  type PacotesDoMes,
+  type Servico,
+  type VinculoDePacote,
+} from "@/lib/faturamento";
+import { mesAtual, nomeDoMes, somarMes } from "@/lib/relatorio";
 import FaturamentoView from "@/components/relatorio/FaturamentoView";
 import type { FaturaDoMes } from "@/components/relatorio/EnviarAoCliente";
 import type { EnvioPendente } from "@/components/relatorio/EnviosPendentes";
-import type { TarefaSemValor } from "@/components/relatorio/TarefasSemValor";
 import type { InvoiceItem } from "@/lib/types";
 
-interface TarefaConcluida {
-  id: string;
-  title: string;
-  project_id: string;
-  completed_at: string;
-  assigned_to: string[] | null;
-}
+const TABELA_QUE_NAO_EXISTE = ["42P01", "PGRST205"];
 
-// Aba "Faturamento": os serviços lançados pra cada cliente no mês, com preço.
-// Só chega aqui quem pode ver (ver page.tsx); a RLS de services e
-// service_entries garante o mesmo no banco.
+// Aba "Faturamento": o pacote mensal de cada cliente (migration 0053) e os
+// extras lançados no mês, com valor. Só chega aqui quem pode ver (ver
+// page.tsx); a RLS das tabelas de pacote e de serviço garante o mesmo no
+// banco. Tarefas concluídas não entram mais: o que o cliente paga é o pacote.
 export default async function AbaFaturamento({
   supabase,
   mes,
@@ -33,21 +35,26 @@ export default async function AbaFaturamento({
 }) {
   const dia1 = `${mes}-01`;
   const mesAnterior = somarMes(mes, -1);
-  // Janela das tarefas concluídas no mês, com um dia de margem pro fuso (o
-  // corte exato é por diaSP).
-  const { inicio: inicioDoMes, fim: fimDoMes } = limitesDoMes(mes);
-  const desdeTarefas = new Date(`${inicioDoMes}T00:00:00Z`);
-  desdeTarefas.setUTCDate(desdeTarefas.getUTCDate() - 1);
-  const ateTarefas = new Date(`${fimDoMes}T23:59:59Z`);
-  ateTarefas.setUTCDate(ateTarefas.getUTCDate() + 1);
 
-  const [{ data: projetos }, { data: perfis }, servicosRes, lancamentosRes, faturasRes, enviosRes, tarefasRes] = await Promise.all([
+  const [
+    { data: projetos },
+    { data: perfis },
+    servicosRes,
+    lancamentosRes,
+    faturasRes,
+    enviosRes,
+    pacotesRes,
+    incluidosRes,
+    precosRes,
+    vinculosRes,
+  ] = await Promise.all([
     supabase.from("projects").select("id, name").order("name"),
     supabase.from("profiles").select("id, name, username").order("name"),
     supabase.from("services").select("id, name, price, recurrence, active").order("name"),
-    // Os avulsos deste mês e do anterior (pro comparativo) e os mensais que
-    // já começaram e não foram encerrados antes do mês anterior — quais valem
-    // em cada mês é conta de valeNoMes. Os dois .or() se somam com "E".
+    // Os extras avulsos deste mês e do anterior (pro comparativo) e os
+    // mensais que já começaram e não foram encerrados antes do mês anterior —
+    // quais valem em cada mês é conta de valeNoMes. Os dois .or() se somam
+    // com "E".
     buscarTudo<Lancamento>((de, ate) =>
       supabase
         .from("service_entries")
@@ -67,8 +74,9 @@ export default async function AbaFaturamento({
       .from("invoices")
       .select("id, project_id, amount, due_date, status, items")
       .eq("billing_month", dia1),
-    // Serviços que a equipe enviou e ninguém analisou ainda, de qualquer mês
-    // (migration 0047; sem ela a consulta falha e o bloco não aparece).
+    // Serviços que a equipe enviou antes dos pacotes e ninguém analisou
+    // ainda, de qualquer mês (migration 0047). A aba de envio não existe
+    // mais; isto fica só pra limpar o que já estava na fila.
     buscarTudo<Envio>((de, ate) =>
       supabase
         .from("service_submissions")
@@ -78,23 +86,25 @@ export default async function AbaFaturamento({
         .order("id")
         .range(de, ate)
     ),
-    // Tarefas de cliente concluídas no mês: entram sozinhas, sem valor.
-    buscarTudo<TarefaConcluida>((de, ate) =>
+    // Pacotes, o que cada um inclui e o pacote de cada cliente neste mês e
+    // no anterior (migration 0053).
+    supabase.from("packages").select("id, name, price, description, position, active").order("position").order("name"),
+    supabase.from("package_services").select("package_id, service_id"),
+    supabase.from("package_prices").select("package_id, from_month, price"),
+    buscarTudo<VinculoDePacote>((de, ate) =>
       supabase
-        .from("tasks")
-        .select("id, title, project_id, completed_at, assigned_to")
-        .eq("status", "done")
-        .not("project_id", "is", null)
-        .gte("completed_at", desdeTarefas.toISOString())
-        .lte("completed_at", ateTarefas.toISOString())
-        .order("completed_at")
+        .from("client_packages")
+        .select("id, project_id, package_id, start_month, end_month")
+        .lte("start_month", dia1)
+        .or(`end_month.is.null,end_month.gte.${mesAnterior}-01`)
+        .order("start_month")
         .order("id")
         .range(de, ate)
     ),
   ]);
   // Tabela que não existe = falta a 0047, e aí o bloco só não aparece. Outro
   // erro é falha de carga: melhor avisar do que parecer que não há envios.
-  const faltaTabelaDeEnvios = ["42P01", "PGRST205"].includes((enviosRes.erro as { code?: string } | null)?.code ?? "");
+  const faltaTabelaDeEnvios = TABELA_QUE_NAO_EXISTE.includes((enviosRes.erro as { code?: string } | null)?.code ?? "");
   const enviosComErro = enviosRes.incompleto && !faltaTabelaDeEnvios;
   const faturasDoMes: Record<string, FaturaDoMes> = {};
   for (const linha of (faturasRes.data ?? []) as (FaturaDoMes & { project_id: string })[]) {
@@ -110,8 +120,19 @@ export default async function AbaFaturamento({
   // Tabela que não existe = falta a migration; qualquer outro erro é falha de
   // carga, e aí não dá pra confiar nos totais.
   const erros = [servicosRes.error, lancamentosRes.erro].filter(Boolean) as { code?: string }[];
-  const semMigracao = erros.some((e) => e.code === "42P01" || e.code === "PGRST205");
-  const erroDeCarga = !semMigracao && (erros.length > 0 || lancamentosRes.incompleto);
+  const semMigracao = erros.some((e) => TABELA_QUE_NAO_EXISTE.includes(e.code ?? ""));
+  // Pacotes: sem a 0053 a tela segue só com os extras e avisa; qualquer
+  // outra falha nessas consultas deixaria o total errado (faltaria o pacote).
+  const errosDePacote = [pacotesRes.error, incluidosRes.error, precosRes.error, vinculosRes.erro].filter(
+    Boolean
+  ) as { code?: string }[];
+  const semPacotes = errosDePacote.some((e) => TABELA_QUE_NAO_EXISTE.includes(e.code ?? ""));
+  const erroDeCarga =
+    !semMigracao &&
+    (erros.length > 0 ||
+      lancamentosRes.incompleto ||
+      errosDePacote.some((e) => !TABELA_QUE_NAO_EXISTE.includes(e.code ?? "")) ||
+      (!semPacotes && vinculosRes.incompleto));
 
   const clientes = (projetos ?? []).map((p) => ({ id: p.id as string, nome: p.name as string }));
   const nomePorCliente = new Map(clientes.map((c) => [c.id, c.nome]));
@@ -123,13 +144,56 @@ export default async function AbaFaturamento({
 
   const servicos = ((servicosRes.data ?? []) as Servico[]).map((s) => ({ ...s, price: Number(s.price) || 0 }));
   const servicoPorId = new Map(servicos.map((s) => [s.id, s]));
+
+  const incluidos = new Map<string, string[]>();
+  for (const linha of (incluidosRes.data ?? []) as { package_id: string; service_id: string }[]) {
+    incluidos.set(linha.package_id, [...(incluidos.get(linha.package_id) ?? []), linha.service_id]);
+  }
+  const precos = new Map<string, Pacote["precos"]>();
+  for (const linha of (precosRes.data ?? []) as { package_id: string; from_month: string; price: number }[]) {
+    precos.set(linha.package_id, [
+      ...(precos.get(linha.package_id) ?? []),
+      { desde: linha.from_month, preco: Number(linha.price) || 0 },
+    ]);
+  }
+  const pacotes: Pacote[] = semPacotes
+    ? []
+    : ((pacotesRes.data ?? []) as Omit<Pacote, "servicos" | "precos">[]).map((p) => ({
+        ...p,
+        price: Number(p.price) || 0,
+        description: p.description ?? "",
+        servicos: incluidos.get(p.id) ?? [],
+        precos: precos.get(p.id) ?? [],
+      }));
+  const vinculos = semPacotes ? [] : vinculosRes.linhas;
+  const vinculosDoCliente = cliente ? vinculos.filter((v) => v.project_id === cliente) : vinculos;
+  const doMes: PacotesDoMes = {
+    vinculos: vinculosDoCliente,
+    pacotes,
+    // Só serviço ativo aparece como item incluído.
+    nomeDoServico: (id) => {
+      const s = servicoPorId.get(id);
+      return s?.active ? s.name : undefined;
+    },
+  };
+  // O pacote que cada cliente tem neste mês, pra tela de escolher o pacote.
+  const pacotePorCliente: Record<string, { pacoteId: string; desde: string; ultimoMes: boolean }> = {};
+  for (const v of vinculos) {
+    if (!pacoteValeNoMes(v, mes)) continue;
+    pacotePorCliente[v.project_id] = {
+      pacoteId: v.package_id,
+      desde: v.start_month.slice(0, 7),
+      ultimoMes: v.end_month?.slice(0, 7) === mes,
+    };
+  }
+
   const nomeDaPessoa = (id: string) => {
     const p = (perfis ?? []).find((x) => x.id === id);
     return (p?.name as string | null) || (p?.username as string | null) || "Alguém";
   };
   const pendentes = enviosRes.linhas.filter((e) => !cliente || e.project_id === cliente);
-  const montarEnviosDoMes = (naLista: Set<string>): EnvioPendente[] => pendentes
-    .filter((e) => e.month.slice(0, 7) === mes && !(e.task_id && naLista.has(e.task_id)))
+  const enviosDoMes: EnvioPendente[] = pendentes
+    .filter((e) => e.month.slice(0, 7) === mes)
     .map((e) => {
       const doCatalogo = e.service_id ? servicoPorId.get(e.service_id) : undefined;
       return {
@@ -149,70 +213,14 @@ export default async function AbaFaturamento({
     const m = e.month.slice(0, 7);
     if (m !== mes) contagemOutrosMeses.set(m, (contagemOutrosMeses.get(m) ?? 0) + 1);
   }
-  // ---- Tarefas concluídas sem valor ----
-  // Saem da lista as que já viraram lançamento (em qualquer mês) e as que o
-  // faturamento marcou "não cobrar". As duas consultas dependem da migration
-  // 0048: sem ela, a tela segue sem o bloco de tarefas.
-  const tarefasDoMes = tarefasRes.linhas.filter((t) => {
-    const dia = diaSP(t.completed_at);
-    return dia >= inicioDoMes && dia <= fimDoMes && (!cliente || t.project_id === cliente);
-  });
-  const idsDasTarefas = tarefasDoMes.map((t) => t.id);
-  // Coluna ou tabela que não existe = falta a 0048 (o bloco só não aparece);
-  // qualquer outro erro é falha de carga, e aí a tela avisa.
-  let falhaNasTarefas = tarefasRes.incompleto;
-  const emLotes = async (tabela: "service_entries" | "service_task_skips") => {
-    const achados = new Set<string>();
-    for (let i = 0; i < idsDasTarefas.length; i += 150) {
-      const { data, error } = await supabase
-        .from(tabela)
-        .select("task_id")
-        .in("task_id", idsDasTarefas.slice(i, i + 150));
-      if (error) {
-        if (!["42703", "42P01", "PGRST205", "PGRST204"].includes(error.code ?? "")) falhaNasTarefas = true;
-        return null;
-      }
-      for (const linha of data ?? []) achados.add(linha.task_id as string);
-    }
-    return achados;
-  };
-  const [jaLancadas, dispensadasIds] = await Promise.all([emLotes("service_entries"), emLotes("service_task_skips")]);
-  const tarefasDisponiveis = !!jaLancadas && !!dispensadasIds && !tarefasRes.incompleto;
-
-  const envioPorTarefa = new Map(pendentes.filter((e) => e.task_id).map((e) => [e.task_id as string, e]));
-  const tarefasPorCliente: Record<string, { semValor: TarefaSemValor[]; dispensadas: { id: string; titulo: string }[] }> = {};
-  const tarefasNaLista = new Set<string>();
-  if (tarefasDisponiveis) {
-    for (const t of tarefasDoMes) {
-      if (jaLancadas.has(t.id)) continue;
-      const grupo = (tarefasPorCliente[t.project_id] ??= { semValor: [], dispensadas: [] });
-      if (dispensadasIds.has(t.id)) {
-        grupo.dispensadas.push({ id: t.id, titulo: t.title });
-        continue;
-      }
-      const envio = envioPorTarefa.get(t.id);
-      const [, m, d] = diaSP(t.completed_at).split("-");
-      tarefasNaLista.add(t.id);
-      grupo.semValor.push({
-        id: t.id,
-        titulo: t.title,
-        dia: `${d}/${m}`,
-        pessoas: (t.assigned_to ?? []).map(nomeDaPessoa).join(", "),
-        sugestao: envio
-          ? { envioId: envio.id, servicoId: envio.service_id, pessoaNome: nomeDaPessoa(envio.submitted_by) }
-          : null,
-      });
-    }
-  }
-
   const enviosEmOutrosMeses = Array.from(contagemOutrosMeses, ([m, total]) => ({ mes: m, nome: nomeDoMes(m), total })).sort(
     (a, b) => a.mes.localeCompare(b.mes)
   );
 
   return (
     <FaturamentoView
-      faturamento={montarFaturamento(doCliente, mes, nomeDoCliente)}
-      totalAnterior={montarFaturamento(doCliente, mesAnterior, nomeDoCliente).total}
+      faturamento={montarFaturamento(doCliente, mes, nomeDoCliente, doMes)}
+      totalAnterior={montarFaturamento(doCliente, mesAnterior, nomeDoCliente, doMes).total}
       mes={mes}
       ehMesAtual={mes === mesAtual()}
       cliente={cliente}
@@ -222,9 +230,10 @@ export default async function AbaFaturamento({
         nome: (p.name as string | null) || (p.username as string | null) || "Sem nome",
       }))}
       servicos={servicos}
-      enviosDoMes={montarEnviosDoMes(tarefasNaLista)}
-      tarefasPorCliente={tarefasPorCliente}
-      tarefasComErro={!tarefasDisponiveis && falhaNasTarefas}
+      pacotes={pacotes}
+      pacotePorCliente={pacotePorCliente}
+      semPacotes={semPacotes}
+      enviosDoMes={enviosDoMes}
       enviosEmOutrosMeses={enviosEmOutrosMeses}
       enviosComErro={enviosComErro}
       semMigracao={semMigracao}

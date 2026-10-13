@@ -12,9 +12,10 @@ import { escreverValor, lerValor } from "./valor";
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
-// Catálogo de serviços e preços (tabela services, migration 0044). Mudar um
-// preço aqui vale pros próximos lançamentos; o que já foi lançado mantém o
-// valor da época. Serviço desativado some da lista de lançar, mas continua
+// Catálogo de serviços (tabela services, migration 0044). É a lista de onde
+// saem os itens incluídos em cada pacote (ver PacotesCatalogo) e o preço
+// sugerido quando um serviço é lançado como extra. Mudar um preço aqui vale
+// pros próximos lançamentos; o que já foi lançado mantém o valor da época. Serviço desativado some da lista de lançar, mas continua
 // nos relatórios antigos. Não sai na impressão.
 export default function CatalogoServicos({ servicos }: { servicos: Servico[] }) {
   const supabase = createClient();
@@ -66,7 +67,8 @@ export default function CatalogoServicos({ servicos }: { servicos: Servico[] }) 
         <span className="font-normal text-ink-muted">({servicos.filter((s) => s.active).length})</span>
       </summary>
       <p className="mt-2 text-xs text-ink-muted">
-        Preço padrão de cada serviço. Mudar aqui vale pros próximos lançamentos; o que já foi lançado mantém o valor.
+        Os serviços que podem ser incluídos nos pacotes. O preço é o sugerido quando o serviço é lançado como extra,
+        fora do pacote; mudar aqui vale pros próximos lançamentos.
       </p>
 
       <ul className="mt-3 divide-y divide-line">

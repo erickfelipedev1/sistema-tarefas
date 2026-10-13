@@ -237,6 +237,9 @@ export interface InvoiceItem {
   unit_price: number;
   total: number;
   recurring: boolean;
+  // true = serviço incluído no pacote do cliente: aparece na fatura sem
+  // valor próprio (o valor está na linha do pacote).
+  included?: boolean;
 }
 
 export interface Invoice {

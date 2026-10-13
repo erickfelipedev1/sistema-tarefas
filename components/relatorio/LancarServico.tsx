@@ -104,7 +104,7 @@ export default function LancarServico({
       <div className="nao-imprime mt-3">
         <Button onClick={() => setAberto(true)}>
           <PlusIcon className="h-4 w-4" />
-          Lançar serviço
+          Lançar extra
         </Button>
       </div>
     );
@@ -115,7 +115,8 @@ export default function LancarServico({
 
   return (
     <section className="nao-imprime mt-3 rounded-2xl border border-line bg-surface p-5">
-      <p className="text-sm font-semibold text-ink">Lançar serviço em {nomeDoMes(mes)}</p>
+      <p className="text-sm font-semibold text-ink">Lançar extra em {nomeDoMes(mes)}</p>
+      <p className="mt-0.5 text-xs text-ink-muted">Serviço fora do pacote do cliente, cobrado à parte.</p>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Campo label="Cliente" required>

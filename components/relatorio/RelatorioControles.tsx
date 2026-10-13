@@ -16,7 +16,7 @@ export default function RelatorioControles({
   filtro,
   semImpressao = false,
 }: {
-  aba: "faturamento" | "servicos" | "entregas" | "avaliacoes";
+  aba: "faturamento" | "entregas" | "avaliacoes";
   // Tela que não é pra imprimir (formulário de envio): sem o botão.
   semImpressao?: boolean;
   mes: string;

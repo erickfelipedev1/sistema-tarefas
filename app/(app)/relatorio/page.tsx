@@ -4,17 +4,17 @@ import { mesAtual, mesValido } from "@/lib/relatorio";
 import AbaAvaliacoes from "./avaliacoes";
 import AbaEntregas from "./entregas";
 import AbaFaturamento from "./faturamento";
-import AbaServicos from "./servicos";
 
 export const dynamic = "force-dynamic";
 
 // Relatório mensal, com três abas (?aba=):
-//   faturamento — serviços prestados a cada cliente no mês, com preço. Só
-//     pra quem tem "ve_tudo" ou "ve_faturamento" (migration 0044); a trava
-//     também existe no banco, pela RLS das tabelas de serviço.
+//   faturamento — o pacote mensal de cada cliente (Start, Pro, Elite —
+//     migration 0053) e os extras lançados no mês, com valor. Só pra quem tem
+//     "ve_tudo" ou "ve_faturamento" (migration 0044); a trava também existe
+//     no banco, pela RLS das tabelas de pacote e de serviço.
 //   entregas — tarefas concluídas pelo time. Todo mundo vê a do próprio time.
-//   servicos — "Meus serviços": quem NÃO vê faturamento envia por aqui o que
-//     fez pra cada cliente, sem ver preço (migration 0047).
+// (A aba "Meus serviços", por onde a equipe enviava serviços pro faturamento,
+// saiu quando o faturamento passou a ser por pacote.)
 //   avaliacoes — quem tem "ve_tudo" avalia os colaboradores; os outros veem
 //     as avaliações que receberam (migration 0046, também com RLS).
 // Quem não vê faturamento cai em Entregas quando não pede aba nenhuma.
@@ -43,10 +43,6 @@ export default async function RelatorioPage({
         mostrarFaturamento={veFaturamento}
       />
     );
-  }
-
-  if (!veFaturamento && searchParams.aba === "servicos") {
-    return <AbaServicos supabase={supabase} userId={user.id} mes={mes} />;
   }
 
   if (veFaturamento && searchParams.aba !== "entregas") {

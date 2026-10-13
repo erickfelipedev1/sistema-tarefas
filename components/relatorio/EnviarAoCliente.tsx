@@ -22,7 +22,15 @@ export interface FaturaDoMes {
 function assinatura(itens: InvoiceItem[] | null) {
   return (itens ?? [])
     .map((i) =>
-      [i.name, i.detail ?? "", Number(i.quantity), Number(i.unit_price), Number(i.total), !!i.recurring].join("|")
+      [
+        i.name,
+        i.detail ?? "",
+        Number(i.quantity),
+        Number(i.unit_price),
+        Number(i.total),
+        !!i.recurring,
+        !!i.included,
+      ].join("|")
     )
     .join("\n");
 }
@@ -34,7 +42,8 @@ function daquiA(dias: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Fecha o mês de um cliente: transforma o que está no relatório numa fatura
+// Fecha o mês de um cliente: transforma o que está no relatório (o pacote, o
+// que ele inclui e os extras) numa fatura
 // na aba "Faturas" dele (tabela invoices, migration 0045), que é a lista que
 // o cliente vê no portal. Uma fatura por cliente e mês — se o relatório mudar
 // depois do envio, o botão vira "Atualizar fatura" e corrige a mesma. Não sai
@@ -47,7 +56,6 @@ export default function EnviarAoCliente({
   itens,
   fatura,
   usuarioRotulo,
-  tarefasSemValor,
 }: {
   projectId: string;
   clienteNome: string;
@@ -56,8 +64,6 @@ export default function EnviarAoCliente({
   itens: InvoiceItem[];
   fatura: FaturaDoMes | null;
   usuarioRotulo: string;
-  // Tarefas concluídas do cliente que ainda não têm valor: ficam fora da fatura.
-  tarefasSemValor: number;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -158,13 +164,6 @@ export default function EnviarAoCliente({
           <p className="mr-auto text-xs text-ink-muted">
             Cria a fatura &quot;Serviços de {nomeDoMes(mes)}&quot;, de {formatarMoeda(total)}, na aba Faturas de{" "}
             {clienteNome}. O cliente vê no portal dele.
-            {tarefasSemValor > 0 && (
-              <span className="mt-1 block font-medium text-warning">
-                {tarefasSemValor === 1
-                  ? "Há 1 tarefa concluída sem valor: ela fica fora desta fatura."
-                  : `Há ${tarefasSemValor} tarefas concluídas sem valor: elas ficam fora desta fatura.`}
-              </span>
-            )}
           </p>
           {erro && <p className="w-full text-right text-xs text-danger">{erro}</p>}
           <label className="flex items-center gap-2 text-xs font-medium text-ink-muted">

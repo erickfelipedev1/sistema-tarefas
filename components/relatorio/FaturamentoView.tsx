@@ -1,4 +1,5 @@
-import type { Faturamento, Servico } from "@/lib/faturamento";
+import type { Faturamento, Pacote, Servico } from "@/lib/faturamento";
+import type { InvoiceItem } from "@/lib/types";
 import { nomeDoMes, somarMes } from "@/lib/relatorio";
 import { formatarMoeda } from "@/lib/format";
 import { Badge } from "@/components/ui/Badge";
@@ -9,15 +10,18 @@ import RelatorioControles from "./RelatorioControles";
 import LancarServico from "./LancarServico";
 import AcoesDoLancamento from "./AcoesDoLancamento";
 import CatalogoServicos from "./CatalogoServicos";
+import PacotesCatalogo from "./PacotesCatalogo";
+import PacotesDosClientes from "./PacotesDosClientes";
 import Link from "next/link";
 import EnviarAoCliente, { type FaturaDoMes } from "./EnviarAoCliente";
 import EnviosPendentes, { type EnvioPendente } from "./EnviosPendentes";
-import TarefasSemValor, { type TarefaSemValor } from "./TarefasSemValor";
 
 // Aba "Faturamento" do Relatório mensal — recebe tudo já calculado (ver
-// app/(app)/relatorio/faturamento.tsx e lib/faturamento.ts). Com um cliente
-// escolhido no filtro, a impressão vira o documento que vai pra ele: só os
-// serviços e os valores, sem controles e sem a coluna de quem fez.
+// app/(app)/relatorio/faturamento.tsx e lib/faturamento.ts). Cada cliente
+// aparece com o pacote mensal dele (valor fixo e o que inclui) e, embaixo, os
+// extras lançados no mês. Com um cliente escolhido no filtro, a impressão
+// vira o documento que vai pra ele: só o pacote, os extras e os valores, sem
+// controles e sem a coluna de quem fez.
 export default function FaturamentoView({
   faturamento,
   totalAnterior,
@@ -27,6 +31,9 @@ export default function FaturamentoView({
   clientes,
   pessoas,
   servicos,
+  pacotes,
+  pacotePorCliente,
+  semPacotes,
   semMigracao,
   erroDeCarga,
   faturasDoMes,
@@ -34,8 +41,6 @@ export default function FaturamentoView({
   enviosDoMes,
   enviosEmOutrosMeses,
   enviosComErro,
-  tarefasPorCliente,
-  tarefasComErro,
 }: {
   faturamento: Faturamento;
   totalAnterior: number;
@@ -45,6 +50,11 @@ export default function FaturamentoView({
   clientes: { id: string; nome: string }[];
   pessoas: { id: string; nome: string }[];
   servicos: Servico[];
+  pacotes: Pacote[];
+  // O pacote que cada cliente tem neste mês.
+  pacotePorCliente: Record<string, { pacoteId: string; desde: string; ultimoMes: boolean }>;
+  // Falta a migration 0053: a tela segue só com os extras.
+  semPacotes: boolean;
   semMigracao: boolean;
   // Alguma consulta falhou: os totais não são confiáveis, então nem aparecem.
   erroDeCarga: boolean;
@@ -52,33 +62,19 @@ export default function FaturamentoView({
   // 0045, e aí não dá pra enviar.
   faturasDoMes: Record<string, FaturaDoMes> | null;
   usuarioRotulo: string;
-  // Serviços enviados pela equipe que ainda esperam análise: os deste mês
-  // (já filtrados pelo cliente escolhido) e a contagem dos outros meses.
+  // Serviços que a equipe enviou antes dos pacotes e ainda esperam análise:
+  // os deste mês (já filtrados pelo cliente escolhido) e a contagem dos
+  // outros meses.
   enviosDoMes: EnvioPendente[];
   enviosEmOutrosMeses: { mes: string; nome: string; total: number }[];
   // A lista de envios da equipe não carregou inteira.
   enviosComErro: boolean;
-  // Tarefas concluídas no mês que ainda não têm valor (e as marcadas "não
-  // cobrar"), por cliente. Entram sozinhas; ver TarefasSemValor.
-  tarefasPorCliente: Record<string, { semValor: TarefaSemValor[]; dispensadas: { id: string; titulo: string }[] }>;
-  tarefasComErro: boolean;
 }) {
   const nomeDoCliente = (id: string) => clientes.find((c) => c.id === id)?.nome ?? "Cliente";
   const nomeDaPessoa = (id: string | null) => (id ? pessoas.find((p) => p.id === id)?.nome ?? "—" : "—");
   const mesPassado = nomeDoMes(somarMes(mes, -1)).split(" de ")[0];
   const diferenca = faturamento.total - totalAnterior;
   const mensais = faturamento.porCliente.reduce((n, c) => n + c.linhas.filter((l) => l.recurring).length, 0);
-  // Um bloco por cliente que tem serviço lançado OU tarefa concluída no mês.
-  const lancadosPorCliente = new Map(faturamento.porCliente.map((c) => [c.projectId, c]));
-  const blocos = Array.from(new Set([...lancadosPorCliente.keys(), ...Object.keys(tarefasPorCliente)]))
-    .map((projectId) => ({
-      projectId,
-      linhas: lancadosPorCliente.get(projectId)?.linhas ?? [],
-      total: lancadosPorCliente.get(projectId)?.total ?? 0,
-      tarefas: tarefasPorCliente[projectId] ?? { semValor: [], dispensadas: [] },
-    }))
-    .sort((a, b) => nomeDoCliente(a.projectId).localeCompare(nomeDoCliente(b.projectId), "pt-BR"));
-  const tarefasSemValor = blocos.reduce((n, b) => n + b.tarefas.semValor.length, 0);
   // Coluna interna: some do papel quando o documento é pra um cliente só.
   const colunaInterna = cliente ? "nao-imprime" : "";
 
@@ -120,6 +116,13 @@ export default function FaturamentoView({
           </p>
         ) : (
           <>
+            {semPacotes && (
+              <p className="nao-imprime mb-3 rounded-xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
+                Falta rodar a migration 0053_pacotes.sql no Supabase — sem ela não existem os pacotes (Start, Pro,
+                Elite), e o faturamento mostra só os serviços lançados à mão.
+              </p>
+            )}
+
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Resumo
                 rotulo={cliente ? "Total do mês" : "Faturamento do mês"}
@@ -135,20 +138,15 @@ export default function FaturamentoView({
               />
               {!cliente && (
                 <Resumo
-                  rotulo="Clientes com serviço"
-                  valor={String(faturamento.porCliente.length)}
+                  rotulo="Clientes com pacote"
+                  valor={String(faturamento.clientesComPacote)}
                   detalhe={`de ${clientes.length} ${clientes.length === 1 ? "cliente" : "clientes"}`}
                 />
               )}
               <Resumo
-                rotulo="Serviços no mês"
+                rotulo="Extras no mês"
                 valor={String(faturamento.quantidadeDeLinhas)}
                 detalhe={mensais === 1 ? "1 mensal" : `${mensais} mensais`}
-                extraSoNaTela={
-                  tarefasSemValor > 0
-                    ? ` · ${tarefasSemValor} ${tarefasSemValor === 1 ? "tarefa" : "tarefas"} sem valor`
-                    : undefined
-                }
               />
             </section>
 
@@ -163,7 +161,7 @@ export default function FaturamentoView({
 
             {enviosEmOutrosMeses.length > 0 && (
               <p className="nao-imprime mt-3 rounded-xl border border-line bg-surface px-4 py-2.5 text-xs text-ink-muted">
-                A equipe também enviou serviços que esperam análise em outros meses:{" "}
+                Ainda há serviços enviados pela equipe esperando análise em outros meses:{" "}
                 {enviosEmOutrosMeses.map((o, i) => (
                   <span key={o.mes}>
                     {i > 0 && ", "}
@@ -179,12 +177,6 @@ export default function FaturamentoView({
               </p>
             )}
 
-            {tarefasComErro && (
-              <p className="nao-imprime mt-3 rounded-xl border border-danger/30 bg-danger-light px-4 py-2.5 text-xs text-danger">
-                Não deu pra carregar as tarefas concluídas do mês; elas não aparecem abaixo. Recarregue a página.
-              </p>
-            )}
-
             <LancarServico
               mes={mes}
               clienteInicial={cliente}
@@ -193,118 +185,167 @@ export default function FaturamentoView({
               servicos={servicos.filter((s) => s.active)}
             />
 
-            {blocos.length === 0 ? (
+            {faturamento.porCliente.length === 0 ? (
               <p
                 data-mov="card"
                 className="mt-3 rounded-2xl border border-line bg-surface px-5 py-10 text-center text-sm text-ink-muted"
               >
-                Nenhum serviço lançado nem tarefa concluída em {nomeDoMes(mes)}
+                Nenhum pacote nem serviço extra em {nomeDoMes(mes)}
                 {cliente ? ` para ${nomeDoCliente(cliente)}` : ""}.
               </p>
             ) : (
-              blocos.map((c) => (
-                <section
-                  key={c.projectId}
-                  data-mov="card"
-                  className={`mt-3 break-inside-avoid rounded-2xl border border-line bg-surface p-5 ${
-                    c.linhas.length === 0 ? "nao-imprime" : ""
-                  }`}
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-sm font-semibold text-ink">{nomeDoCliente(c.projectId)}</p>
-                    <p className="text-sm font-semibold tabular-nums text-ink">{formatarMoeda(c.total)}</p>
-                  </div>
-                  {c.linhas.length > 0 && (
-                  <div className="mt-3 overflow-x-auto scrollbar-thin">
-                    <table className="w-full min-w-[560px] text-left text-sm">
-                      <thead>
-                        <tr className="text-xs text-ink-muted">
-                          <th className="py-2 pr-3 font-medium">Serviço</th>
-                          <th className={`px-2 py-2 font-medium ${colunaInterna}`}>Quem fez</th>
-                          <th className="px-2 py-2 text-right font-medium">Qtd.</th>
-                          <th className="px-2 py-2 text-right font-medium">Valor unitário</th>
-                          <th className="py-2 pl-2 text-right font-medium">Total</th>
-                          <th className="nao-imprime py-2 pl-2" aria-label="Ações" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {c.linhas.map((l) => (
-                          <tr key={l.id} data-mov="item" className="border-t border-line align-top">
-                            <td className="py-2 pr-3">
-                              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="font-medium text-ink">{l.service_name}</span>
-                                {l.recurring && <Badge tone="brand">mensal</Badge>}
-                                {l.recurring && l.ended_month?.slice(0, 7) === mes && (
-                                  <span className="nao-imprime">
-                                    <Badge tone="warning">último mês</Badge>
-                                  </span>
-                                )}
+              faturamento.porCliente.map((c) => {
+                // O que vai pra fatura: a linha do pacote, os serviços que
+                // ele inclui (sem valor) e os extras.
+                const itens: InvoiceItem[] = [
+                  ...(c.pacote
+                    ? [
+                        {
+                          name: `Pacote ${c.pacote.nome}`,
+                          detail: null,
+                          quantity: 1,
+                          unit_price: c.pacote.preco,
+                          total: c.pacote.preco,
+                          recurring: true,
+                        },
+                        ...c.pacote.itens.map((nome) => ({
+                          name: nome,
+                          detail: null,
+                          quantity: 1,
+                          unit_price: 0,
+                          total: 0,
+                          recurring: false,
+                          included: true,
+                        })),
+                      ]
+                    : []),
+                  ...c.linhas.map((l) => ({
+                    name: l.service_name,
+                    detail: l.detail,
+                    quantity: l.quantity,
+                    unit_price: l.unit_price,
+                    total: l.total,
+                    recurring: l.recurring,
+                  })),
+                ];
+                return (
+                  <section
+                    key={c.projectId}
+                    data-mov="card"
+                    className="mt-3 break-inside-avoid rounded-2xl border border-line bg-surface p-5"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm font-semibold text-ink">{nomeDoCliente(c.projectId)}</p>
+                      <p className="text-sm font-semibold tabular-nums text-ink">{formatarMoeda(c.total)}</p>
+                    </div>
+
+                    {c.pacote && (
+                      <div data-mov="item" className="mt-3 rounded-xl border border-line bg-canvas px-4 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-semibold text-ink">Pacote {c.pacote.nome}</span>
+                            <Badge tone="brand">mensal</Badge>
+                            {c.pacote.ultimoMes && (
+                              <span className="nao-imprime">
+                                <Badge tone="warning">último mês</Badge>
                               </span>
-                              {l.detail && <span className="block text-xs text-ink-muted">{l.detail}</span>}
-                            </td>
-                            <td className={`px-2 py-2 text-ink-muted ${colunaInterna}`}>{nomeDaPessoa(l.done_by)}</td>
-                            <td className="px-2 py-2 text-right tabular-nums text-ink">
-                              {l.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                            </td>
-                            <td className="px-2 py-2 text-right tabular-nums text-ink">
-                              {formatarMoeda(l.unit_price)}
-                            </td>
-                            <td className="py-2 pl-2 text-right font-semibold tabular-nums text-ink">
-                              {formatarMoeda(l.total)}
-                            </td>
-                            <td className="nao-imprime py-1.5 pl-2 text-right">
-                              <AcoesDoLancamento
-                                id={l.id}
-                                nome={l.service_name}
-                                mes={mes}
-                                mensal={l.recurring}
-                                soExisteNesteMes={
-                                  !l.recurring ||
-                                  (l.entry_month.slice(0, 7) === mes && l.ended_month?.slice(0, 7) === mes)
-                                }
-                                encerraNesteMes={l.ended_month?.slice(0, 7) === mes}
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  )}
+                            )}
+                            <span className="nao-imprime text-xs text-ink-muted">desde {nomeDoMes(c.pacote.desde)}</span>
+                          </span>
+                          <span className="text-sm font-semibold tabular-nums text-ink">
+                            {formatarMoeda(c.pacote.preco)}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs text-ink-muted">
+                          {c.pacote.itens.length > 0
+                            ? `Inclui: ${c.pacote.itens.join(", ")}.`
+                            : "Nenhum serviço marcado como incluído neste pacote ainda."}
+                        </p>
+                        {c.pacote.preco === 0 && (
+                          <p className="nao-imprime mt-1.5 text-xs font-medium text-warning">
+                            Este pacote está sem valor. Preencha em &quot;Pacotes&quot;, lá embaixo.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
-                  {(c.tarefas.semValor.length > 0 || c.tarefas.dispensadas.length > 0) && (
-                    <TarefasSemValor
-                      tarefas={c.tarefas.semValor}
-                      dispensadas={c.tarefas.dispensadas}
-                      servicos={servicos.filter((s) => s.active)}
-                    />
-                  )}
+                    {c.linhas.length > 0 && (
+                      <div className="mt-3 overflow-x-auto scrollbar-thin">
+                        {c.pacote && <p className="mb-1 text-xs font-semibold text-ink-muted">Extras</p>}
+                        <table className="w-full min-w-[560px] text-left text-sm">
+                          <thead>
+                            <tr className="text-xs text-ink-muted">
+                              <th className="py-2 pr-3 font-medium">Serviço</th>
+                              <th className={`px-2 py-2 font-medium ${colunaInterna}`}>Quem fez</th>
+                              <th className="px-2 py-2 text-right font-medium">Qtd.</th>
+                              <th className="px-2 py-2 text-right font-medium">Valor unitário</th>
+                              <th className="py-2 pl-2 text-right font-medium">Total</th>
+                              <th className="nao-imprime py-2 pl-2" aria-label="Ações" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {c.linhas.map((l) => (
+                              <tr key={l.id} data-mov="item" className="border-t border-line align-top">
+                                <td className="py-2 pr-3">
+                                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="font-medium text-ink">{l.service_name}</span>
+                                    {l.recurring && <Badge tone="brand">mensal</Badge>}
+                                    {l.recurring && l.ended_month?.slice(0, 7) === mes && (
+                                      <span className="nao-imprime">
+                                        <Badge tone="warning">último mês</Badge>
+                                      </span>
+                                    )}
+                                  </span>
+                                  {l.detail && <span className="block text-xs text-ink-muted">{l.detail}</span>}
+                                </td>
+                                <td className={`px-2 py-2 text-ink-muted ${colunaInterna}`}>{nomeDaPessoa(l.done_by)}</td>
+                                <td className="px-2 py-2 text-right tabular-nums text-ink">
+                                  {l.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                                </td>
+                                <td className="px-2 py-2 text-right tabular-nums text-ink">
+                                  {formatarMoeda(l.unit_price)}
+                                </td>
+                                <td className="py-2 pl-2 text-right font-semibold tabular-nums text-ink">
+                                  {formatarMoeda(l.total)}
+                                </td>
+                                <td className="nao-imprime py-1.5 pl-2 text-right">
+                                  <AcoesDoLancamento
+                                    id={l.id}
+                                    nome={l.service_name}
+                                    mes={mes}
+                                    mensal={l.recurring}
+                                    soExisteNesteMes={
+                                      !l.recurring ||
+                                      (l.entry_month.slice(0, 7) === mes && l.ended_month?.slice(0, 7) === mes)
+                                    }
+                                    encerraNesteMes={l.ended_month?.slice(0, 7) === mes}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
 
-                  {c.linhas.length === 0 ? null : faturasDoMes ? (
-                    <EnviarAoCliente
-                      projectId={c.projectId}
-                      clienteNome={nomeDoCliente(c.projectId)}
-                      mes={mes}
-                      total={c.total}
-                      itens={c.linhas.map((l) => ({
-                        name: l.service_name,
-                        detail: l.detail,
-                        quantity: l.quantity,
-                        unit_price: l.unit_price,
-                        total: l.total,
-                        recurring: l.recurring,
-                      }))}
-                      fatura={faturasDoMes[c.projectId] ?? null}
-                      usuarioRotulo={usuarioRotulo}
-                      tarefasSemValor={c.tarefas.semValor.length}
-                    />
-                  ) : (
-                    <p className="nao-imprime mt-3 border-t border-line pt-3 text-xs text-warning">
-                      Pra enviar ao cliente falta rodar a migration 0045_fatura_do_relatorio.sql no Supabase.
-                    </p>
-                  )}
-                </section>
-              ))
+                    {faturasDoMes ? (
+                      <EnviarAoCliente
+                        projectId={c.projectId}
+                        clienteNome={nomeDoCliente(c.projectId)}
+                        mes={mes}
+                        total={c.total}
+                        itens={itens}
+                        fatura={faturasDoMes[c.projectId] ?? null}
+                        usuarioRotulo={usuarioRotulo}
+                      />
+                    ) : (
+                      <p className="nao-imprime mt-3 border-t border-line pt-3 text-xs text-warning">
+                        Pra enviar ao cliente falta rodar a migration 0045_fatura_do_relatorio.sql no Supabase.
+                      </p>
+                    )}
+                  </section>
+                );
+              })
             )}
 
             {faturamento.porCliente.length > 1 && (
@@ -317,6 +358,17 @@ export default function FaturamentoView({
               </p>
             )}
 
+            {!semPacotes && (
+              <>
+                <PacotesDosClientes
+                  mes={mes}
+                  clientes={cliente ? clientes.filter((c) => c.id === cliente) : clientes}
+                  pacotes={pacotes}
+                  pacotePorCliente={pacotePorCliente}
+                />
+                <PacotesCatalogo mes={mes} pacotes={pacotes} servicos={servicos} />
+              </>
+            )}
             <CatalogoServicos servicos={servicos} />
           </>
         )}
@@ -330,13 +382,10 @@ function Resumo({
   valor,
   detalhe,
   detalheSoNaTela = false,
-  extraSoNaTela,
 }: {
   rotulo: string;
   valor: string;
   detalhe: string;
-  // Complemento interno do detalhe (ex.: tarefas sem valor): nunca vai pro papel.
-  extraSoNaTela?: string;
   // O comparativo com o mês anterior é informação interna: não vai pro papel.
   detalheSoNaTela?: boolean;
 }) {
@@ -344,10 +393,7 @@ function Resumo({
     <div data-mov="card" className="rounded-2xl border border-line bg-surface p-4">
       <p className="text-xs font-medium text-ink-muted">{rotulo}</p>
       <p className="mt-2 break-words text-2xl font-semibold leading-tight tabular-nums text-ink">{valor}</p>
-      <p className={`mt-2 text-xs text-ink-muted ${detalheSoNaTela ? "nao-imprime" : ""}`}>
-        {detalhe}
-        {extraSoNaTela && <span className="nao-imprime">{extraSoNaTela}</span>}
-      </p>
+      <p className={`mt-2 text-xs text-ink-muted ${detalheSoNaTela ? "nao-imprime" : ""}`}>{detalhe}</p>
     </div>
   );
 }
