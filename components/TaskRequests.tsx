@@ -73,6 +73,7 @@ export default function TaskRequests({
   const [description, setDescription] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erroTitulo, setErroTitulo] = useState<string | null>(null);
+  const [erroPrazo, setErroPrazo] = useState<string | null>(null);
   const [erroResponsavel, setErroResponsavel] = useState<string | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   // Exclusão: qual solicitação está pedindo confirmação, e qual está sendo apagada.
@@ -204,9 +205,13 @@ export default function TaskRequests({
   async function criarSolicitacao() {
     const tituloValido = title.trim() !== "";
     const responsavelValido = requestedTo !== "";
+    // O prazo é obrigatório: a tarefa nasce com ele, e depois só a liderança
+    // consegue mudar a data.
+    const prazoValido = dueDate !== "";
     setErroTitulo(tituloValido ? null : "Dá um nome pra essa demanda.");
     setErroResponsavel(responsavelValido ? null : "Escolhe pra quem é a solicitação.");
-    if (!tituloValido || !responsavelValido) return;
+    setErroPrazo(prazoValido ? null : "Informe o prazo. Depois de criada, só a liderança muda a data.");
+    if (!tituloValido || !responsavelValido || !prazoValido) return;
 
     setSalvando(true);
     setErroEnvio(null);
@@ -511,11 +516,15 @@ export default function TaskRequests({
                   ))}
                 </select>
               </Campo>
-              <Campo label="Prazo">
+              <Campo label="Prazo" required error={erroPrazo}>
                 <input
                   type="date"
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  onChange={(e) => {
+                    setDueDate(e.target.value);
+                    setErroPrazo(null);
+                  }}
+                  aria-invalid={!!erroPrazo}
                   className={campoClasse}
                 />
               </Campo>

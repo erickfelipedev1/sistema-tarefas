@@ -197,6 +197,7 @@ export default async function ProjetoPage({
             currentUserLabel={userLabel}
             projectId={id}
             profiles={profiles ?? []}
+            podeMudarDatas={souLider}
             showHeader={false}
           />
         }

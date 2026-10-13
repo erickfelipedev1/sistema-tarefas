@@ -49,6 +49,7 @@ export default function TaskModal({
   getNextPosition,
   initialDueDate,
   initialDueTime,
+  podeMudarDatas = false,
   onClose,
   onCreated,
   onUpdated,
@@ -65,6 +66,9 @@ export default function TaskModal({
   initialDueDate?: string | null;
   // Idem pro horário ("HH:MM") — ex: clicou num horário na visão Semana/Dia.
   initialDueTime?: string | null;
+  // Depois de criada a tarefa, só a liderança (ve_tudo) muda o início e a
+  // entrega. A mesma trava existe no banco (migration 0057).
+  podeMudarDatas?: boolean;
   onClose: () => void;
   onCreated: (task: Task) => void;
   onUpdated: (task: Task) => void;
@@ -104,6 +108,8 @@ export default function TaskModal({
   const [resumo, setResumo] = useState<ResumoTarefa>(resumoVazio());
 
   const isNovo = !current;
+  // Tarefa já criada + quem não é da liderança: início e entrega só pra ler.
+  const datasTravadas = !isNovo && !podeMudarDatas;
 
   // Recarrega ao abrir e a cada troca de aba (a pessoa pode ter mexido
   // no checklist/comentários na aba anterior).
@@ -199,10 +205,25 @@ export default function TaskModal({
 
   async function salvarCampo(campos: Partial<Task>) {
     if (!current) return;
+    const antes = current;
     const atualizado = { ...current, ...campos } as Task;
     setCurrent(atualizado);
     onUpdated(atualizado);
-    await supabase.from("tasks").update(campos).eq("id", current.id);
+    const { error } = await supabase.from("tasks").update(campos).eq("id", current.id);
+    // O banco recusa a troca de data por quem não é da liderança (migration
+    // 0057): desfaz na tela e avisa, em vez de parecer que salvou.
+    if (error && ("start_date" in campos || "due_date" in campos)) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setStartDate(antes.start_date ?? "");
+      setDueDate(antes.due_date ?? "");
+      setErro(
+        /liderança/i.test(error.message)
+          ? "Só a liderança pode alterar as datas de uma tarefa já criada."
+          : "Não deu pra salvar a data. Tenta de novo."
+      );
+      return;
+    }
 
     // Se essa tarefa já tem uma página vinculada na Wiki, mantém o resumo
     // lá em cima sempre atualizado com os dados mais recentes.
@@ -374,6 +395,7 @@ export default function TaskModal({
                     type="date"
                     value={startDate}
                     max={dueDate || undefined}
+                    disabled={datasTravadas}
                     onChange={(e) => {
                       const v = e.target.value;
                       if (v && dueDate && v > dueDate) {
@@ -384,7 +406,7 @@ export default function TaskModal({
                       setStartDate(v);
                       if (!isNovo) salvarCampo({ start_date: v || null });
                     }}
-                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface-hover disabled:text-ink-muted"
                   />
                 </div>
                 <div>
@@ -395,6 +417,7 @@ export default function TaskModal({
                     type="date"
                     value={dueDate}
                     min={startDate || undefined}
+                    disabled={datasTravadas}
                     onChange={(e) => {
                       const v = e.target.value;
                       if (v && startDate && v < startDate) {
@@ -405,9 +428,14 @@ export default function TaskModal({
                       setDueDate(v);
                       if (!isNovo) salvarCampo({ due_date: v || null });
                     }}
-                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface-hover disabled:text-ink-muted"
                   />
                 </div>
+                {datasTravadas && (
+                  <p className="w-full text-xs text-ink-muted">
+                    As datas ficam travadas depois que a tarefa é criada. Só a liderança pode alterar.
+                  </p>
+                )}
                 <div>
                   <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Horário

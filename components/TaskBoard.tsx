@@ -51,6 +51,7 @@ export default function TaskBoard({
   soMinhas = false,
   projects = [],
   profiles = [],
+  podeMudarDatas = false,
   title,
   subtitle,
   showHeader = true,
@@ -70,6 +71,9 @@ export default function TaskBoard({
   soMinhas?: boolean;
   projects?: Project[];
   profiles?: Profile[];
+  // Quem está usando é da liderança (ve_tudo): pode mudar o início e a
+  // entrega de uma tarefa já criada. Pros outros as datas ficam travadas.
+  podeMudarDatas?: boolean;
   // Cabeçalho completo (título, resumo em números, busca e filtro) — usado
   // na tela "Minhas tarefas". Dentro de um projeto específico o quadro fica
   // mais enxuto (showHeader=false), já que a página ali tem seu próprio
@@ -681,6 +685,7 @@ export default function TaskBoard({
           profiles={profiles}
           currentUserLabel={currentUserLabel}
           getNextPosition={getNextPosition}
+          podeMudarDatas={podeMudarDatas}
           onClose={fecharModal}
           onCreated={handleCreated}
           onUpdated={handleUpdated}

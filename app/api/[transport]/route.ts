@@ -186,7 +186,7 @@ Args:
   - projeto (string, opcional): nome do projeto (ou parte dele). Se não informar, a tarefa entra em "Geral", sem projeto. Use now_listar_projetos se não souber o nome exato.
   - status (string, opcional): um de "todo" (a fazer, padrão), "doing" (em andamento), "done" (concluída), "cancelled" (cancelada).
   - data_inicio (string, opcional): início do período, no formato AAAA-MM-DD. Se informar o prazo sem o início, a tarefa começa hoje.
-  - data_prazo (string, opcional): data de entrega (fim do período), no formato AAAA-MM-DD.
+  - data_prazo (string, obrigatório): data de entrega (fim do período), no formato AAAA-MM-DD. Depois de criada a tarefa, só a liderança muda as datas.
   - responsavel (string, opcional): nome de quem deve ficar responsável. Aceita "eu"/"mim" pra atribuir a quem pediu a tarefa. Se não informar, a tarefa fica sem responsável.
 
 Retorna: confirmação com o título, projeto e link da tarefa criada.
@@ -221,8 +221,9 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           data_prazo: z
             .string()
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD")
-            .optional()
-            .describe("Data de entrega (fim do período), AAAA-MM-DD (opcional)."),
+            .describe(
+              "Data de entrega (fim do período), AAAA-MM-DD. Obrigatória: depois de criada a tarefa, só a liderança muda as datas."
+            ),
           responsavel: z
             .string()
             .max(200)
@@ -549,7 +550,7 @@ Args:
   - novo_titulo (string, opcional): novo título da tarefa.
   - descricao (string, opcional): nova descrição (pode mandar vazio "" pra apagar a descrição). Não use a descrição pra checklist, comentários, horas ou anexos — cada um tem a própria ferramenta (now_adicionar_checklist, now_comentar_tarefa, now_registrar_horas, now_anexar_arquivo).
   - data_inicio (string, opcional): novo início do período, no formato AAAA-MM-DD. Pra tirar, mande "remover" ou "".
-  - data_prazo (string, opcional): nova data de entrega no formato AAAA-MM-DD. Pra tirar o prazo, mande "remover" ou "".
+  - data_prazo (string, opcional): nova data de entrega no formato AAAA-MM-DD. Pra tirar o prazo, mande "remover" ou "". Só a liderança pode mudar as datas (início e entrega) de uma tarefa já criada; pros outros a chamada é recusada.
   - responsavel (string, opcional): nome de quem deve ficar responsável (aceita "eu"/"mim", e substitui quem já estava). Pra tirar o responsável, mande "remover" ou "ninguém".
   - status (string, opcional): "todo", "doing", "done" ou "cancelled".
   - projeto (string, opcional): nome do projeto, só pra ajudar a achar a tarefa certa quando o título é ambíguo (não move a tarefa de projeto).
@@ -717,6 +718,29 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
           }
 
           const alvo = candidatas[0];
+
+          // Datas de tarefa já criada: só a liderança (ve_tudo) muda — a mesma
+          // regra da tela e do banco (migration 0057). Aqui o banco não barra,
+          // porque esta rota grava com a chave de serviço.
+          if ("start_date" in atualizacoes || "due_date" in atualizacoes) {
+            const { data: quem } = await admin
+              .from("profiles")
+              .select("ve_tudo")
+              .eq("id", perfil.profileId)
+              .maybeSingle();
+            if (quem?.ve_tudo !== true) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: "text",
+                    text: "Não alterei nada: só a liderança pode mudar as datas de uma tarefa já criada. Os outros campos podem ser editados em outra chamada, sem as datas.",
+                  },
+                ],
+              };
+            }
+          }
+
           const { error } = await admin.from("tasks").update(atualizacoes).eq("id", alvo.id);
 
           if (error) {

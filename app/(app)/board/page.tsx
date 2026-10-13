@@ -44,6 +44,7 @@ export default async function BoardPage() {
         currentUserLabel={userLabel}
         allProjects
         soMinhas={!verTudo}
+        podeMudarDatas={verTudo}
         projects={comPacote(projects ?? [], pacotes)}
         profiles={profiles ?? []}
         title={verTudo ? "Tarefas de todo mundo" : "Minhas tarefas"}
