@@ -14,6 +14,7 @@ import {
   ehDoDrive,
   erroDeArquivoGrande,
   idDoDriveNoLink,
+  midiaDoDrive,
   miniaturaDoItem,
   mensagemDeArquivoGrande,
   midiasValidas,
@@ -26,6 +27,7 @@ import {
   STATUS_DO_POST,
 } from "@/lib/posts";
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
+import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
 import { Badge } from "./ui/Badge";
@@ -443,6 +445,17 @@ export default function PostsManager({
 
   const urlDaCapa = capa ? (capa.salva ? links[capa.salva.path] ?? "" : capa.nova.url) : "";
 
+  // Vídeo grande: sobe pro Google Drive (direto do navegador, com progresso) e
+  // vira um item do Drive no post.
+  async function mandarProDrive(arquivo: File, rotulo: string, postId: string) {
+    setSalvando(`Enviando ${rotulo} pro Google Drive... 0%`);
+    const r = await enviarVideoParaODrive(arquivo, (f) =>
+      setSalvando(`Enviando ${rotulo} pro Google Drive... ${Math.round(f * 100)}%`)
+    );
+    if ("erro" in r) return r;
+    return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size) };
+  }
+
   async function salvar(enviarAoCliente: boolean) {
     if (salvando) return;
     const foraDaCategoria = itens.some((item) => !arquivoAceito(categoria, tipoDoItem(item) === "video" ? "video/" : "image/"));
@@ -469,6 +482,13 @@ export default function PostsManager({
     setErroForm(null);
     const postId = editando?.id ?? crypto.randomUUID();
     const subidos: string[] = [];
+    // Vídeos que esta tentativa já subiu pro Drive: se o salvar falhar, vão
+    // pra lixeira do Drive (não ficam públicos e sem post).
+    const noDrive: string[] = [];
+    const limparEnvios = async () => {
+      if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+      if (noDrive.length > 0) await descartarVideosDoDrive(noDrive);
+    };
     const midias: PostMedia[] = [];
     const aSubir = itens.filter((i) => i.nova).length;
     let feitos = 0;
@@ -486,14 +506,45 @@ export default function PostsManager({
       }
       const { arquivo, tipo } = item.nova;
       feitos += 1;
-      setSalvando(aSubir > 1 ? `Enviando arquivo ${feitos} de ${aSubir}...` : "Enviando o arquivo...");
+      const rotulo = aSubir > 1 ? `o arquivo ${feitos} de ${aSubir}` : "o arquivo";
+      setSalvando(`Enviando ${rotulo}...`);
+
+      // Vídeo acima do limite do Supabase: vai direto pro Google Drive.
+      if (tipo === "video" && arquivo.size > LIMITE_DO_SUPABASE) {
+        const r = await mandarProDrive(arquivo, rotulo, postId);
+        if ("media" in r) {
+          midias.push(r.media);
+          noDrive.push(r.media.drive_id as string);
+          continue;
+        }
+        if (!r.naoConfigurado) {
+          await limparEnvios();
+          setSalvando(null);
+          return setErroForm(r.erro);
+        }
+        // Drive não configurado: tenta o Supabase (que mostra a mensagem do limite).
+      }
       const caminho = `${projectId}/${postId}/${Date.now()}-${feitos}-${nomeSeguro(arquivo.name)}`;
       const { error } = await supabase.storage
         .from(BUCKET_DOS_POSTS)
         .upload(caminho, arquivo, { contentType: arquivo.type || undefined });
       if (error) {
+        // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
+        if (erroDeArquivoGrande(error.message) && tipo === "video") {
+          const r = await mandarProDrive(arquivo, rotulo, postId);
+          if ("media" in r) {
+            midias.push(r.media);
+          noDrive.push(r.media.drive_id as string);
+            continue;
+          }
+          if (!r.naoConfigurado) {
+            await limparEnvios();
+            setSalvando(null);
+            return setErroForm(r.erro);
+          }
+        }
         // Não deixa pra trás o que já subiu nesta tentativa.
-        if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+        await limparEnvios();
         setSalvando(null);
         return setErroForm(
           erroDeArquivoGrande(error.message)
@@ -517,7 +568,7 @@ export default function PostsManager({
           .from(BUCKET_DOS_POSTS)
           .upload(caminhoDaCapa, capa.nova.arquivo, { contentType: capa.nova.arquivo.type || undefined });
         if (error) {
-          if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+          await limparEnvios();
           setSalvando(null);
           return setErroForm(
             `Não deu pra enviar a capa. ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`
@@ -566,10 +617,12 @@ export default function PostsManager({
         ...midiasValidas((noBanco as Post | null)?.media).map((m) => m.path),
         ...((noBanco as Post | null)?.cover?.path ? [(noBanco as Post).cover!.path] : []),
       ]);
-      if (noBanco && subidos.length > 0 && subidos.every((c) => gravados.has(c))) {
+      // Tudo que esta tentativa enviou (arquivos e vídeos do Drive) tem que estar no post.
+      const enviadosAgora = [...subidos, ...noDrive.map((id) => midiaDoDrive(projectId, postId, id).path)];
+      if (noBanco && enviadosAgora.length > 0 && enviadosAgora.every((c) => gravados.has(c))) {
         salvo = noBanco as Post;
       } else {
-        if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+        await limparEnvios();
         setSalvando(null);
         return setErroForm(`Não foi possível salvar o post. ${SEM_MIGRACAO}`);
       }

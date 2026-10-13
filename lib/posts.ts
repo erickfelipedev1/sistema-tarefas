@@ -97,6 +97,25 @@ export function idDoDriveNoLink(texto: string): string | null {
   return id && ID_DO_DRIVE.test(id) ? id : null;
 }
 
+// O item do post pra um vídeo que está no Drive. O "path" é só o identificador
+// dentro da pasta do post (o banco exige o prefixo); não existe no bucket.
+export function midiaDoDrive(
+  projectId: string,
+  postId: string,
+  driveId: string,
+  nome = "Vídeo do Google Drive",
+  tamanho = 0
+): PostMedia {
+  return {
+    path: `${projectId}/${postId}/drive-${driveId}`,
+    type: "video",
+    name: nome,
+    size: tamanho,
+    source: "drive",
+    drive_id: driveId,
+  };
+}
+
 // Endereço do player do Drive (toca o vídeo dentro do d.hub).
 export function urlDoPlayerDoDrive(id: string) {
   return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;
@@ -183,7 +202,7 @@ export function mensagemDeArquivoGrande(nome: string, bytes: number) {
   const dica = /\.mov$/i.test(nome)
     ? "Vídeo .mov de iPhone costuma ser bem pesado: exporte em .mp4 (1080p) e tente de novo."
     : "Exporte o arquivo com menos qualidade (vídeo em .mp4, 1080p) e tente de novo.";
-  return `"${nome}" tem ${tamanhoLegivel(bytes)} e passou do tamanho máximo que o armazenamento aceita por arquivo (50 MB no plano atual). ${dica} Se precisar de arquivos maiores, o limite pode ser aumentado no Supabase (plano Pro): avise o Erick.`;
+  return `"${nome}" tem ${tamanhoLegivel(bytes)} e passou do tamanho máximo que o armazenamento aceita por arquivo (50 MB no plano atual). ${dica} Você também pode colar o link do vídeo no Google Drive (caixa logo abaixo). Pra vídeos grandes subirem sozinhos pro Drive, é preciso conectar o Drive no d.hub: avise o Erick.`;
 }
 
 export function tamanhoLegivel(bytes: number) {

@@ -16,6 +16,7 @@ import {
   ORDEM_DAS_CATEGORIAS,
   ehDoDrive,
   idDoDriveNoLink,
+  midiaDoDrive,
   urlDaMiniaturaDoDrive,
   erroDeArquivoGrande,
   mensagemDeArquivoGrande,
@@ -26,6 +27,7 @@ import {
   rotuloDoStatus,
   STATUS_DO_POST,
 } from "@/lib/posts";
+import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { XIcon } from "../ui/icons";
@@ -242,6 +244,18 @@ export default function PostDaTarefa({
     });
   }
 
+  // Vídeo grande: sobe pro Google Drive (direto do navegador, com progresso) e
+  // vira um item do Drive no post.
+  async function mandarProDrive(arquivo: File, rotulo: string, postId: string) {
+    if (!projectId) return { erro: "Tarefa sem cliente." };
+    setSalvando(`Enviando ${rotulo} pro Google Drive... 0%`);
+    const r = await enviarVideoParaODrive(arquivo, (f) =>
+      setSalvando(`Enviando ${rotulo} pro Google Drive... ${Math.round(f * 100)}%`)
+    );
+    if ("erro" in r) return r;
+    return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size) };
+  }
+
   async function criar(enviar: boolean) {
     if (salvando || !projectId) return;
     setAviso(null);
@@ -267,17 +281,55 @@ export default function PostDaTarefa({
     setErro(null);
     const postId = crypto.randomUUID();
     const subidos: string[] = [];
+    // Vídeos que esta tentativa já subiu pro Drive: se o salvar falhar, vão
+    // pra lixeira do Drive (não ficam públicos e sem post).
+    const noDrive: string[] = [];
+    const limparEnvios = async () => {
+      if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+      if (noDrive.length > 0) await descartarVideosDoDrive(noDrive);
+    };
     const midias: PostMedia[] = [];
     let feitos = 0;
     for (const e of escolhidos) {
       feitos += 1;
-      setSalvando(escolhidos.length > 1 ? `Enviando arquivo ${feitos} de ${escolhidos.length}...` : "Enviando o arquivo...");
+      const rotulo = escolhidos.length > 1 ? `o arquivo ${feitos} de ${escolhidos.length}` : "o arquivo";
+      setSalvando(`Enviando ${rotulo}...`);
+
+      // Vídeo acima do limite do Supabase: vai direto pro Google Drive.
+      if (e.tipo === "video" && e.arquivo.size > LIMITE_DO_SUPABASE) {
+        const r = await mandarProDrive(e.arquivo, rotulo, postId);
+        if ("media" in r) {
+          midias.push(r.media);
+          noDrive.push(r.media.drive_id as string);
+          continue;
+        }
+        if (!r.naoConfigurado) {
+          await limparEnvios();
+          setSalvando(null);
+          return setErro(r.erro);
+        }
+        // Drive não configurado: tenta o Supabase (que mostra a mensagem do limite).
+      }
       const caminho = `${projectId}/${postId}/${Date.now()}-${feitos}-${nomeSeguro(e.arquivo.name)}`;
       const { error } = await supabase.storage
         .from(BUCKET_DOS_POSTS)
         .upload(caminho, e.arquivo, { contentType: e.arquivo.type || undefined });
       if (error) {
-        if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+        // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
+        if (erroDeArquivoGrande(error.message) && e.tipo === "video") {
+          const r = await mandarProDrive(e.arquivo, rotulo, postId);
+          if ("media" in r) {
+            midias.push(r.media);
+          noDrive.push(r.media.drive_id as string);
+            continue;
+          }
+          if (!r.naoConfigurado) {
+            await limparEnvios();
+            setSalvando(null);
+            return setErro(r.erro);
+          }
+        }
+        await limparEnvios();
         setSalvando(null);
         return setErro(
           erroDeArquivoGrande(error.message)
@@ -289,16 +341,7 @@ export default function PostDaTarefa({
       midias.push({ path: caminho, type: e.tipo, name: e.arquivo.name, size: e.arquivo.size });
     }
     // Vídeos do Drive: não têm arquivo no bucket, só o código.
-    for (const id of doDrive) {
-      midias.push({
-        path: `${projectId}/${postId}/drive-${id}`,
-        type: "video",
-        name: "Vídeo do Google Drive",
-        size: 0,
-        source: "drive",
-        drive_id: id,
-      });
-    }
+    for (const id of doDrive) midias.push(midiaDoDrive(projectId, postId, id));
 
     setSalvando("Salvando...");
     const { data: salvo, error } = await supabase
@@ -317,12 +360,19 @@ export default function PostDaTarefa({
       })
       .select()
       .single();
+    let gravado = salvo as Post | null;
+    if (error || !gravado) {
+      // A gravação pode ter dado certo e só a resposta ter se perdido: confere
+      // antes de apagar o que subiu (e de o usuário tentar de novo e duplicar).
+      const { data: noBanco } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
+      if (noBanco) gravado = noBanco as Post;
+    }
     setSalvando(null);
-    if (error || !salvo) {
-      if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
+    if (!gravado) {
+      await limparEnvios();
       return setErro(`Não foi possível salvar o post. ${SEM_MIGRACAO}`);
     }
-    setPosts((atual) => [arrumar(salvo as Post), ...atual]);
+    setPosts((atual) => [arrumar(gravado as Post), ...atual]);
     for (const e of escolhidos) URL.revokeObjectURL(e.url);
     setEscolhidos([]);
     setDoDrive([]);
