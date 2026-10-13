@@ -32,6 +32,7 @@ import { avisarMencao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
+import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
 import { idsMencionados, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
 
 type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "horas" | "copy" | "post";
@@ -431,6 +432,8 @@ export default function TaskModal({
                   </p>
                 )}
               </div>
+
+              {current && <EtiquetasDaTarefa key={current.id} taskId={current.id} aoMudar={() => undefined} />}
 
               <div className="flex flex-wrap gap-3">
                 <div>

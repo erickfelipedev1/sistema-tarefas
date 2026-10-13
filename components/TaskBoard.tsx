@@ -16,6 +16,8 @@ import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { StatTile } from "./ui/StatTile";
 import { carregarResumos, formatarHoras, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
+import { carregarCatalogo, carregarLigacoes, type Etiqueta } from "@/lib/etiquetas";
+import { EtiquetaSelo } from "./EtiquetasDaTarefa";
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -96,6 +98,10 @@ export default function TaskBoard({
   const [tarefaEditando, setTarefaEditando] = useState<Task | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroResponsavel, setFiltroResponsavel] = useState("");
+  // Etiquetas (migration 0069): o catálogo, o que cada tarefa tem e o filtro.
+  const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
+  const [ligacoes, setLigacoes] = useState<Record<string, string[]>>({});
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
   // Checklist/comentários/anexos de cada cartão (✅ 2/5 · 💬 3 · 📎 1).
   const [resumos, setResumos] = useState<Record<string, ResumoTarefa>>({});
   const idsDasTarefas = useMemo(() => tasks.map((t) => t.id).sort().join(","), [tasks]);
@@ -106,11 +112,26 @@ export default function TaskBoard({
     carregarResumos(supabase, idsDasTarefas.split(",")).then((m) => {
       if (ativo) setResumos(m);
     });
+    carregarLigacoes(supabase, idsDasTarefas.split(",")).then((m) => {
+      if (ativo) setLigacoes(m);
+    });
     return () => {
       ativo = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsDasTarefas]);
+
+  useEffect(() => {
+    let ativo = true;
+    carregarCatalogo(supabase).then((c) => {
+      if (ativo) setCatalogo(c);
+    });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const etiquetaPorId = useMemo(() => new Map(catalogo.map((e) => [e.id, e])), [catalogo]);
 
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
@@ -240,6 +261,14 @@ export default function TaskBoard({
       const ids = new Set<string>([aberta, ...visitadas.current]);
       if (mae) ids.add(mae);
       carregarResumos(supabase, Array.from(ids)).then((m) => setResumos((atual) => ({ ...atual, ...m })));
+      carregarLigacoes(supabase, Array.from(ids)).then((m) =>
+        setLigacoes((atual) => {
+          const proximo = { ...atual };
+          for (const id of ids) proximo[id] = m[id] ?? [];
+          return proximo;
+        })
+      );
+      carregarCatalogo(supabase).then(setCatalogo);
     }
     visitadas.current = new Set();
   }
@@ -428,9 +457,12 @@ export default function TaskBoard({
       if (filtroResponsavel && !t.assigned_to.includes(filtroResponsavel)) {
         return false;
       }
+      if (filtroEtiqueta && !(ligacoes[t.id] ?? []).includes(filtroEtiqueta)) {
+        return false;
+      }
       return true;
     });
-  }, [tasks, busca, filtroResponsavel]);
+  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, ligacoes]);
 
   return (
     <div>
@@ -461,6 +493,21 @@ export default function TaskBoard({
                     </option>
                   ))}
                 </select>
+                {catalogo.length > 0 && (
+                  <select
+                    value={filtroEtiqueta}
+                    onChange={(e) => setFiltroEtiqueta(e.target.value)}
+                    aria-label="Filtrar por etiqueta"
+                    className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                  >
+                    <option value="">Todas as etiquetas</option>
+                    {catalogo.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <Button onClick={abrirCriar}>
                   <PlusIcon className="h-4 w-4" />
                   Nova tarefa
@@ -625,6 +672,15 @@ export default function TaskBoard({
                         </div>
                       )}
 
+                      {(ligacoes[task.id] ?? []).length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {(ligacoes[task.id] ?? []).flatMap((id) => {
+                            const et = etiquetaPorId.get(id);
+                            return et ? [<EtiquetaSelo key={id} etiqueta={et} />] : [];
+                          })}
+                        </div>
+                      )}
+
                       {task.parent_id && (
                         <p className="mt-2 truncate text-[11px] font-medium text-brand-forte">
                           ↳ Subtarefa
@@ -682,12 +738,12 @@ export default function TaskBoard({
                   <EmptyState
                     icon={<SparklesIcon className="h-4 w-4" />}
                     title={
-                      busca || filtroResponsavel
+                      busca || filtroResponsavel || filtroEtiqueta
                         ? "Nada por aqui"
                         : "Tudo limpo por aqui"
                     }
                     description={
-                      busca || filtroResponsavel
+                      busca || filtroResponsavel || filtroEtiqueta
                         ? "Nenhuma tarefa bate com o filtro atual."
                         : undefined
                     }
