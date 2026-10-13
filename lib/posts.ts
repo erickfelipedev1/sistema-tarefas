@@ -124,6 +124,21 @@ export function arquivoAceito(categoria: PostCategory, mime: string) {
   return mime.startsWith("image/") || mime.startsWith("video/");
 }
 
+// O erro do Storage quando o arquivo passa do limite de upload do projeto
+// (50 MB no plano gratuito do Supabase; sobe no plano Pro).
+export function erroDeArquivoGrande(mensagem: string) {
+  return /exceed|too large|maximum allowed size|413|payload/i.test(mensagem);
+}
+
+// Texto pra quem está montando o post: qual arquivo, de que tamanho, e o que
+// fazer. Vídeo .mov (iPhone) costuma ser o mais pesado.
+export function mensagemDeArquivoGrande(nome: string, bytes: number) {
+  const dica = /\.mov$/i.test(nome)
+    ? "Vídeo .mov de iPhone costuma ser bem pesado: exporte em .mp4 (1080p) e tente de novo."
+    : "Exporte o arquivo com menos qualidade (vídeo em .mp4, 1080p) e tente de novo.";
+  return `"${nome}" tem ${tamanhoLegivel(bytes)} e passou do tamanho máximo que o armazenamento aceita por arquivo (50 MB no plano atual). ${dica} Se precisar de arquivos maiores, o limite pode ser aumentado no Supabase (plano Pro): avise o Erick.`;
+}
+
 export function tamanhoLegivel(bytes: number) {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;

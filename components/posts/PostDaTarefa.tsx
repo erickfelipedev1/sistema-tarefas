@@ -14,6 +14,8 @@ import {
   midiasValidas,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
+  erroDeArquivoGrande,
+  mensagemDeArquivoGrande,
   ORDEM_DAS_REDES,
   REDES,
   redesValidas,
@@ -238,10 +240,9 @@ export default function PostDaTarefa({
       if (error) {
         if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
         setSalvando(null);
-        const grande = /exceed|too large|maximum allowed size|413/i.test(error.message);
         return setErro(
-          grande
-            ? `"${e.arquivo.name}" passou do tamanho máximo que o armazenamento aceita por arquivo. Reduza o arquivo e tente de novo.`
+          erroDeArquivoGrande(error.message)
+            ? mensagemDeArquivoGrande(e.arquivo.name, e.arquivo.size)
             : `Não deu pra enviar "${e.arquivo.name}". ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`
         );
       }

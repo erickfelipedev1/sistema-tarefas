@@ -11,6 +11,8 @@ import {
   BUCKET_DOS_POSTS,
   CATEGORIAS,
   capaValida,
+  erroDeArquivoGrande,
+  mensagemDeArquivoGrande,
   midiasValidas,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
@@ -19,7 +21,6 @@ import {
   redesValidas,
   rotuloDoStatus,
   STATUS_DO_POST,
-  tamanhoLegivel,
 } from "@/lib/posts";
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
@@ -442,10 +443,9 @@ export default function PostsManager({
         // Não deixa pra trás o que já subiu nesta tentativa.
         if (subidos.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(subidos);
         setSalvando(null);
-        const grande = /exceed|too large|maximum allowed size|413/i.test(error.message);
         return setErroForm(
-          grande
-            ? `"${arquivo.name}" (${tamanhoLegivel(arquivo.size)}) passou do tamanho máximo que o armazenamento aceita por arquivo. Reduza o vídeo ou avise o Erick pra aumentar o limite no Supabase.`
+          erroDeArquivoGrande(error.message)
+            ? mensagemDeArquivoGrande(arquivo.name, arquivo.size)
             : `Não deu pra enviar "${arquivo.name}". ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`
         );
       }
