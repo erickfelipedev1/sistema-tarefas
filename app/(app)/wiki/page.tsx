@@ -8,8 +8,9 @@ export default async function WikiListPage() {
   const supabase = await clienteDaRequisicao();
   const user = await usuarioAtual();
 
-  // Wiki individual, pra todo mundo (inclusive líderes): só as páginas que
-  // eu criei ou que são de uma tarefa minha. A regra fica em lib/wiki.ts.
+  // Bloco de notas pessoal, pra todo mundo (inclusive líderes): só as
+  // páginas que eu criei aqui. Página de tarefa e de cliente não entram. A
+  // regra fica em lib/wiki.ts.
   const pages = await getMinhasPaginas(supabase, user?.id);
 
   return (
@@ -21,7 +22,7 @@ export default async function WikiListPage() {
           <WikiPagesPanel
             pages={pages}
             title="Minha Wiki"
-            subtitle="Organize documentos, processos e conhecimentos da equipe."
+            subtitle="Seu bloco de notas: as páginas que você criou aqui."
           />
         </div>
       </div>

@@ -45,8 +45,8 @@ export default function WikiPagesPanel({
           <EmptyState
             className="py-16"
             icon={<BookOpenIcon className="h-8 w-8" />}
-            title="Comece sua Wiki"
-            description="Crie sua primeira página para organizar o conhecimento da equipe."
+            title="Comece seu bloco de notas"
+            description="Crie sua primeira página para guardar suas anotações."
             action={
               <NewPageButton projectId={null} label="Criar primeira página" />
             }
