@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
 
 type Campo = HTMLInputElement | HTMLTextAreaElement;
@@ -38,6 +38,35 @@ export default function MencaoInput({
   // Onde está o "@" que está sendo digitado, e o que veio depois dele.
   const [busca, setBusca] = useState<{ inicio: number; termo: string } | null>(null);
   const [destaque, setDestaque] = useState(0);
+  // A lista usa posição "fixed" pra não ser cortada pela janela da tarefa
+  // (que rola e esconde o que passa da borda). Abre pro lado com mais espaço.
+  const [lugar, setLugar] = useState<React.CSSProperties | null>(null);
+
+  function calcularLugar() {
+    const r = campo.current?.getBoundingClientRect();
+    if (!r) return;
+    const acima = r.top - 12;
+    const abaixo = window.innerHeight - r.bottom - 12;
+    const largura = Math.min(280, Math.max(r.width, 200), window.innerWidth - 16);
+    const esquerda = Math.max(8, Math.min(r.left, window.innerWidth - largura - 8));
+    if (acima >= 190 || acima >= abaixo) {
+      setLugar({ left: esquerda, width: largura, bottom: window.innerHeight - r.top + 4, maxHeight: Math.min(260, acima) });
+    } else {
+      setLugar({ left: esquerda, width: largura, top: r.bottom + 4, maxHeight: Math.min(260, abaixo) });
+    }
+  }
+
+  // Rolou ou redimensionou com a lista aberta: acompanha o campo.
+  useEffect(() => {
+    if (!busca) return;
+    window.addEventListener("scroll", calcularLugar, true);
+    window.addEventListener("resize", calcularLugar);
+    return () => {
+      window.removeEventListener("scroll", calcularLugar, true);
+      window.removeEventListener("resize", calcularLugar);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busca !== null]);
 
   const sugestoes = useMemo(() => {
     if (!busca) return [];
@@ -60,6 +89,7 @@ export default function MencaoInput({
     if (achou) {
       setBusca({ inicio: cursor - achou[1].length - 1, termo: achou[1] });
       setDestaque(0);
+      calcularLugar();
     } else {
       setBusca(null);
     }
@@ -126,11 +156,12 @@ export default function MencaoInput({
       ) : (
         <input ref={campo as React.RefObject<HTMLInputElement>} {...comum} />
       )}
-      {busca && sugestoes.length > 0 && (
+      {busca && sugestoes.length > 0 && lugar && (
         <ul
           role="listbox"
           aria-label="Mencionar"
-          className="absolute bottom-full left-0 z-30 mb-1 max-h-56 w-64 max-w-full overflow-y-auto rounded-xl border border-line bg-surface p-1 shadow-dropdown"
+          style={lugar}
+          className="fixed z-[70] overflow-y-auto rounded-xl border border-line bg-surface p-1 shadow-dropdown"
         >
           {sugestoes.map((p, i) => (
             <li key={p.id} role="option" aria-selected={i === destaque}>
@@ -142,7 +173,7 @@ export default function MencaoInput({
                   escolher(p);
                 }}
                 className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm ${
-                  i === destaque ? "bg-surface-hover text-ink" : "text-ink-muted"
+                  i === destaque ? "bg-brand/15 font-medium text-ink" : "text-ink-muted hover:bg-surface-hover"
                 }`}
               >
                 <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full bg-avatar text-[11px] font-semibold text-white">
