@@ -33,6 +33,9 @@
     --color-warning-light: 43 34 16;
     --color-danger: 240 85 90;
     --color-danger-light: 43 20 20;
+    /* Calendário: azul claro sobre o escuro, texto escuro em cima. */
+    --color-cal: 138 180 248;
+    --color-cal-texto: 16 24 40;
 
     /* Cores dos gráficos do Painel (validadas pra daltonismo — ver
        components/painel). Status: atrasadas/abertas/realizadas;
@@ -76,6 +79,8 @@
     --color-warning-light: 251 240 220;
     --color-danger: 196 42 48;
     --color-danger-light: 251 228 228;
+    --color-cal: 26 115 232;
+    --color-cal-texto: 255 255 255;
 
     --viz-atrasadas: #C42A30;
     --viz-abertas: #C27400;
@@ -205,6 +210,8 @@
     --color-success: 15 122 76;
     --color-warning: 154 102 8;
     --color-danger: 196 42 48;
+    --color-cal: 26 115 232;
+    --color-cal-texto: 255 255 255;
   }
 
   .nao-imprime {

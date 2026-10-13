@@ -383,33 +383,37 @@ export default function CalendarView({
 
       <div data-mov="card" className="rounded-2xl border border-line bg-surface p-3 sm:p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-ink sm:text-lg">
-            {tituloDaVisao(visao, dataRef)}
-          </h2>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <button
+              onClick={irParaHoje}
+              className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink hover:bg-surface-hover"
+            >
+              Hoje
+            </button>
+            <div className="flex items-center">
               <button
                 onClick={() => andar(-1)}
                 aria-label={`${rotuloPeriodo === "semana" ? "Semana anterior" : rotuloPeriodo === "dia" ? "Dia anterior" : "Mês anterior"}`}
-                className="rounded-lg border border-line p-1.5 text-ink-muted hover:bg-surface-hover hover:text-ink"
+                className="rounded-full p-2 text-ink-muted hover:bg-surface-hover hover:text-ink"
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </button>
-              <Button variant="secondary" size="sm" onClick={irParaHoje}>
-                Hoje
-              </Button>
               <button
                 onClick={() => andar(1)}
                 aria-label={`${rotuloPeriodo === "semana" ? "Próxima semana" : rotuloPeriodo === "dia" ? "Próximo dia" : "Próximo mês"}`}
-                className="rounded-lg border border-line p-1.5 text-ink-muted hover:bg-surface-hover hover:text-ink"
+                className="rounded-full p-2 text-ink-muted hover:bg-surface-hover hover:text-ink"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </button>
             </div>
+            <h2 className="text-lg font-normal text-ink sm:text-[22px]">
+              {tituloDaVisao(visao, dataRef)}
+            </h2>
+          </div>
 
+          <div className="flex flex-wrap items-center gap-2">
             <div
-              className="flex items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5"
+              className="flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5"
               role="group"
               aria-label="Visualização"
             >
@@ -424,9 +428,9 @@ export default function CalendarView({
                   key={valor}
                   onClick={() => setVisao(valor)}
                   aria-pressed={visao === valor}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                     visao === valor
-                      ? "bg-brand text-navy"
+                      ? "bg-cal text-cal-texto"
                       : "text-ink-muted hover:bg-surface-hover hover:text-ink"
                   }`}
                 >
@@ -443,7 +447,7 @@ export default function CalendarView({
               {DIAS_SEMANA.map((dia) => (
                 <div
                   key={dia}
-                  className="bg-canvas px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
+                  className="bg-surface px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide text-ink-muted"
                 >
                   {dia}
                 </div>
@@ -453,41 +457,46 @@ export default function CalendarView({
                 const key = dateKey(date);
                 const tarefasDoDia = tasksPorDia[key] ?? [];
                 const ehHoje = key === hojeKey;
-                const fimDeSemana = date.getDay() === 0 || date.getDay() === 6;
 
                 const visiveis = tarefasDoDia.slice(0, MAX_EVENTOS_VISIVEIS);
                 const extras = tarefasDoDia.length - visiveis.length;
 
-                let cellBg = "bg-surface hover:bg-canvas/70";
-                if (!noMesAtual) cellBg = "bg-canvas/40 hover:bg-canvas/70";
-                else if (fimDeSemana) cellBg = "bg-canvas/40 hover:bg-canvas/70";
+                const cellBg = "bg-surface hover:bg-surface-hover/60";
+                // No dia 1 o número vem com o mês ("1 nov"), como no Google Agenda.
+                const primeiroDoMes = date.getDate() === 1;
 
                 return (
                   <div
                     key={key}
                     onClick={() => abrirCriar(key)}
-                    className={`group relative min-h-[108px] cursor-pointer p-1.5 transition-colors ${cellBg}`}
+                    className={`group relative min-h-[108px] cursor-pointer px-1 pb-1 pt-1.5 transition-colors ${cellBg}`}
                     title="Clique para criar uma tarefa neste dia"
                   >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDataRef(date);
-                        setVisao("dia");
-                      }}
-                      title="Ver o dia"
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs hover:ring-2 hover:ring-brand/40 ${
-                        ehHoje
-                          ? "bg-brand font-semibold text-navy"
-                          : noMesAtual
-                          ? "font-medium text-ink"
-                          : "text-ink-muted"
-                      }`}
-                    >
-                      {date.getDate()}
-                    </button>
+                    <div className="flex justify-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDataRef(date);
+                          setVisao("dia");
+                        }}
+                        title="Ver o dia"
+                        className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full text-xs ${
+                          primeiroDoMes && !ehHoje ? "px-1.5" : ""
+                        } ${
+                          ehHoje
+                            ? "bg-cal px-1.5 font-medium text-cal-texto"
+                            : noMesAtual
+                            ? "font-medium text-ink hover:bg-surface-hover"
+                            : "text-ink-muted hover:bg-surface-hover"
+                        }`}
+                      >
+                        {primeiroDoMes
+                          ? `${date.getDate()} ${MESES[date.getMonth()].slice(0, 3).toLowerCase()}`
+                          : date.getDate()}
+                      </button>
+                    </div>
 
-                    <div className="mt-1 space-y-0.5">
+                    <div className="mt-1 space-y-[3px]">
                       {visiveis.map((task) => (
                         <ChipTarefa
                           key={task.id}
@@ -579,29 +588,31 @@ function ChipTarefa({
   onAbrir: () => void;
   onExcluir: (e: React.MouseEvent) => void;
 }) {
+  const cor = corTarefa(task.color);
+  const feita = task.status === "done";
+  // Como no Google Agenda: o evento é um bloco da cor da tarefa, com o texto
+  // por cima. Tarefa concluída fica apagada e riscada.
   return (
     <div
       onClick={(e) => {
         e.stopPropagation();
         onAbrir();
       }}
-      className="group/chip flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-surface-hover"
+      style={{ backgroundColor: cor.fundo, color: cor.texto }}
+      className={`group/chip flex cursor-pointer items-center gap-1.5 rounded-[5px] px-1.5 py-[3px] transition-[filter] hover:brightness-110 ${
+        feita ? "opacity-60" : ""
+      }`}
     >
-      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${corTarefa(task.color).dot}`} />
-      <span
-        className={`flex-1 truncate text-[11px] ${
-          task.status === "done" ? "text-ink-muted line-through" : "text-ink"
-        }`}
-      >
+      <span className={`flex-1 truncate text-[11px] font-medium leading-4 ${feita ? "line-through" : ""}`}>
         {task.title}
       </span>
       {dia && dia !== task.due_date ? (
-        <span className="hidden flex-shrink-0 text-[10px] text-ink-muted sm:inline">
+        <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">
           até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}
         </span>
       ) : (
         task.due_time && (
-          <span className="hidden flex-shrink-0 text-[10px] text-ink-muted sm:inline">
+          <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">
             {task.due_time.slice(0, 5)}
           </span>
         )
@@ -609,7 +620,7 @@ function ChipTarefa({
       <button
         onClick={onExcluir}
         title="Excluir tarefa"
-        className="hidden flex-shrink-0 text-ink-muted hover:text-danger group-hover/chip:inline-flex"
+        className="hidden flex-shrink-0 opacity-80 hover:opacity-100 group-hover/chip:inline-flex"
       >
         <XIcon className="h-3 w-3" />
       </button>
@@ -673,7 +684,7 @@ function GradeHoras({
         {/* Cabeçalho dos dias + "Dia todo" ficam presos no topo ao rolar, e
             dentro da mesma área de rolagem, pra alinhar com as colunas. */}
         <div className="sticky top-0 z-20 bg-surface">
-        <div className="grid border-b border-line bg-canvas" style={{ gridTemplateColumns: colunas }}>
+        <div className="grid border-b border-line bg-surface" style={{ gridTemplateColumns: colunas }}>
           <div />
           {dias.map((d) => {
             const key = dateKey(d);
@@ -685,12 +696,16 @@ function GradeHoras({
                 disabled={detalhado}
                 className="flex flex-col items-center gap-0.5 border-l border-line py-2 disabled:cursor-default"
               >
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                <span
+                  className={`text-[11px] font-medium uppercase tracking-wide ${
+                    ehHoje ? "text-cal" : "text-ink-muted"
+                  }`}
+                >
                   {DIAS_SEMANA[d.getDay()]}
                 </span>
                 <span
-                  className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${
-                    ehHoje ? "bg-brand font-semibold text-navy" : "font-medium text-ink"
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg ${
+                    ehHoje ? "bg-cal font-medium text-cal-texto" : "font-normal text-ink hover:bg-surface-hover"
                   }`}
                 >
                   {d.getDate()}
@@ -712,7 +727,7 @@ function GradeHoras({
               <div
                 key={key}
                 onClick={() => onCriar(key)}
-                className="min-h-[36px] cursor-pointer space-y-0.5 border-l border-line p-1 hover:bg-canvas/70"
+                className="min-h-[36px] cursor-pointer space-y-[3px] border-l border-line p-1 hover:bg-surface-hover/60"
               >
                 {semHora.map((t) =>
                   detalhado ? (
@@ -747,8 +762,8 @@ function GradeHoras({
                       key={`${key}-${h}`}
                       onClick={() => onCriar(key, h)}
                       title={`Criar tarefa às ${String(h).padStart(2, "0")}:00`}
-                      className={`cursor-pointer space-y-0.5 overflow-hidden border-b border-l border-line p-0.5 hover:bg-canvas/70 ${
-                        key === hojeKey && !detalhado ? "bg-brand-light/30" : ""
+                      className={`cursor-pointer space-y-[3px] overflow-hidden border-b border-l border-line p-0.5 hover:bg-surface-hover/60 ${
+                        key === hojeKey && !detalhado ? "bg-cal/5" : ""
                       }`}
                       style={{ height: ALTURA_HORA }}
                     >
@@ -803,34 +818,34 @@ function CartaoTarefa({
   onAbrir: () => void;
   onExcluir: (e: React.MouseEvent) => void;
 }) {
+  const cor = corTarefa(task.color);
+  const feita = task.status === "done";
   return (
     <div
       onClick={(e) => {
         e.stopPropagation();
         onAbrir();
       }}
-      className="group/chip flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-2 py-1 hover:border-brand"
+      style={{ backgroundColor: cor.fundo, color: cor.texto }}
+      className={`group/chip flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-[filter] hover:brightness-110 ${
+        feita ? "opacity-60" : ""
+      }`}
     >
-      <span className={`h-2 w-2 flex-shrink-0 rounded-full ${corTarefa(task.color).dot}`} />
       {dia && dia !== task.due_date ? (
-        <span className="flex-shrink-0 text-xs text-ink-muted">até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}</span>
+        <span className="flex-shrink-0 text-xs opacity-80">até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}</span>
       ) : (
-        task.due_time && <span className="flex-shrink-0 text-xs font-medium text-ink-muted">{task.due_time.slice(0, 5)}</span>
+        task.due_time && <span className="flex-shrink-0 text-xs font-medium opacity-90">{task.due_time.slice(0, 5)}</span>
       )}
-      <span
-        className={`min-w-0 flex-1 truncate text-sm ${
-          task.status === "done" ? "text-ink-muted line-through" : "text-ink"
-        }`}
-      >
+      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${feita ? "line-through" : ""}`}>
         {task.title}
       </span>
-      <span className="hidden flex-shrink-0 truncate text-xs text-ink-muted sm:inline">
+      <span className="hidden flex-shrink-0 truncate text-xs opacity-80 sm:inline">
         {projeto ?? "Geral"}
       </span>
       <button
         onClick={onExcluir}
         title="Excluir tarefa"
-        className="hidden flex-shrink-0 text-ink-muted hover:text-danger group-hover/chip:inline-flex"
+        className="hidden flex-shrink-0 opacity-80 hover:opacity-100 group-hover/chip:inline-flex"
       >
         <XIcon className="h-3.5 w-3.5" />
       </button>

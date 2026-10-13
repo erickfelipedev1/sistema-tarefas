@@ -28,6 +28,11 @@ const config: Config = {
           light: "rgb(var(--color-brand-light) / <alpha-value>)",
           forte: "rgb(var(--color-brand-forte) / <alpha-value>)",
         },
+        // Azul do calendário (hoje, visão escolhida): troca de tom com o tema.
+        cal: {
+          DEFAULT: "rgb(var(--color-cal) / <alpha-value>)",
+          texto: "rgb(var(--color-cal-texto) / <alpha-value>)",
+        },
         canvas: "rgb(var(--color-canvas) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",
         "surface-hover": "rgb(var(--color-surface-hover) / <alpha-value>)",

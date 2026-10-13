@@ -560,7 +560,8 @@ export default function TaskModal({
                           setColor(cor.key);
                           if (!isNovo) salvarCampo({ color: cor.key });
                         }}
-                        className={`h-4 w-4 rounded-full ${cor.dot} ${
+                        style={{ backgroundColor: cor.fundo }}
+                        className={`h-4 w-4 rounded-full ${
                           color === cor.key
                             ? "ring-2 ring-brand ring-offset-1 ring-offset-surface"
                             : ""
