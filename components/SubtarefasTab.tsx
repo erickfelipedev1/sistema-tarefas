@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Task, TaskStatus } from "@/lib/types";
 import { nomeParaMencao } from "@/lib/mencoes";
+import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { STATUS_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
 import { XIcon } from "./ui/icons";
@@ -46,6 +47,8 @@ export default function SubtarefasTab({
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [novo, setNovo] = useState("");
+  // Responsável já escolhido pra subtarefa que está sendo criada (opcional).
+  const [novoResponsavel, setNovoResponsavel] = useState("");
   const [criando, setCriando] = useState(false);
 
   useEffect(() => {
@@ -112,7 +115,7 @@ export default function SubtarefasTab({
         due_date: entrega,
         repeat_rule: "none",
         color: tarefa.color,
-        assigned_to: [],
+        assigned_to: novoResponsavel ? [novoResponsavel] : [],
         created_by_label: currentUserLabel,
       })
       .select()
@@ -128,8 +131,26 @@ export default function SubtarefasTab({
     const criada = data as Task;
     setItens((atual) => (atual.some((i) => i.id === criada.id) ? atual : [...atual, criada]));
     setNovo("");
+    setNovoResponsavel("");
     aoCriar(criada);
     aoMudar();
+    // Push no celular de quem recebeu (o aviso do sininho vem do banco).
+    if (novoResponsavel) avisarTarefaAtribuida(criada.id).catch(() => {});
+  }
+
+  // Põe ou tira responsáveis da subtarefa. Quem entra recebe o aviso.
+  async function mudarResponsaveis(item: Task, proximos: string[], entrou?: string) {
+    const antes = item;
+    const depois = { ...item, assigned_to: proximos };
+    setItens((atual) => atual.map((i) => (i.id === item.id ? depois : i)));
+    const { error } = await supabase.from("tasks").update({ assigned_to: proximos }).eq("id", item.id);
+    if (error) {
+      setItens((atual) => atual.map((i) => (i.id === item.id ? antes : i)));
+      return setErro("Não foi possível salvar o responsável. Tente de novo.");
+    }
+    setErro(null);
+    aoAtualizar(depois);
+    if (entrou) avisarTarefaAtribuida(item.id, [entrou]).catch(() => {});
   }
 
   async function mudarStatus(item: Task, status: TaskStatus) {
@@ -219,11 +240,45 @@ export default function SubtarefasTab({
                     </option>
                   ))}
                 </select>
-                <span>
-                  {responsaveis.length > 0
-                    ? responsaveis.map((p) => nomeParaMencao(p).split(" ")[0] || "Sem nome").join(", ")
-                    : "Sem responsável"}
-                </span>
+                {responsaveis.map((p) => (
+                  <span
+                    key={p.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-surface-hover py-0.5 pl-2 pr-1 text-ink"
+                  >
+                    {nomeParaMencao(p).split(" ")[0] || "Sem nome"}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        mudarResponsaveis(
+                          item,
+                          (item.assigned_to ?? []).filter((id) => id !== p.id)
+                        )
+                      }
+                      aria-label={`Tirar ${nomeParaMencao(p)} da subtarefa`}
+                      className="grid h-4 w-4 place-items-center rounded-full text-ink-muted hover:bg-danger-light hover:text-danger"
+                    >
+                      <XIcon className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id) mudarResponsaveis(item, [...(item.assigned_to ?? []), id], id);
+                  }}
+                  aria-label="Adicionar responsável à subtarefa"
+                  className={`${campo} max-w-[10rem]`}
+                >
+                  <option value="">{responsaveis.length === 0 ? "+ Responsável" : "+ Adicionar"}</option>
+                  {pessoas
+                    .filter((p) => !(item.assigned_to ?? []).includes(p.id))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {nomeParaMencao(p) || "Sem nome"}
+                      </option>
+                    ))}
+                </select>
                 {prazo && <span>· prazo {prazo}</span>}
               </div>
             </li>
@@ -233,15 +288,28 @@ export default function SubtarefasTab({
       {!carregando && itens.length === 0 && !erro && <p className="text-xs text-ink-muted">Nenhuma subtarefa ainda.</p>}
       {erro && <p className="mt-2 text-sm text-danger">{erro}</p>}
 
-      <form onSubmit={adicionar} className="mt-3 flex gap-2">
+      <form onSubmit={adicionar} className="mt-3 flex flex-wrap gap-2">
         <input
           value={novo}
           onChange={(e) => setNovo(e.target.value)}
           maxLength={200}
           placeholder="Nova subtarefa..."
           aria-label="Nova subtarefa"
-          className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+          className="min-w-[10rem] flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
+        <select
+          value={novoResponsavel}
+          onChange={(e) => setNovoResponsavel(e.target.value)}
+          aria-label="Responsável pela nova subtarefa"
+          className="max-w-[11rem] rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+        >
+          <option value="">Sem responsável</option>
+          {pessoas.map((p) => (
+            <option key={p.id} value={p.id}>
+              {nomeParaMencao(p) || "Sem nome"}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           disabled={criando}
