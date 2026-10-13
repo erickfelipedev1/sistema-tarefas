@@ -2,6 +2,7 @@ import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import CalendarView from "@/components/CalendarView";
 import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
+import { comPacote, pacotesDosClientes } from "@/lib/pacotes";
 
 export default async function CalendarioPage() {
   const supabase = await clienteDaRequisicao();
@@ -28,10 +29,12 @@ export default async function CalendarioPage() {
   // Mesmos dados que o quadro de Tarefas usa pro modal de criar/editar
   // tarefa — reaproveitado aqui pra abrir o mesmo modal a partir do
   // calendário, em vez de um fluxo de criação separado.
-  const { data: projects } = await supabase
+  const { data: clientes } = await supabase
     .from("projects")
     .select("*")
     .order("name", { ascending: true });
+  // Tipo de serviço de cada cliente, pra aparecer junto do nome nas tarefas.
+  const projects = comPacote(clientes ?? [], await pacotesDosClientes(supabase));
 
   const { data: profiles } = await supabase
     .from("profiles")

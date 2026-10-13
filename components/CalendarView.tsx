@@ -654,7 +654,8 @@ function GradeHoras({
   }, []);
 
   const nomeProjeto = useMemo(
-    () => new Map(projetos.map((p) => [p.id, p.name])),
+    // Com o tipo de serviço (pacote) junto do nome, quando o cliente tem.
+    () => new Map(projetos.map((p) => [p.id, p.pacote_nome ? `${p.name} · ${p.pacote_nome}` : p.name])),
     [projetos]
   );
   const colunas = `56px repeat(${dias.length}, minmax(${detalhado ? 0 : 96}px, 1fr))`;

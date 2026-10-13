@@ -107,6 +107,11 @@ export default function TaskBoard({
     () => new Map(projects.map((p) => [p.id, p.name])),
     [projects]
   );
+  // Tipo de serviço (pacote) de cada cliente, quando a página mandou.
+  const pacoteById = useMemo(
+    () => new Map(projects.flatMap((p) => (p.pacote_nome ? [[p.id, p.pacote_nome] as const] : []))),
+    [projects]
+  );
   const profileById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
     [profiles]
@@ -536,6 +541,11 @@ export default function TaskBoard({
                             >
                               <Badge tone="neutral">
                                 {projectsById.get(task.project_id) ?? "Cliente"}
+                                {pacoteById.get(task.project_id) && (
+                                  <span className="font-semibold text-brand-forte">
+                                    · {pacoteById.get(task.project_id)}
+                                  </span>
+                                )}
                               </Badge>
                             </Link>
                           )}

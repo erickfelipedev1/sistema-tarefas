@@ -15,6 +15,8 @@ import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
 import PostsManager from "@/components/PostsManager";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
+import { TipoDeServicoDoCliente } from "@/components/TipoDeServico";
+import { pacotesDisponiveis } from "@/lib/pacotes";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
@@ -76,6 +78,8 @@ export default async function ProjetoPage({
   // sem valor — a função do banco só devolve isso. Sem a migration, ou sem
   // pacote, o cartão não aparece.
   const { data: pacoteDoCliente } = await supabase.rpc("pacote_do_cliente", { p_project_id: id });
+  // Os pacotes que dá pra escolher (migration 0056); null = troca indisponível.
+  const pacotesParaEscolher = await pacotesDisponiveis(supabase);
 
   // Páginas da Wiki do cliente, com as fixadas em destaque (migration 0054).
   // Sem a migration a coluna não existe e a consulta falha: aí vale a lista
@@ -127,9 +131,17 @@ export default async function ProjetoPage({
       </Link>
 
       <div data-mov="topo" className="mb-5 mt-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
-          {project.name}
-        </h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
+            {project.name}
+          </h1>
+          <TipoDeServicoDoCliente
+            projectId={id}
+            clienteNome={project.name}
+            pacoteAtual={(pacoteDoCliente as PacoteDoCliente | null)?.name ?? null}
+            pacotes={pacotesParaEscolher}
+          />
+        </div>
         <p className="mt-0.5 text-sm text-ink-muted">
           Quadro de tarefas e Wiki próprios
           {responsaveisDoCliente.length > 0

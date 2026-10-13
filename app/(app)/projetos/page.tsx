@@ -2,6 +2,7 @@ import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import ProjectsList from "@/components/ProjectsList";
 import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
+import { pacotesDisponiveis, pacotesDosClientes } from "@/lib/pacotes";
 
 export default async function ProjetosPage() {
   const supabase = await clienteDaRequisicao();
@@ -53,13 +54,10 @@ export default async function ProjetosPage() {
   }
 
   // O pacote de cada cliente neste mês (migration 0055), só nome e ordem, sem
-  // valor — pra lista agrupar por pacote. Sem a migration, a lista fica sem
-  // os grupos.
-  const { data: linhasDePacote } = await supabase.rpc("pacotes_dos_clientes");
-  const pacotes: Record<string, { nome: string; posicao: number }> = {};
-  for (const linha of (linhasDePacote ?? []) as { project_id: string; package_name: string; package_position: number }[]) {
-    pacotes[linha.project_id] = { nome: linha.package_name, posicao: linha.package_position };
-  }
+  // valor — pra lista agrupar por pacote — e os pacotes que dá pra escolher
+  // (migration 0056). Sem as migrations, a lista fica sem os grupos e sem a
+  // opção de trocar.
+  const [pacotes, disponiveis] = await Promise.all([pacotesDosClientes(supabase), pacotesDisponiveis(supabase)]);
 
   // Fotinha dos responsáveis (ou de quem criou) de cada cliente, mostrada no
   // card, e a lista de pessoas pra escolher os responsáveis.
@@ -77,6 +75,7 @@ export default async function ProjetosPage() {
         verTudo={verTudo}
         profiles={profiles ?? []}
         pacotes={pacotes}
+        pacotesDisponiveis={disponiveis}
         title={verTudo ? "Todos os clientes" : "Meus clientes"}
         subtitle="Organize seus clientes, equipes e entregas em um só lugar."
       />

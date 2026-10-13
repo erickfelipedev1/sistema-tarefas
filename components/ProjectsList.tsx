@@ -11,6 +11,8 @@ import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
+import { TipoDeServicoDialog } from "./TipoDeServico";
+import type { PacoteDisponivel } from "@/lib/pacotes";
 import {
   ChevronRightIcon,
   FolderIcon,
@@ -19,6 +21,7 @@ import {
   MoreVerticalIcon,
   PencilIcon,
   PlusIcon,
+  TargetIcon,
   Trash2Icon,
   UsersIcon,
 } from "./ui/icons";
@@ -35,6 +38,7 @@ export default function ProjectsList({
   verTudo = false,
   profiles = [],
   pacotes = {},
+  pacotesDisponiveis = null,
   title,
   subtitle,
 }: {
@@ -56,6 +60,9 @@ export default function ProjectsList({
   // não está aqui não tem pacote. Com algum cliente em pacote, a lista é
   // agrupada por pacote.
   pacotes?: Record<string, { nome: string; posicao: number }>;
+  // Os pacotes que dá pra escolher pra um cliente; null = a troca não está
+  // disponível (falta a migration 0056).
+  pacotesDisponiveis?: PacoteDisponivel[] | null;
   title: string;
   subtitle: string;
 }) {
@@ -70,6 +77,8 @@ export default function ProjectsList({
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
   // Cliente com a janela de responsáveis aberta.
   const [editandoResponsaveis, setEditandoResponsaveis] = useState<Project | null>(null);
+  // Cliente com a janela de tipo de serviço aberta.
+  const [editandoPacote, setEditandoPacote] = useState<Project | null>(null);
 
   // A ordenação escolhida fica guardada no navegador de cada pessoa.
   useEffect(() => {
@@ -442,11 +451,22 @@ export default function ProjectsList({
                   onDelete={() => handleDelete(project)}
                   onTogglePublic={() => handleTogglePublic(project)}
                   onResponsaveis={() => setEditandoResponsaveis(project)}
+                  onPacote={pacotesDisponiveis ? () => setEditandoPacote(project) : undefined}
                 />
               ))}
             </div>
           </section>
         ))
+      )}
+
+      {editandoPacote && pacotesDisponiveis && (
+        <TipoDeServicoDialog
+          projectId={editandoPacote.id}
+          clienteNome={editandoPacote.name}
+          pacoteAtual={pacotes[editandoPacote.id]?.nome ?? null}
+          pacotes={pacotesDisponiveis}
+          aoFechar={() => setEditandoPacote(null)}
+        />
       )}
 
       {editandoResponsaveis && (
@@ -566,6 +586,7 @@ function ProjectCard({
   onDelete,
   onTogglePublic,
   onResponsaveis,
+  onPacote,
 }: {
   project: Project;
   avatarUrl: string | null | undefined;
@@ -577,6 +598,8 @@ function ProjectCard({
   onDelete: () => void;
   onTogglePublic: () => void;
   onResponsaveis: () => void;
+  // Abre a janela de tipo de serviço; ausente = a troca não está disponível.
+  onPacote?: () => void;
 }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -682,7 +705,7 @@ function ProjectCard({
         {menuAberto && (
           <div
             role="menu"
-            className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown"
+            className="absolute right-0 top-8 z-10 w-44 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-dropdown"
           >
             <Link
               href={`/projetos/${project.id}`}
@@ -715,6 +738,19 @@ function ProjectCard({
               <UsersIcon className="h-3.5 w-3.5" />
               Responsáveis
             </button>
+            {onPacote && (
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setMenuAberto(false);
+                  onPacote();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
+              >
+                <TargetIcon className="h-3.5 w-3.5" />
+                Tipo de serviço
+              </button>
+            )}
             <button
               role="menuitem"
               onClick={() => {

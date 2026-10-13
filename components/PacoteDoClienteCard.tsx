@@ -9,15 +9,23 @@ export interface PacoteDoCliente {
   items: string[] | null;
 }
 
-// Cartão do pacote na página do cliente, pra equipe inteira saber o que está
-// contratado. O valor não aparece aqui de propósito: ele fica só no
-// Relatório > Faturamento, pra quem vê faturamento.
-export default function PacoteDoClienteCard({ pacote }: { pacote: PacoteDoCliente }) {
+// Cartão do pacote na página do cliente (pra equipe inteira saber o que está
+// contratado) e no portal do cliente (pra ele ver o que contratou). O valor
+// não aparece aqui de propósito: ele fica só no Relatório > Faturamento, pra
+// quem vê faturamento.
+export default function PacoteDoClienteCard({
+  pacote,
+  titulo = "Pacote contratado",
+}: {
+  pacote: PacoteDoCliente;
+  // No portal do cliente o cartão fala com ele: "Seu pacote".
+  titulo?: string;
+}) {
   const itens = Array.isArray(pacote.items) ? pacote.items : [];
   return (
     <section className="mb-3 rounded-2xl border border-line bg-surface px-5 py-4">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink">
-        Pacote contratado
+        {titulo}
         <Badge tone="brand">{pacote.name}</Badge>
       </p>
       {pacote.description && <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">{pacote.description}</p>}

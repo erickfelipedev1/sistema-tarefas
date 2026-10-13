@@ -8,6 +8,7 @@ import { ProjectOverviewPanel } from "@/components/onboarding/ProjectOverviewPan
 import { ClientCalendar } from "@/components/onboarding/ClientCalendar";
 import { ClientPosts } from "@/components/onboarding/ClientPosts";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
+import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { reporteiConfigurado } from "@/lib/reportei";
 import { midiasValidas } from "@/lib/posts";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
@@ -38,6 +39,7 @@ export default async function ProgressoPage({
     { data: notificationsData },
     { data: messagesData },
     { data: postsData },
+    { data: pacoteData },
   ] = await Promise.all([
     supabase.rpc("get_project_progress", { p_token: params.token }),
     supabase.rpc("get_project_documents", { p_token: params.token }),
@@ -48,6 +50,8 @@ export default async function ProgressoPage({
     supabase.rpc("get_project_messages", { p_token: params.token }),
     // Sem a migration 0051 a função não existe: volta erro e a aba fica vazia.
     supabase.rpc("get_project_posts", { p_token: params.token }),
+    // O pacote contratado (migration 0056): nome e o que inclui, sem valor.
+    supabase.rpc("get_project_package", { p_token: params.token }),
   ]);
 
   const progresso = progressData as ProjectProgress | null;
@@ -144,6 +148,10 @@ export default async function ProgressoPage({
 
       <ClientDashboardTabs
         visaoGeral={
+          <>
+          {pacoteData && (
+            <PacoteDoClienteCard pacote={pacoteData as PacoteDoCliente} titulo="Seu pacote" />
+          )}
           <ProjectOverviewPanel
             token={params.token}
             overview={overview}
@@ -153,6 +161,7 @@ export default async function ProgressoPage({
             invoices={faturas}
             tasks={progresso.tasks}
           />
+          </>
         }
         andamento={<ProjectProgressPanel data={progresso} />}
         calendario={<ClientCalendar tasks={progresso.tasks} />}

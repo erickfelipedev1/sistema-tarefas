@@ -2,6 +2,7 @@ import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import TaskBoard from "@/components/TaskBoard";
 import Coreografia from "@/components/movimento/Coreografia";
 import { podeVerTudo } from "@/lib/permissions";
+import { comPacote, pacotesDosClientes } from "@/lib/pacotes";
 
 export default async function BoardPage() {
   const supabase = await clienteDaRequisicao();
@@ -15,7 +16,7 @@ export default async function BoardPage() {
   const verTudo = await podeVerTudo(supabase, user?.id);
 
   // As três consultas saem juntas, em vez de uma esperando a outra.
-  const [{ data: tasks }, { data: projects }, { data: profiles }] = await Promise.all([
+  const [{ data: tasks }, { data: projects }, { data: profiles }, pacotes] = await Promise.all([
     verTudo
       ? supabase.from("tasks").select("*").order("position", { ascending: true })
       : supabase
@@ -25,6 +26,8 @@ export default async function BoardPage() {
           .order("position", { ascending: true }),
     supabase.from("projects").select("*").order("name", { ascending: true }),
     supabase.from("profiles").select("id, username, name, avatar_url").order("name", { ascending: true }),
+    // Tipo de serviço de cada cliente, pra aparecer na etiqueta da tarefa.
+    pacotesDosClientes(supabase),
   ]);
 
   const userLabel =
@@ -41,7 +44,7 @@ export default async function BoardPage() {
         currentUserLabel={userLabel}
         allProjects
         soMinhas={!verTudo}
-        projects={projects ?? []}
+        projects={comPacote(projects ?? [], pacotes)}
         profiles={profiles ?? []}
         title={verTudo ? "Tarefas de todo mundo" : "Minhas tarefas"}
         subtitle="Organize seu dia e acompanhe o que precisa ser feito."
