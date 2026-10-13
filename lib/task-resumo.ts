@@ -6,17 +6,28 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type ResumoTarefa = {
   checklistFeitos: number;
   checklistTotal: number;
+  // Subtarefas (migration 0065): concluídas e total.
+  subtarefasFeitas: number;
+  subtarefasTotal: number;
   comentarios: number;
   anexos: number;
   horas: number;
 };
 
 export function resumoVazio(): ResumoTarefa {
-  return { checklistFeitos: 0, checklistTotal: 0, comentarios: 0, anexos: 0, horas: 0 };
+  return {
+    checklistFeitos: 0,
+    checklistTotal: 0,
+    subtarefasFeitas: 0,
+    subtarefasTotal: 0,
+    comentarios: 0,
+    anexos: 0,
+    horas: 0,
+  };
 }
 
 export function temConteudo(r: ResumoTarefa | undefined) {
-  return !!r && (r.checklistTotal > 0 || r.comentarios > 0 || r.anexos > 0 || r.horas > 0);
+  return !!r && (r.checklistTotal > 0 || r.subtarefasTotal > 0 || r.comentarios > 0 || r.anexos > 0 || r.horas > 0);
 }
 
 const LOTE = 100; // ids por consulta, pra URL não ficar grande demais
@@ -31,8 +42,9 @@ export async function carregarResumos(
 
   for (let i = 0; i < unicos.length; i += LOTE) {
     const lote = unicos.slice(i, i + LOTE);
-    const [checklist, comentarios, anexos, horas] = await Promise.all([
+    const [checklist, subtarefas, comentarios, anexos, horas] = await Promise.all([
       supabase.from("task_checklist_items").select("task_id, done").in("task_id", lote),
+      supabase.from("task_subtasks").select("task_id, status").in("task_id", lote),
       supabase.from("task_comments").select("task_id").in("task_id", lote),
       supabase.from("task_attachments").select("task_id").in("task_id", lote),
       supabase.from("task_hours").select("task_id, hours").in("task_id", lote),
@@ -42,6 +54,13 @@ export async function carregarResumos(
       if (!r) return;
       r.checklistTotal += 1;
       if (c.done) r.checklistFeitos += 1;
+    });
+    // Sem a migration 0065 a consulta falha e as subtarefas só ficam em zero.
+    (subtarefas.data ?? []).forEach((s) => {
+      const r = mapa[s.task_id as string];
+      if (!r) return;
+      r.subtarefasTotal += 1;
+      if (s.status === "done") r.subtarefasFeitas += 1;
     });
     (comentarios.data ?? []).forEach((c) => {
       const r = mapa[c.task_id as string];

@@ -31,13 +31,15 @@ import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "
 import { avisarMencao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
 import MencaoInput from "./MencaoInput";
+import SubtarefasTab from "./SubtarefasTab";
 import { idsMencionados, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
 
-type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas" | "copy" | "post";
+type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "horas" | "copy" | "post";
 
 const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "detalhes", label: "Detalhes", icone: "📋" },
   { key: "checklist", label: "Checklist", icone: "✅" },
+  { key: "subtarefas", label: "Subtarefas", icone: "🧩" },
   { key: "anexos", label: "Anexos", icone: "📎" },
   { key: "comentarios", label: "Comentários", icone: "💬" },
   { key: "horas", label: "Horas", icone: "⏱️" },
@@ -396,6 +398,16 @@ export default function TaskModal({
                     </label>
                   ))}
                 </div>
+                {/* Concluir com subtarefa aberta é permitido; só avisa. */}
+                {status === "done" && resumo.subtarefasTotal > resumo.subtarefasFeitas && (
+                  <p className="mt-2 rounded-lg bg-warning-light px-3 py-2 text-xs text-warning">
+                    Esta tarefa está concluída, mas ainda tem {resumo.subtarefasTotal - resumo.subtarefasFeitas}{" "}
+                    {resumo.subtarefasTotal - resumo.subtarefasFeitas === 1 ? "subtarefa aberta" : "subtarefas abertas"}.{" "}
+                    <button type="button" onClick={() => setAba("subtarefas")} className="font-medium underline">
+                      Ver subtarefas
+                    </button>
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -624,6 +636,15 @@ export default function TaskModal({
 
           {aba === "checklist" && current && (
             <ChecklistTab taskId={current.id} pageId={current.page_id} />
+          )}
+          {aba === "subtarefas" && current && (
+            <SubtarefasTab
+              taskId={current.id}
+              pessoas={profiles}
+              aoMudar={() =>
+                carregarResumos(supabase, [current.id]).then((m) => setResumo(m[current.id] ?? resumoVazio()))
+              }
+            />
           )}
           {aba === "anexos" && current && (
             <AnexosTab
@@ -1495,6 +1516,7 @@ function CopyTab({ valor, onSalvar }: { valor: string; onSalvar: (texto: string)
 
 function contadorDaAba(aba: Aba, r: ResumoTarefa): string | null {
   if (aba === "checklist" && r.checklistTotal) return `${r.checklistFeitos}/${r.checklistTotal}`;
+  if (aba === "subtarefas" && r.subtarefasTotal) return `${r.subtarefasFeitas}/${r.subtarefasTotal}`;
   if (aba === "comentarios" && r.comentarios) return String(r.comentarios);
   if (aba === "anexos" && r.anexos) return String(r.anexos);
   if (aba === "horas" && r.horas) return formatarHoras(r.horas);

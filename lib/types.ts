@@ -65,6 +65,23 @@ export interface UserNotification {
   created_at: string;
 }
 
+// Subtarefa (migration 0065): item menor dentro de uma tarefa, com status,
+// responsável e prazo próprios.
+export type SubtaskStatus = "todo" | "doing" | "approval" | "done";
+
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  status: SubtaskStatus;
+  assigned_to: string | null;
+  due_date: string | null;
+  position: number;
+  created_by: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
 export interface TaskAttachment {
   id: string;
   task_id: string;

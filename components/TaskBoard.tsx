@@ -729,6 +729,18 @@ function IndicadoresTarefa({ resumo }: { resumo: ResumoTarefa }) {
           ✅ {resumo.checklistFeitos}/{resumo.checklistTotal}
         </span>
       )}
+      {resumo.subtarefasTotal > 0 && (
+        <span
+          title="Subtarefas"
+          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 ${
+            resumo.subtarefasFeitas === resumo.subtarefasTotal
+              ? "bg-success-light font-medium text-success"
+              : "bg-surface-hover"
+          }`}
+        >
+          🧩 {resumo.subtarefasFeitas}/{resumo.subtarefasTotal}
+        </span>
+      )}
       {resumo.comentarios > 0 && (
         <span title="Comentários" className="inline-flex items-center gap-1 rounded-md bg-surface-hover px-1.5 py-0.5">
           💬 {resumo.comentarios}
