@@ -335,6 +335,8 @@ export interface Post {
   media: PostMedia[];
   // Capa do reel (migration 0059): uma imagem, opcional, só em reel.
   cover: PostMedia | null;
+  // De qual tarefa o post saiu (migration 0062), se saiu de uma.
+  task_id?: string | null;
   status: PostStatus;
   sent_count: number;
   sent_at: string | null;

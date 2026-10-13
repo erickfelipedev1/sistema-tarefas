@@ -29,8 +29,9 @@ import {
 } from "@/lib/task-wiki-sync";
 import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
+import PostDaTarefa from "./posts/PostDaTarefa";
 
-type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas" | "copy";
+type Aba = "detalhes" | "checklist" | "anexos" | "comentarios" | "horas" | "copy" | "post";
 
 const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "detalhes", label: "Detalhes", icone: "📋" },
@@ -39,6 +40,7 @@ const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "comentarios", label: "Comentários", icone: "💬" },
   { key: "horas", label: "Horas", icone: "⏱️" },
   { key: "copy", label: "Copywrite", icone: "✍️" },
+  { key: "post", label: "Post", icone: "🖼️" },
 ];
 
 export default function TaskModal({
@@ -640,6 +642,16 @@ export default function TaskModal({
               key={current.id}
               valor={current.copy_text ?? ""}
               onSalvar={(texto) => salvarCampo({ copy_text: texto.trim() || null })}
+            />
+          )}
+          {aba === "post" && current && (
+            <PostDaTarefa
+              taskId={current.id}
+              projectId={current.project_id}
+              projectName={projects.find((p) => p.id === current.project_id)?.name ?? "o cliente"}
+              copyText={current.copy_text ?? ""}
+              dueDate={current.due_date}
+              currentUserLabel={currentUserLabel}
             />
           )}
           {aba === "horas" && current && (
