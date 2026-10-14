@@ -45,6 +45,8 @@ export async function middleware(request: NextRequest) {
   // sessão do Supabase — também não passa pelo login da equipe.
   const isPublicRoute =
     pathname.startsWith("/progresso") ||
+    // Política de privacidade (o Google exige um endereço público dela).
+    pathname === "/privacidade" ||
     pathname === "/cliente" ||
     pathname.startsWith("/cliente/");
   // Rotas de API (ex: /api/mcp) cuidam da própria autenticação (Bearer
