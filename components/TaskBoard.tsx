@@ -126,6 +126,9 @@ export default function TaskBoard({
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  // Onde o cartão arrastado vai cair: na coluna "col", antes do cartão
+  // "antesDeId" (null = no fim da coluna). Aparece como uma linha verde.
+  const [marcador, setMarcador] = useState<{ col: TaskStatus; antesDeId: string | null } | null>(null);
   const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [tarefaEditando, setTarefaEditando] = useState<Task | null>(null);
@@ -436,12 +439,32 @@ export default function TaskBoard({
   function handleDragEnd() {
     setDraggedId(null);
     setDragOverCol(null);
+    setMarcador(null);
   }
 
+  // Sobre o espaço vazio da coluna: vai pro fim dela.
   function handleColumnDragOver(e: React.DragEvent, colKey: TaskStatus) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     if (dragOverCol !== colKey) setDragOverCol(colKey);
+    setMarcador((atual) => (atual?.col === colKey && atual.antesDeId === null ? atual : { col: colKey, antesDeId: null }));
+  }
+
+  // Sobre um cartão: metade de cima = cai antes dele; metade de baixo = cai
+  // depois (ou seja, antes do cartão seguinte).
+  function handleCardDragOver(e: React.DragEvent, colKey: TaskStatus, task: Task, daColuna: Task[]) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverCol !== colKey) setDragOverCol(colKey);
+    const caixa = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const emCima = e.clientY < caixa.top + caixa.height / 2;
+    let antesDeId: string | null = task.id;
+    if (!emCima) {
+      const i = daColuna.findIndex((t) => t.id === task.id);
+      antesDeId = daColuna[i + 1]?.id ?? null;
+    }
+    setMarcador((atual) => (atual?.col === colKey && atual.antesDeId === antesDeId ? atual : { col: colKey, antesDeId }));
   }
 
   function handleColumnDragLeave(colKey: TaskStatus) {
@@ -454,8 +477,61 @@ export default function TaskBoard({
     const taskId = e.dataTransfer.getData("text/plain") || draggedId;
     setDraggedId(null);
     const task = tasks.find((t) => t.id === taskId);
+    const alvo = marcador?.col === colKey ? marcador.antesDeId : null;
+    setMarcador(null);
     if (!task) return;
-    await moveTaskTo(task, colKey);
+    await reposicionar(task, colKey, alvo);
+  }
+
+  // Põe a tarefa na coluna "novoStatus", logo antes da tarefa "antesDeId" (null
+  // = no fim). Renumera as posições da coluna (1, 2, 3...) e grava só as que
+  // mudaram. Serve pra arrastar, pros botões ↑ ↓ e pra trocar de coluna.
+  async function reposicionar(task: Task, novoStatus: TaskStatus, antesDeId: string | null) {
+    const porPosicao = (a: Task, b: Task) => a.position - b.position;
+    const outras = tasks.filter((t) => t.status === novoStatus && t.id !== task.id).sort(porPosicao);
+    let indice = antesDeId ? outras.findIndex((t) => t.id === antesDeId) : -1;
+    if (indice < 0) indice = outras.length;
+    const nova = [...outras.slice(0, indice), { ...task, status: novoStatus }, ...outras.slice(indice)];
+    const atuais = new Map(tasks.map((t) => [t.id, t]));
+    const mudancas = nova
+      .map((t, i) => ({ id: t.id, position: i + 1 }))
+      .filter((c) => c.id === task.id ? task.status !== novoStatus || atuais.get(c.id)?.position !== c.position : atuais.get(c.id)?.position !== c.position);
+    if (mudancas.length === 0) return;
+
+    const anterior = tasks;
+    const posicaoNova = new Map(mudancas.map((c) => [c.id, c.position]));
+    setTasks((current) =>
+      current.map((t) =>
+        t.id === task.id
+          ? { ...t, status: novoStatus, position: posicaoNova.get(t.id) ?? t.position }
+          : posicaoNova.has(t.id)
+          ? { ...t, position: posicaoNova.get(t.id) as number }
+          : t
+      )
+    );
+
+    const resultados = await Promise.all(
+      mudancas.map((c) =>
+        supabase
+          .from("tasks")
+          .update(c.id === task.id ? { status: novoStatus, position: c.position } : { position: c.position })
+          .eq("id", c.id)
+      )
+    );
+    if (resultados.some((r) => r.error)) {
+      // Não salvou tudo: volta pro que estava, em vez de mostrar uma ordem que não existe.
+      setTasks(anterior);
+      return;
+    }
+
+    // Trocar de coluna também muda o status: o resumo da página na Wiki acompanha.
+    if (task.status !== novoStatus && task.page_id) {
+      syncTaskWiki(supabase, { ...task, status: novoStatus, position: posicaoNova.get(task.id) ?? task.position }, profiles, projects).catch(
+        () => {
+          // Falha silenciosa: a tarefa já mudou de lugar, só o resumo da Wiki não atualizou.
+        }
+      );
+    }
   }
 
   async function deleteTask(task: Task) {
@@ -653,9 +729,10 @@ export default function TaskBoard({
 
       <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 scrollbar-thin sm:mx-0 sm:snap-none sm:px-0 xl:grid xl:grid-cols-6 xl:overflow-visible">
         {COLUNAS.map((coluna) => {
-          const tarefasDaColuna = tasksVisiveis.filter(
-            (t) => t.status === coluna.key
-          );
+          // Na ordem das posições (a que a pessoa arrumou).
+          const tarefasDaColuna = tasksVisiveis
+            .filter((t) => t.status === coluna.key)
+            .sort((a, b) => a.position - b.position);
           return (
             <div
               key={coluna.key}
@@ -676,7 +753,13 @@ export default function TaskBoard({
               </div>
 
               <div className="space-y-2.5">
-                {tarefasDaColuna.map((task) => {
+                {tarefasDaColuna.map((task, indice) => {
+                  const marcaAntes = marcador?.col === coluna.key && marcador.antesDeId === task.id && draggedId !== task.id;
+                  const marcaFim =
+                    marcador?.col === coluna.key &&
+                    marcador.antesDeId === null &&
+                    indice === tarefasDaColuna.length - 1 &&
+                    draggedId !== task.id;
                   const atrasada =
                     !!task.due_date &&
                     task.due_date < hoje &&
@@ -688,11 +771,20 @@ export default function TaskBoard({
                       draggable
                       onDragStart={(e) => handleDragStart(e, task)}
                       onDragEnd={handleDragEnd}
+                      onDragOver={(e) => handleCardDragOver(e, coluna.key, task, tarefasDaColuna)}
                       onClick={() => abrirEditar(task)}
                       data-mov="bloco"
-                      className={`group cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                      className={`group relative cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
                         corTarefa(task.color).borda
-                      } ${draggedId === task.id ? "opacity-40" : ""}`}
+                      } ${draggedId === task.id ? "opacity-40" : ""} ${
+                        marcaAntes
+                          ? "before:pointer-events-none before:absolute before:-top-[7px] before:inset-x-0 before:h-1 before:rounded-full before:bg-brand before:content-['']"
+                          : ""
+                      } ${
+                        marcaFim
+                          ? "after:pointer-events-none after:absolute after:-bottom-[7px] after:inset-x-0 after:h-1 after:rounded-full after:bg-brand after:content-['']"
+                          : ""
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium leading-snug text-ink">
@@ -837,6 +929,32 @@ export default function TaskBoard({
                             className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
                           >
                             <ChevronRightIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="mx-0.5 h-3.5 w-px bg-line" aria-hidden="true" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              reposicionar(task, coluna.key, tarefasDaColuna[indice - 1]?.id ?? null);
+                            }}
+                            disabled={indice === 0}
+                            title="Subir na coluna"
+                            aria-label="Subir na coluna"
+                            className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+                          >
+                            <ChevronDownIcon className="h-3.5 w-3.5 rotate-180" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Desce uma posição: cai antes do cartão que vem DEPOIS do seguinte.
+                              reposicionar(task, coluna.key, tarefasDaColuna[indice + 2]?.id ?? null);
+                            }}
+                            disabled={indice === tarefasDaColuna.length - 1}
+                            title="Descer na coluna"
+                            aria-label="Descer na coluna"
+                            className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+                          >
+                            <ChevronDownIcon className="h-3.5 w-3.5" />
                           </button>
                         </div>
                         <button

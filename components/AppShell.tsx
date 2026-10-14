@@ -59,7 +59,10 @@ export default function AppShell({
         </div>
       </div>
 
-      <div className="nao-imprime hidden lg:flex">
+      {/* Menu lateral fixo na altura da tela: se a lista de clientes passar
+          disso, quem rola é só o miolo do menu (e não a página inteira, que
+          deixava telas de altura fixa, como Mensagens, cortadas). */}
+      <div className="nao-imprime hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
         <Sidebar {...sidebarProps} />
       </div>
 
