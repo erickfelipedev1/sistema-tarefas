@@ -10,9 +10,8 @@ import {
   lerSessaoCliente,
   normalizarUsuarioCliente,
 } from "@/lib/client-auth";
-import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
 import { avisarTarefaParaResponsaveis } from "@/lib/push";
-import type { Profile, Project, Task } from "@/lib/types";
+import type { Task } from "@/lib/types";
 
 // Server Actions da área do cliente (/cliente). Tudo roda com a service_role
 // — a autorização é o cookie assinado de lib/client-auth.ts, e toda leitura
@@ -138,29 +137,6 @@ export async function enviarSolicitacaoCliente(
 
   const tarefa = novaTarefa as Task;
   await avisarTarefaParaResponsaveis(tarefa.id, null).catch(() => {});
-  const { data: perfis } = await admin
-    .from("profiles")
-    .select("id, username, name, avatar_url");
-
-  const { data: pagina } = await admin
-    .from("pages")
-    .insert({
-      title: tarefa.title,
-      content: buildTaskSummaryBlocks(
-        tarefa,
-        (perfis ?? []) as Profile[],
-        [projeto as Project]
-      ),
-      project_id: sessao.projectId,
-      created_by_label: rotulo,
-    })
-    .select("id")
-    .single();
-
-  if (pagina) {
-    await admin.from("tasks").update({ page_id: pagina.id }).eq("id", tarefa.id);
-  }
-
   const { error: erroPedido } = await admin.from("task_requests").insert({
     title: titulo,
     description: descricao || null,

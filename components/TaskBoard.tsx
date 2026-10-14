@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
 import { corTarefa } from "@/lib/task-colors";
-import { buildTaskSummaryBlocks, syncTaskWiki } from "@/lib/task-wiki-sync";
+import { syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
 import { Avatar } from "./ui/Avatar";
 import { Badge } from "./ui/Badge";
@@ -26,7 +25,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClipboardListIcon,
-  FileStackIcon,
   PlusIcon,
   SparklesIcon,
   Trash2Icon,
@@ -123,7 +121,6 @@ export default function TaskBoard({
   showHeader?: boolean;
 }) {
   const supabase = createClient();
-  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   // Onde o cartão arrastado vai cair: na coluna "col", antes do cartão
@@ -547,50 +544,6 @@ export default function TaskBoard({
     await supabase.from("tasks").delete().eq("id", task.id);
   }
 
-  // Abre a "página na Wiki" da tarefa — cria a página na hora, na primeira
-  // vez, e depois é só reabrir a mesma. Isso é separado do modal de
-  // detalhes: aqui é uma página de texto livre da Wiki.
-  async function abrirWiki(task: Task) {
-    if (task.page_id) {
-      router.push(`/wiki/${task.page_id}`);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("pages")
-      .insert({
-        title: task.title,
-        // Já cria com o resumo da tarefa (status, data, responsável, etc)
-        // no topo — o resto da página fica livre pra escrever.
-        content: buildTaskSummaryBlocks(task, profiles, projects),
-        project_id: task.project_id ?? null,
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
-      window.alert("Não deu pra criar a página da Wiki. Tenta de novo.");
-      return;
-    }
-
-    const { error: erroVinculo } = await supabase
-      .from("tasks")
-      .update({ page_id: data.id })
-      .eq("id", task.id);
-
-    if (erroVinculo) {
-      window.alert(
-        "A página foi criada, mas não consegui vincular ela à tarefa. Confere se a migration 0011_task_wiki_link.sql já foi rodada no Supabase."
-      );
-    } else {
-      setTasks((current) =>
-        current.map((t) => (t.id === task.id ? { ...t, page_id: data.id } : t))
-      );
-    }
-    router.push(`/wiki/${data.id}`);
-  }
-
   const hoje = hojeISO();
 
   // Resumo em números — sempre reflete todas as tarefas do quadro, mesmo
@@ -986,16 +939,6 @@ export default function TaskBoard({
                             <ChevronDownIcon className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            abrirWiki(task);
-                          }}
-                          title={task.page_id ? "Abrir na Wiki" : "Criar página na Wiki"}
-                          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-ink-muted hover:bg-surface-hover hover:text-ink"
-                        >
-                          <FileStackIcon className="h-3.5 w-3.5" />
-                        </button>
                       </div>
                     </div>
                   );

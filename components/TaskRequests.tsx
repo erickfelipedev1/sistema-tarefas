@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskRequest } from "@/lib/types";
-import { buildTaskSummaryBlocks } from "@/lib/task-wiki-sync";
 import { formatarDataHora } from "@/lib/format";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { Badge } from "./ui/Badge";
@@ -266,26 +265,6 @@ export default function TaskRequests({
       tarefaFinal = novaTarefa as Task;
       avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
 
-      // Cria a página da Wiki dessa tarefa na hora, igual acontece quando a
-      // tarefa é criada pelo quadro normal.
-      const { data: pagina } = await supabase
-        .from("pages")
-        .insert({
-          title: tarefaFinal.title,
-          content: buildTaskSummaryBlocks(tarefaFinal, profiles, projects),
-          project_id: tarefaFinal.project_id,
-          created_by_label: currentUserLabel,
-        })
-        .select()
-        .single();
-
-      if (pagina) {
-        await supabase
-          .from("tasks")
-          .update({ page_id: pagina.id })
-          .eq("id", tarefaFinal.id);
-        tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
-      }
       tarefaJaCriada.current = tarefaFinal;
     }
 

@@ -87,9 +87,12 @@ export default async function ProjetoPage({
   const paginasDoCliente = (colunas: string) =>
     supabase.from("pages").select(colunas).eq("project_id", id).order("updated_at", { ascending: false });
   const comDestaque = await paginasDoCliente("id, title, created_by_label, updated_at, pinned_at");
-  const pages = ((comDestaque.error
+  // A Wiki do cliente é um bloco de notas: as páginas de detalhamento de
+  // tarefa (as que cada tarefa criava) ficam de fora.
+  const paginasDeTarefa = new Set((tasks ?? []).map((t) => t.page_id).filter((id): id is string => !!id));
+  const pages = (((comDestaque.error
     ? (await paginasDoCliente("id, title, created_by_label, updated_at")).data
-    : comDestaque.data) ?? []) as unknown as PaginaResumo[];
+    : comDestaque.data) ?? []) as unknown as PaginaResumo[]).filter((p) => !paginasDeTarefa.has(p.id));
   const fixadas = pages
     .filter((p) => p.pinned_at)
     .sort((a, b) => (b.pinned_at ?? "").localeCompare(a.pinned_at ?? ""));
@@ -216,14 +219,14 @@ export default async function ProjetoPage({
         wiki={
           <div>
             <div className="mb-3 flex items-center justify-end">
-              <NewPageButton projectId={id} />
+              <NewPageButton projectId={id} label="Nova nota" />
             </div>
             {pages.length === 0 ? (
               <div className="rounded-2xl border border-line bg-surface">
                 <EmptyState
                   icon={<BookOpenIcon className="h-6 w-6" />}
-                  title="Nenhuma página ainda para este cliente"
-                  description="Crie a primeira página da Wiki para este cliente."
+                  title="Nenhuma nota ainda para este cliente"
+                  description="Use como bloco de notas do cliente: combinados, briefing, links e lembretes."
                 />
               </div>
             ) : (
@@ -244,7 +247,7 @@ export default async function ProjetoPage({
                   <section>
                     {fixadas.length > 0 && (
                       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                        Outras páginas
+                        Outras notas
                       </h2>
                     )}
                     <div className="divide-y divide-line rounded-2xl border border-line bg-surface">

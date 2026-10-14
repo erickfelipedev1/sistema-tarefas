@@ -20,7 +20,6 @@ import type {
 import { CORES_TAREFA } from "@/lib/task-colors";
 import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
 import {
-  buildTaskSummaryBlocks,
   syncTaskWiki,
   syncChecklistWiki,
   syncAnexosWiki,
@@ -191,29 +190,9 @@ export default function TaskModal({
       return;
     }
 
-    // Já cria a página da Wiki dessa tarefa na hora, sem precisar clicar em
-    // nada — vem com o resumo (status, data, responsável...) preenchido.
-    let tarefaFinal = data as Task;
-    const { data: pagina, error: erroPagina } = await supabase
-      .from("pages")
-      .insert({
-        title: tarefaFinal.title,
-        content: buildTaskSummaryBlocks(tarefaFinal, profiles, projects),
-        project_id: tarefaFinal.project_id,
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-
-    if (!erroPagina && pagina) {
-      const { error: erroVinculo } = await supabase
-        .from("tasks")
-        .update({ page_id: pagina.id })
-        .eq("id", tarefaFinal.id);
-      if (!erroVinculo) {
-        tarefaFinal = { ...tarefaFinal, page_id: pagina.id };
-      }
-    }
+    // A tarefa não cria mais página de detalhamento na Wiki: a Wiki do
+    // cliente é um bloco de notas (as páginas antigas continuam existindo).
+    const tarefaFinal = data as Task;
 
     setCurrent(tarefaFinal);
     onCreated(tarefaFinal);
