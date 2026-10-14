@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { Post, PostCategory, PostMedia, PostNetwork } from "@/lib/types";
+import type { Post, PostCategory, PostMedia, PostNetwork, PostStatus } from "@/lib/types";
 import { formatarDataBR } from "@/lib/format";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import {
@@ -17,7 +17,6 @@ import {
   ehDoDrive,
   idDoDriveNoLink,
   midiaDoDrive,
-  urlDaMiniaturaDoDrive,
   erroDeArquivoGrande,
   mensagemDeArquivoGrande,
   miniaturaDoItem,
@@ -30,19 +29,19 @@ import {
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { XIcon } from "../ui/icons";
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
+import CapaDoReel, { type CapaDoForm } from "./CapaDoReel";
 
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
 const SEM_MIGRACAO = "Confere se a migration 0062_post_da_tarefa.sql já foi rodada no Supabase.";
 
-interface Escolhido {
-  chave: string;
-  arquivo: File;
-  url: string;
-  tipo: "image" | "video";
-}
+// Um arquivo no formulário: o que já está salvo no post, ou um que acabou de
+// ser escolhido e ainda vai subir (com um endereço local só pro preview).
+type ItemDeMidia =
+  | { chave: string; salva: PostMedia; nova?: undefined }
+  | { chave: string; nova: { arquivo: File; url: string; tipo: "image" | "video" }; salva?: undefined };
 
 function arrumar(post: Post): Post {
   return {
@@ -54,10 +53,11 @@ function arrumar(post: Post): Post {
 }
 
 // Menu "Post" da tarefa: monta o post do cliente a partir da tarefa (a legenda
-// já vem da aba Copywrite e a data prevista, do prazo) e envia pros Posts do
-// cliente. Os posts que saíram desta tarefa aparecem aqui com o status; o
-// resto (preview de cada rede, comentários do cliente, capa do reel) fica na
-// aba Posts do cliente.
+// já vem da aba Copywrite e a data prevista, do prazo), envia pros Posts do
+// cliente e deixa editar o que já foi criado (legenda, data, redes, arquivos,
+// capa do reel). Os posts que saíram desta tarefa aparecem aqui com o status;
+// o preview de cada rede e os comentários do cliente ficam na aba Posts do
+// cliente.
 export default function PostDaTarefa({
   taskId,
   projectId,
@@ -84,20 +84,25 @@ export default function PostDaTarefa({
   const [redes, setRedes] = useState<PostNetwork[]>(["instagram"]);
   const [data, setData] = useState(dueDate ?? "");
   const [legenda, setLegenda] = useState(copyText);
-  const [escolhidos, setEscolhidos] = useState<Escolhido[]>([]);
-  // Vídeos do Google Drive (pra arquivos grandes): só o código de cada um.
-  const [doDrive, setDoDrive] = useState<string[]>([]);
+  const [itens, setItens] = useState<ItemDeMidia[]>([]);
+  const [capa, setCapa] = useState<CapaDoForm | null>(null);
+  // Post que está sendo editado (null = post novo).
+  const [editando, setEditando] = useState<Post | null>(null);
   const [linkDrive, setLinkDrive] = useState("");
   const [salvando, setSalvando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const seletor = useRef<HTMLInputElement>(null);
-  const escolhidosRef = useRef(escolhidos);
-  escolhidosRef.current = escolhidos;
+  const topoDoForm = useRef<HTMLDivElement>(null);
+  const itensRef = useRef(itens);
+  itensRef.current = itens;
+  const capaRef = useRef(capa);
+  capaRef.current = capa;
 
   useEffect(
     () => () => {
-      for (const e of escolhidosRef.current) URL.revokeObjectURL(e.url);
+      for (const i of itensRef.current) if (i.nova) URL.revokeObjectURL(i.nova.url);
+      if (capaRef.current?.nova) URL.revokeObjectURL(capaRef.current.nova.url);
     },
     []
   );
@@ -129,11 +134,16 @@ export default function PostDaTarefa({
 
   // Miniatura de cada post enviado (link assinado, o bucket é privado).
   const caminhos = useMemo(
-    () =>
-      posts
+    () => [
+      ...posts
         .map((p) => (p.cover ?? (p.media[0] && !ehDoDrive(p.media[0]) ? p.media[0] : undefined))?.path)
         .filter((c): c is string => !!c),
-    [posts]
+      // No post em edição, todos os arquivos (e a capa) precisam de miniatura.
+      ...(editando
+        ? [...editando.media.filter((m) => !ehDoDrive(m)), ...(editando.cover ? [editando.cover] : [])].map((m) => m.path)
+        : []),
+    ],
+    [posts, editando]
   );
   useEffect(() => {
     const faltam = caminhos.filter((c) => !(c in links));
@@ -164,6 +174,10 @@ export default function PostDaTarefa({
   }
 
   const regra = CATEGORIAS[categoria];
+  // O post em edição, como a tela o conhece agora (o status pode ter mudado).
+  const editado = editando ? posts.find((p) => p.id === editando.id) ?? editando : null;
+  const tipoDoItem = (item: ItemDeMidia) => (item.salva ? item.salva.type : item.nova.tipo);
+  const ocupadas = itens.length;
 
   function usarVideoDoDrive() {
     const id = idDoDriveNoLink(linkDrive);
@@ -171,32 +185,64 @@ export default function PostDaTarefa({
       return setErro("Esse link não parece ser de um vídeo do Google Drive. Copie o link de compartilhamento do arquivo.");
     }
     if (categoria === "estatico") return setErro("Post estático leva uma imagem. O Drive serve pra vídeo (reel ou carrossel).");
-    if (doDrive.includes(id)) return setErro("Esse vídeo do Drive já está no post.");
-    if (regra.maximo > 1 && escolhidos.length + doDrive.length >= regra.maximo) {
+    if (itens.some((i) => i.salva?.drive_id === id)) return setErro("Esse vídeo do Drive já está no post.");
+    if (regra.maximo > 1 && ocupadas >= regra.maximo) {
       return setErro(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
     }
-    if (regra.maximo === 1) {
-      // Categoria de um arquivo só: o link troca o que estava.
-      for (const e of escolhidos) URL.revokeObjectURL(e.url);
-      setEscolhidos([]);
-      setDoDrive([id]);
-    } else {
-      setDoDrive((atual) => [...atual, id]);
-    }
+    const item: ItemDeMidia = {
+      chave: `drive-${id}`,
+      salva: {
+        path: `pendente/drive-${id}`,
+        type: "video",
+        name: "Vídeo do Google Drive",
+        size: 0,
+        source: "drive",
+        drive_id: id,
+      },
+    };
+    setItens((atual) => {
+      if (regra.maximo === 1) {
+        // Categoria de um arquivo só: o link troca o que estava.
+        for (const i of atual) if (i.nova) URL.revokeObjectURL(i.nova.url);
+        return [item];
+      }
+      return [...atual, item];
+    });
     setLinkDrive("");
     setErro(null);
   }
 
+  // Zera o formulário (post novo, com a legenda e a data vindas da tarefa).
   function limpar() {
-    for (const e of escolhidos) URL.revokeObjectURL(e.url);
-    setEscolhidos([]);
-    setDoDrive([]);
+    for (const i of itens) if (i.nova) URL.revokeObjectURL(i.nova.url);
+    if (capa?.nova) URL.revokeObjectURL(capa.nova.url);
+    setItens([]);
+    setCapa(null);
+    setEditando(null);
     setLinkDrive("");
     setCategoria("estatico");
     setRedes(["instagram"]);
     setData(dueDate ?? "");
     setLegenda(copyText);
     setErro(null);
+  }
+
+  function abrirEdicao(post: Post) {
+    for (const i of itens) if (i.nova) URL.revokeObjectURL(i.nova.url);
+    if (capa?.nova) URL.revokeObjectURL(capa.nova.url);
+    const redesDoPost = redesValidas(post.networks);
+    setEditando(post);
+    setCategoria(post.category);
+    setRedes(redesDoPost.length > 0 ? redesDoPost : ["instagram"]);
+    setData(post.scheduled_date ?? "");
+    setLegenda(post.caption);
+    setItens(post.media.map((m) => ({ chave: m.path, salva: m })));
+    setCapa(post.cover ? { salva: post.cover } : null);
+    setLinkDrive("");
+    setErro(null);
+    setAviso(null);
+    setCriando(true);
+    requestAnimationFrame(() => topoDoForm.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   }
 
   function alternarRede(rede: PostNetwork) {
@@ -206,7 +252,7 @@ export default function PostDaTarefa({
   function escolherArquivos(arquivos: FileList | null) {
     if (!arquivos) return;
     const recusados: string[] = [];
-    const novos: Escolhido[] = [];
+    const novos: ItemDeMidia[] = [];
     for (const arquivo of Array.from(arquivos)) {
       if (!arquivoAceito(categoria, arquivo.type)) {
         recusados.push(arquivo.name);
@@ -214,19 +260,24 @@ export default function PostDaTarefa({
       }
       novos.push({
         chave: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        arquivo,
-        url: URL.createObjectURL(arquivo),
-        tipo: arquivo.type.startsWith("video/") ? "video" : "image",
+        nova: {
+          arquivo,
+          url: URL.createObjectURL(arquivo),
+          tipo: arquivo.type.startsWith("video/") ? "video" : "image",
+        },
       });
     }
-    if (regra.maximo === 1 && novos.length > 0) setDoDrive([]);
-    setEscolhidos((atual) => {
+    setItens((atual) => {
       // Categoria de um arquivo só: o novo troca o que estava.
-      const juntos = regra.maximo === 1 ? novos.slice(0, 1) : [...atual, ...novos];
-      const vagas = regra.maximo === 1 ? 1 : Math.max(0, regra.maximo - doDrive.length);
-      const final = regra.maximo === 1 && novos.length === 0 ? atual : juntos.slice(0, vagas);
-      for (const e of [...atual, ...novos]) if (!final.includes(e)) URL.revokeObjectURL(e.url);
-      return final;
+      if (regra.maximo === 1) {
+        if (novos.length === 0) return atual;
+        for (const i of atual) if (i.nova) URL.revokeObjectURL(i.nova.url);
+        for (const i of novos.slice(1)) if (i.nova) URL.revokeObjectURL(i.nova.url);
+        return novos.slice(0, 1);
+      }
+      const juntos = [...atual, ...novos];
+      for (const i of juntos.slice(regra.maximo)) if (i.nova) URL.revokeObjectURL(i.nova.url);
+      return juntos.slice(0, regra.maximo);
     });
     setErro(
       recusados.length > 0
@@ -237,10 +288,21 @@ export default function PostDaTarefa({
   }
 
   function tirar(chave: string) {
-    setEscolhidos((atual) => {
-      const item = atual.find((e) => e.chave === chave);
-      if (item) URL.revokeObjectURL(item.url);
-      return atual.filter((e) => e.chave !== chave);
+    setItens((atual) => {
+      const item = atual.find((i) => i.chave === chave);
+      if (item?.nova) URL.revokeObjectURL(item.nova.url);
+      return atual.filter((i) => i.chave !== chave);
+    });
+  }
+
+  function mover(chave: string, passo: -1 | 1) {
+    setItens((atual) => {
+      const de = atual.findIndex((i) => i.chave === chave);
+      const para = de + passo;
+      if (de < 0 || para < 0 || para >= atual.length) return atual;
+      const copia = [...atual];
+      [copia[de], copia[para]] = [copia[para], copia[de]];
+      return copia;
     });
   }
 
@@ -256,30 +318,38 @@ export default function PostDaTarefa({
     return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size) };
   }
 
-  async function criar(enviar: boolean) {
+  // Cria o post novo ou grava a edição do que já existe. "enviar" manda ao
+  // cliente (status "enviado"); sem ele, o status que está no banco continua.
+  async function salvar(enviar: boolean) {
     if (salvando || !projectId) return;
     setAviso(null);
-    if (escolhidos.some((e) => !arquivoAceito(categoria, e.tipo === "video" ? "video/" : "image/"))) {
+    if (itens.some((i) => !arquivoAceito(categoria, tipoDoItem(i) === "video" ? "video/" : "image/"))) {
       return setErro(`Tire os arquivos que não servem pra ${regra.artigo}. ${regra.dica}`);
     }
     if (redes.length === 0) return setErro("Marque pelo menos uma rede.");
     if (legenda.length > 5000) return setErro("A legenda passou de 5.000 caracteres.");
-    // Pra enviar ao cliente o post precisa estar completo; rascunho pode faltar coisa.
-    if (enviar) {
+    if (itens.length > regra.maximo) {
+      return setErro(`${regra.rotulo} leva no máximo ${regra.maximo} arquivo${regra.maximo === 1 ? "" : "s"}.`);
+    }
+    // Ao editar sem enviar, o status não entra na gravação: vale o que está no
+    // banco (o cliente pode ter pedido ajuste, ou um colega ter publicado, com
+    // o formulário aberto). Pra conferir se está completo, usa o status mais
+    // recente que a tela conhece. Tudo que o cliente vê precisa estar completo;
+    // rascunho pode faltar coisa.
+    const statusAgora = editando ? posts.find((p) => p.id === editando.id)?.status ?? editando.status : "rascunho";
+    const statusFinal: PostStatus = enviar ? "enviado" : statusAgora;
+    if (statusFinal !== "rascunho") {
       const falta = oQueFaltaProEnvio({
         category: categoria,
         caption: legenda,
         networks: redes,
-        quantasMidias: escolhidos.length + doDrive.length,
+        quantasMidias: itens.length,
       });
       if (falta) return setErro(falta);
     }
-    if (escolhidos.length + doDrive.length > regra.maximo) {
-      return setErro(`${regra.rotulo} leva no máximo ${regra.maximo} arquivo${regra.maximo === 1 ? "" : "s"}.`);
-    }
 
     setErro(null);
-    const postId = crypto.randomUUID();
+    const postId = editando?.id ?? crypto.randomUUID();
     const subidos: string[] = [];
     // Vídeos que esta tentativa já subiu pro Drive: se o salvar falhar, vão
     // pra lixeira do Drive (não ficam públicos e sem post).
@@ -289,15 +359,27 @@ export default function PostDaTarefa({
       if (noDrive.length > 0) await descartarVideosDoDrive(noDrive);
     };
     const midias: PostMedia[] = [];
+    const aSubir = itens.filter((i) => i.nova).length;
     let feitos = 0;
-    for (const e of escolhidos) {
+    for (const item of itens) {
+      if (item.salva) {
+        // O item do Drive não tem arquivo no bucket: só ganha o identificador
+        // dentro da pasta do post (que o banco exige).
+        midias.push(
+          ehDoDrive(item.salva)
+            ? { ...item.salva, path: `${projectId}/${postId}/drive-${item.salva.drive_id}` }
+            : item.salva
+        );
+        continue;
+      }
+      const { arquivo, tipo } = item.nova;
       feitos += 1;
-      const rotulo = escolhidos.length > 1 ? `o arquivo ${feitos} de ${escolhidos.length}` : "o arquivo";
+      const rotulo = aSubir > 1 ? `o arquivo ${feitos} de ${aSubir}` : "o arquivo";
       setSalvando(`Enviando ${rotulo}...`);
 
       // Vídeo acima do limite do Supabase: vai direto pro Google Drive.
-      if (e.tipo === "video" && e.arquivo.size > LIMITE_DO_SUPABASE) {
-        const r = await mandarProDrive(e.arquivo, rotulo, postId);
+      if (tipo === "video" && arquivo.size > LIMITE_DO_SUPABASE) {
+        const r = await mandarProDrive(arquivo, rotulo, postId);
         if ("media" in r) {
           midias.push(r.media);
           noDrive.push(r.media.drive_id as string);
@@ -310,17 +392,17 @@ export default function PostDaTarefa({
         }
         // Drive não configurado: tenta o Supabase (que mostra a mensagem do limite).
       }
-      const caminho = `${projectId}/${postId}/${Date.now()}-${feitos}-${nomeSeguro(e.arquivo.name)}`;
+      const caminho = `${projectId}/${postId}/${Date.now()}-${feitos}-${nomeSeguro(arquivo.name)}`;
       const { error } = await supabase.storage
         .from(BUCKET_DOS_POSTS)
-        .upload(caminho, e.arquivo, { contentType: e.arquivo.type || undefined });
+        .upload(caminho, arquivo, { contentType: arquivo.type || undefined });
       if (error) {
         // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
-        if (erroDeArquivoGrande(error.message) && e.tipo === "video") {
-          const r = await mandarProDrive(e.arquivo, rotulo, postId);
+        if (erroDeArquivoGrande(error.message) && tipo === "video") {
+          const r = await mandarProDrive(arquivo, rotulo, postId);
           if ("media" in r) {
             midias.push(r.media);
-          noDrive.push(r.media.drive_id as string);
+            noDrive.push(r.media.drive_id as string);
             continue;
           }
           if (!r.naoConfigurado) {
@@ -333,52 +415,117 @@ export default function PostDaTarefa({
         setSalvando(null);
         return setErro(
           erroDeArquivoGrande(error.message)
-            ? mensagemDeArquivoGrande(e.arquivo.name, e.arquivo.size)
-            : `Não deu pra enviar "${e.arquivo.name}". ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`
+            ? mensagemDeArquivoGrande(arquivo.name, arquivo.size)
+            : `Não deu pra enviar "${arquivo.name}". ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`
         );
       }
       subidos.push(caminho);
-      midias.push({ path: caminho, type: e.tipo, name: e.arquivo.name, size: e.arquivo.size });
+      midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size });
     }
-    // Vídeos do Drive: não têm arquivo no bucket, só o código.
-    for (const id of doDrive) midias.push(midiaDoDrive(projectId, postId, id));
+
+    // Capa do reel: só vale em reel; uma imagem nova sobe junto.
+    let capaFinal: PostMedia | null = null;
+    if (categoria === "reel" && capa) {
+      if (capa.salva) {
+        capaFinal = capa.salva;
+      } else {
+        setSalvando("Enviando a capa...");
+        const caminhoDaCapa = `${projectId}/${postId}/capa-${Date.now()}-${nomeSeguro(capa.nova.arquivo.name)}`;
+        const { error } = await supabase.storage
+          .from(BUCKET_DOS_POSTS)
+          .upload(caminhoDaCapa, capa.nova.arquivo, { contentType: capa.nova.arquivo.type || undefined });
+        if (error) {
+          await limparEnvios();
+          setSalvando(null);
+          return setErro(`Não deu pra enviar a capa. ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`);
+        }
+        subidos.push(caminhoDaCapa);
+        capaFinal = {
+          path: caminhoDaCapa,
+          type: "image",
+          name: capa.nova.arquivo.name,
+          size: capa.nova.arquivo.size,
+        };
+      }
+    }
 
     setSalvando("Salvando...");
-    const { data: salvo, error } = await supabase
-      .from("posts")
-      .insert({
-        id: postId,
-        project_id: projectId,
-        task_id: taskId,
-        category: categoria,
-        caption: legenda.trim(),
-        networks: redesValidas(redes),
-        scheduled_date: data || null,
-        media: midias,
-        status: enviar ? "enviado" : "rascunho",
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-    let gravado = salvo as Post | null;
-    if (error || !gravado) {
-      // A gravação pode ter dado certo e só a resposta ter se perdido: confere
-      // antes de apagar o que subiu (e de o usuário tentar de novo e duplicar).
+    const campos = {
+      category: categoria,
+      caption: legenda.trim(),
+      networks: redesValidas(redes),
+      scheduled_date: data || null,
+      media: midias,
+      // A capa só entra na gravação de reel (ou de post que já tinha capa,
+      // pra limpar): os outros posts salvam como antes.
+      ...(categoria === "reel" || editando?.cover ? { cover: capaFinal } : {}),
+    };
+    const gravacao = editando
+      ? await supabase
+          .from("posts")
+          .update(enviar ? { ...campos, status: "enviado" as const } : campos)
+          .eq("id", editando.id)
+          .select()
+          .single()
+      : await supabase
+          .from("posts")
+          .insert({
+            ...campos,
+            status: statusFinal,
+            id: postId,
+            project_id: projectId,
+            task_id: taskId,
+            created_by_label: currentUserLabel,
+          })
+          .select()
+          .single();
+    let gravado = gravacao.data as Post | null;
+    if (gravacao.error || !gravado) {
+      // A gravação pode ter dado certo e só a resposta ter se perdido: antes
+      // de apagar o que subiu, confere se o post já aponta pra esses arquivos.
       const { data: noBanco } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
-      if (noBanco) gravado = noBanco as Post;
+      const noPost = noBanco as Post | null;
+      const gravados = new Set([
+        ...midiasValidas(noPost?.media).map((m) => m.path),
+        ...(noPost?.cover?.path ? [noPost.cover.path] : []),
+      ]);
+      // Tudo que esta tentativa enviou (arquivos e vídeos do Drive) tem que estar no post.
+      const enviadosAgora = [...subidos, ...noDrive.map((id) => midiaDoDrive(projectId, postId, id).path)];
+      // Post novo: se a linha existe, foi esta tentativa que gravou. Edição: a
+      // linha já existia, então só vale se ela já aponta pros arquivos novos.
+      const confere = editando ? enviadosAgora.length > 0 && enviadosAgora.every((c) => gravados.has(c)) : true;
+      if (noPost && confere) gravado = noPost;
     }
     setSalvando(null);
     if (!gravado) {
       await limparEnvios();
       return setErro(`Não foi possível salvar o post. ${SEM_MIGRACAO}`);
     }
-    setPosts((atual) => [arrumar(gravado as Post), ...atual]);
-    for (const e of escolhidos) URL.revokeObjectURL(e.url);
-    setEscolhidos([]);
-    setDoDrive([]);
-    setLinkDrive("");
+
+    // Arquivos que saíram do post nesta edição deixam de ocupar espaço. Parte
+    // do que a tela conhece agora (um colega pode ter trocado arquivos com o
+    // formulário aberto), não do que estava quando ele abriu.
+    if (editando) {
+      const mantidos = new Set([...midias.map((m) => m.path), ...(capaFinal ? [capaFinal.path] : [])]);
+      const antes = posts.find((p) => p.id === editando.id) ?? editando;
+      const sobras = [...antes.media.filter((m) => !ehDoDrive(m)).map((m) => m.path), ...(antes.cover ? [antes.cover.path] : [])].filter(
+        (c) => !mantidos.has(c)
+      );
+      if (sobras.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(sobras);
+    }
+
+    const post = arrumar(gravado);
+    setPosts((atual) => (atual.some((p) => p.id === post.id) ? atual.map((p) => (p.id === post.id ? post : p)) : [post, ...atual]));
+    const eraEdicao = !!editando;
+    limpar();
     setCriando(false);
-    setAviso(enviar ? "Post enviado pros Posts do cliente. Ele já pode ver no portal." : "Rascunho salvo nos Posts do cliente.");
+    setAviso(
+      enviar
+        ? "Post enviado pros Posts do cliente. Ele já pode ver no portal."
+        : eraEdicao
+        ? "Alterações salvas."
+        : "Rascunho salvo nos Posts do cliente."
+    );
   }
 
   async function enviarRascunho(post: Post) {
@@ -407,8 +554,8 @@ export default function PostDaTarefa({
   return (
     <div className="space-y-4">
       <p className="text-xs text-ink-muted">
-        Monte o post de <span className="font-medium text-ink">{projectName}</span> a partir desta tarefa e envie pros Posts
-        do cliente.
+        Monte o post de <span className="font-medium text-ink">{projectName}</span> a partir desta tarefa, envie pros Posts
+        do cliente e edite aqui mesmo o que já criou.
       </p>
       {erroCarregar && <p className="text-sm text-danger">{erroCarregar}</p>}
       {aviso && <p className="rounded-lg bg-success-light px-3 py-2 text-sm text-success">{aviso}</p>}
@@ -443,6 +590,10 @@ export default function PostDaTarefa({
                     {post.caption || <span className="italic text-ink-muted">Sem legenda.</span>}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <Button variant="secondary" size="sm" onClick={() => abrirEdicao(post)} disabled={salvando !== null}>
+                      <PencilIcon className="h-3.5 w-3.5" />
+                      Editar
+                    </Button>
                     {post.status === "rascunho" && (
                       <Button size="sm" onClick={() => enviarRascunho(post)}>
                         Enviar ao cliente
@@ -463,13 +614,28 @@ export default function PostDaTarefa({
       )}
 
       {!criando && (
-        <Button variant="secondary" size="sm" onClick={() => setCriando(true)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            limpar();
+            setCriando(true);
+          }}
+        >
           + Novo post desta tarefa
         </Button>
       )}
 
       {criando && (
-        <div className="space-y-4 rounded-xl border border-line bg-canvas p-4">
+        <div ref={topoDoForm} className="space-y-4 rounded-xl border border-line bg-canvas p-4">
+          {editando && (
+            <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
+              Editando o post
+              <Badge tone={STATUS_DO_POST[editado?.status ?? editando.status].tom}>
+                {rotuloDoStatus(editado?.status ?? editando.status, editado?.sent_count ?? editando.sent_count, "equipe")}
+              </Badge>
+            </p>
+          )}
           <div>
             <p className="mb-1 text-xs font-medium text-ink-muted">Categoria</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Categoria">
@@ -479,11 +645,12 @@ export default function PostDaTarefa({
                   ativo={c === categoria}
                   onClick={() => {
                     setCategoria(c);
-                    setDoDrive((atual) => (c === "estatico" ? [] : atual.slice(0, CATEGORIAS[c].maximo)));
                     // Arquivos que não servem pra nova categoria saem.
-                    setEscolhidos((atual) => {
-                      const fica = atual.filter((e) => arquivoAceito(c, e.tipo === "video" ? "video/" : "image/")).slice(0, CATEGORIAS[c].maximo);
-                      for (const e of atual) if (!fica.includes(e)) URL.revokeObjectURL(e.url);
+                    setItens((atual) => {
+                      const fica = atual
+                        .filter((i) => arquivoAceito(c, tipoDoItem(i) === "video" ? "video/" : "image/"))
+                        .slice(0, CATEGORIAS[c].maximo);
+                      for (const i of atual) if (i.nova && !fica.includes(i)) URL.revokeObjectURL(i.nova.url);
                       return fica;
                     });
                   }}
@@ -532,7 +699,7 @@ export default function PostDaTarefa({
                   Usar o texto da aba Copywrite
                 </button>
               ) : (
-                <span>{copyText.trim() ? "Veio da aba Copywrite." : ""}</span>
+                <span>{copyText.trim() && !editando ? "Veio da aba Copywrite." : ""}</span>
               )}
               <span className="tabular-nums">{legenda.length.toLocaleString("pt-BR")} caracteres</span>
             </div>
@@ -543,41 +710,67 @@ export default function PostDaTarefa({
               {categoria === "reel" ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"}
             </p>
             <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
-            {(escolhidos.length > 0 || doDrive.length > 0) && (
+            {itens.length > 0 && (
               <ul className="mb-3 flex flex-wrap gap-2">
-                {doDrive.map((id, i) => (
-                  <li key={`drive-${id}`} className="relative h-20 w-20 overflow-hidden rounded-xl border border-line bg-black">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={urlDaMiniaturaDoDrive(id, 200)} alt="" className="h-full w-full object-cover" />
-                    <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[9px] font-medium text-white">Drive</span>
-                    <button
-                      type="button"
-                      onClick={() => setDoDrive((atual) => atual.filter((x) => x !== id))}
-                      aria-label={`Tirar o vídeo do Drive ${i + 1}`}
-                      className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-danger"
+                {itens.map((item, i) => {
+                  const tipo = tipoDoItem(item);
+                  const mini = item.salva ? miniaturaDoItem(item.salva, links) : null;
+                  const url = item.salva ? mini?.url ?? "" : item.nova.url;
+                  const tipoDaMini = mini ? mini.tipo : tipo;
+                  const doDrive = !!item.salva && ehDoDrive(item.salva);
+                  const serve = arquivoAceito(categoria, tipo === "video" ? "video/" : "image/");
+                  return (
+                    <li
+                      key={item.chave}
+                      className={`relative h-24 w-24 overflow-hidden rounded-xl border bg-black ${serve ? "border-line" : "border-danger"}`}
                     >
-                      <XIcon className="h-3 w-3" />
-                    </button>
-                  </li>
-                ))}
-                {escolhidos.map((e, i) => (
-                  <li key={e.chave} className="relative h-20 w-20 overflow-hidden rounded-xl border border-line bg-black">
-                    {e.tipo === "video" ? (
-                      <video src={e.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={e.url} alt="" className="h-full w-full object-cover" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => tirar(e.chave)}
-                      aria-label={`Tirar o arquivo ${i + 1}`}
-                      className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-danger"
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </button>
-                  </li>
-                ))}
+                      {!url ? (
+                        <span className="grid h-full w-full place-items-center text-[10px] text-white/60">…</span>
+                      ) : tipoDaMini === "video" ? (
+                        <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      )}
+                      <span className="absolute left-1 top-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium tabular-nums text-white">
+                        {i + 1}
+                      </span>
+                      {doDrive && (
+                        <span className="absolute left-1 top-7 rounded bg-black/70 px-1 text-[9px] font-medium text-white">Drive</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => tirar(item.chave)}
+                        aria-label={`Tirar o arquivo ${i + 1}`}
+                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-danger"
+                      >
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                      {itens.length > 1 && (
+                        <span className="absolute inset-x-1 bottom-1 flex justify-between">
+                          <button
+                            type="button"
+                            onClick={() => mover(item.chave, -1)}
+                            disabled={i === 0}
+                            aria-label={`Mover o arquivo ${i + 1} pra antes`}
+                            className="grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black disabled:opacity-30"
+                          >
+                            <ChevronLeftIcon className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => mover(item.chave, 1)}
+                            disabled={i === itens.length - 1}
+                            aria-label={`Mover o arquivo ${i + 1} pra depois`}
+                            className="grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black disabled:opacity-30"
+                          >
+                            <ChevronRightIcon className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
             <input
@@ -588,9 +781,9 @@ export default function PostDaTarefa({
               onChange={(e) => escolherArquivos(e.target.files)}
               className="hidden"
             />
-            {(regra.maximo === 1 || escolhidos.length + doDrive.length < regra.maximo) && (
+            {(regra.maximo === 1 || ocupadas < regra.maximo) && (
               <Button variant="secondary" size="sm" type="button" onClick={() => seletor.current?.click()}>
-                {regra.maximo === 1 && (escolhidos.length > 0 || doDrive.length > 0)
+                {regra.maximo === 1 && ocupadas > 0
                   ? "Trocar arquivo"
                   : regra.maximo > 1
                   ? "Escolher arquivos"
@@ -627,10 +820,31 @@ export default function PostDaTarefa({
             )}
           </div>
 
+          {categoria === "reel" && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-ink-muted">Capa do reel</p>
+              <CapaDoReel
+                capa={capa}
+                urlDaCapa={capa ? (capa.salva ? links[capa.salva.path] ?? "" : capa.nova.url) : ""}
+                urlDoVideo={
+                  itens[0] && tipoDoItem(itens[0]) === "video"
+                    ? itens[0].salva
+                      ? ehDoDrive(itens[0].salva)
+                        ? ""
+                        : links[itens[0].salva.path] ?? ""
+                      : itens[0].nova.url
+                    : ""
+                }
+                aoMudar={setCapa}
+                aoErro={setErro}
+              />
+            </div>
+          )}
+
           {erro && <p className="text-sm text-danger">{erro}</p>}
           {salvando && <p className="text-sm text-ink-muted">{salvando}</p>}
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {posts.length > 0 && (
+            {(posts.length > 0 || editando) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -643,13 +857,18 @@ export default function PostDaTarefa({
                 Cancelar
               </Button>
             )}
-            <Button variant="secondary" onClick={() => criar(false)} disabled={salvando !== null}>
-              Salvar rascunho
+            <Button variant="secondary" onClick={() => salvar(false)} disabled={salvando !== null}>
+              {editado && editado.status !== "rascunho" ? "Salvar alterações" : "Salvar rascunho"}
             </Button>
-            <Button onClick={() => criar(true)} disabled={salvando !== null}>
-              Enviar ao cliente
-            </Button>
+            {(!editado || editado.status === "rascunho" || editado.status === "ajuste") && (
+              <Button onClick={() => salvar(true)} disabled={salvando !== null}>
+                {editado?.status === "ajuste" ? "Salvar e reenviar ao cliente" : "Enviar ao cliente"}
+              </Button>
+            )}
           </div>
+          {editado?.status === "enviado" && (
+            <p className="text-right text-xs text-ink-muted">O cliente já está vendo este post: o que você salvar muda lá na hora.</p>
+          )}
         </div>
       )}
       {!criando && erro && <p className="text-sm text-danger">{erro}</p>}
