@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type { PostCategory, PostNetwork } from "@/lib/types";
 import { urlDoPlayerDoDrive } from "@/lib/posts";
 import {
@@ -30,7 +30,26 @@ export interface MidiaDoPreview {
 // esboço fiel ao formato — não copia marca, cor nem logotipo de rede nenhuma,
 // usa as cores do d.hub. Serve igual pra equipe (enquanto monta o post) e pro
 // cliente (no portal).
-export default function PostPreview({
+// O preview do post. Quando o post tem vídeo do Google Drive, uma dica fixa
+// embaixo avisa do processamento do Drive (vídeo novo leva alguns minutos
+// pra poder tocar) — vale pra equipe e pro cliente.
+export default function PostPreview(props: ComponentProps<typeof PostPreviewBase>) {
+  const temDrive = props.midias.some((m) => !!m.driveId);
+  return (
+    <>
+      <PostPreviewBase {...props} />
+      {temDrive && (
+        <p className="mx-auto mt-2 max-w-[380px] text-center text-[11px] leading-snug text-ink-muted">
+          Vídeo no Google Drive: se aparecer &quot;sendo processado&quot;, aguarde alguns minutos e use{" "}
+          <b>↻ Atualizar player</b>. O Drive precisa terminar de processar antes do vídeo tocar (e antes de enviar
+          ao cliente).
+        </p>
+      )}
+    </>
+  );
+}
+
+function PostPreviewBase({
   rede,
   categoria,
   legenda,
@@ -307,20 +326,36 @@ function BotaoDoCarrossel({
   );
 }
 
-function Arquivo({ midia, capa = null, className }: { midia: MidiaDoPreview; capa?: string | null; className: string }) {
-  if (midia.driveId) {
-    // O vídeo precisa estar compartilhado como "Qualquer pessoa com o link".
-    const preenche = className.includes("h-full");
-    return (
+// O player do Drive, com um botão pra recarregar (o Drive leva alguns minutos
+// pra processar um vídeo novo e o player não se atualiza sozinho).
+function VideoDoDrive({ id, preenche }: { id: string; preenche: boolean }) {
+  const [versao, setVersao] = useState(0);
+  return (
+    <div className={`relative w-full ${preenche ? "h-full" : "aspect-[9/16] max-h-[520px]"}`}>
       <iframe
-        src={urlDoPlayerDoDrive(midia.driveId)}
+        key={versao}
+        src={urlDoPlayerDoDrive(id)}
         title="Vídeo do Google Drive"
         allow="autoplay; fullscreen"
         allowFullScreen
         loading="lazy"
-        className={`block w-full border-0 ${preenche ? "h-full" : "aspect-[9/16] max-h-[520px]"}`}
+        className="block h-full w-full border-0"
       />
-    );
+      <button
+        type="button"
+        onClick={() => setVersao((v) => v + 1)}
+        className="absolute left-2 top-2 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/90"
+      >
+        ↻ Atualizar player
+      </button>
+    </div>
+  );
+}
+
+function Arquivo({ midia, capa = null, className }: { midia: MidiaDoPreview; capa?: string | null; className: string }) {
+  if (midia.driveId) {
+    // O vídeo precisa estar compartilhado como "Qualquer pessoa com o link".
+    return <VideoDoDrive id={midia.driveId} preenche={className.includes("h-full")} />;
   }
   if (!midia.url) {
     return (
