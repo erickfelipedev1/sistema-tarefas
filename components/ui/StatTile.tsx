@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ChevronRightIcon } from "./icons";
 
 type Tone = "brand" | "warning" | "danger" | "success";
 
@@ -37,6 +38,7 @@ export function StatTile({
         <p className="text-2xl font-semibold leading-none text-ink">{value}</p>
         <p className="mt-1.5 text-xs text-ink-muted">{label}</p>
       </div>
+      {onClick && <ChevronRightIcon className="ml-auto h-4 w-4 flex-shrink-0 text-ink-muted" />}
     </>
   );
   if (!onClick) {

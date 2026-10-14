@@ -26,7 +26,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClipboardListIcon,
+  ColumnsIcon,
   PlusIcon,
+  RowsIcon,
   SparklesIcon,
   Trash2Icon,
 } from "./ui/icons";
@@ -627,6 +629,7 @@ export default function TaskBoard({
       {showHeader ? (
         <>
           <PageHeader
+            icon={<ClipboardListIcon className="h-8 w-8" />}
             title={title ?? "Minhas tarefas"}
             subtitle={
               subtitle ?? "Organize seu dia e acompanhe o que precisa ser feito."
@@ -1054,19 +1057,20 @@ function SeletorDeVisao({ visao, aoTrocar }: { visao: "quadro" | "lista"; aoTroc
     <div className="flex h-10 items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Visualização">
       {(
         [
-          ["quadro", "Quadro"],
-          ["lista", "Lista"],
+          ["quadro", "Quadro", ColumnsIcon],
+          ["lista", "Lista", RowsIcon],
         ] as const
-      ).map(([valor, rotulo]) => (
+      ).map(([valor, rotulo, Icone]) => (
         <button
           key={valor}
           type="button"
           onClick={() => aoTrocar(valor)}
           aria-pressed={visao === valor}
-          className={`h-full rounded-md px-3 text-sm font-medium transition-colors ${
+          className={`flex h-full items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors ${
             visao === valor ? "bg-brand/10 text-ink" : "text-ink-muted hover:text-ink"
           }`}
         >
+          <Icone className="h-4 w-4" />
           {rotulo}
         </button>
       ))}

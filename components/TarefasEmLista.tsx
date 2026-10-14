@@ -4,12 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Profile, Task, TaskStatus } from "@/lib/types";
 import { corTarefa } from "@/lib/task-colors";
-import { formatarHoras, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
+import { formatarHoras, type ResumoTarefa } from "@/lib/task-resumo";
 import type { Etiqueta } from "@/lib/etiquetas";
 import { Avatar } from "./ui/Avatar";
 import { EmptyState } from "./ui/EmptyState";
 import { EtiquetaSelo } from "./EtiquetasDaTarefa";
-import { CalendarIcon, ChevronDownIcon, SparklesIcon, Trash2Icon } from "./ui/icons";
+import {
+  CalendarIcon,
+  CheckSquareIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  MessageCircleIcon,
+  MoreVerticalIcon,
+  PaperclipIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from "./ui/icons";
 
 type Coluna = { key: TaskStatus; label: string; dot: string };
 type Ordem = "manual" | "titulo" | "cliente" | "prazo";
@@ -18,8 +28,18 @@ type Ordem = "manual" | "titulo" | "cliente" | "prazo";
 // em andamento.
 const RECOLHIDOS_NO_INICIO: TaskStatus[] = ["done", "cancelled"];
 
-const GRADE_COM_CLIENTE = "md:grid-cols-[auto_minmax(0,1fr)_150px_96px_110px_160px_24px]";
-const GRADE_SEM_CLIENTE = "md:grid-cols-[auto_minmax(0,1fr)_96px_110px_160px_24px]";
+const GRADE_COM_CLIENTE = "md:grid-cols-[auto_minmax(0,1fr)_150px_150px_130px_170px_28px]";
+const GRADE_SEM_CLIENTE = "md:grid-cols-[auto_minmax(0,1fr)_150px_130px_170px_28px]";
+
+// Faixa colorida na lateral do título de cada grupo.
+const BORDA_DO_GRUPO: Record<TaskStatus, string> = {
+  todo: "border-l-brand-forte",
+  doing: "border-l-warning",
+  dependency: "border-l-orange-500",
+  approval: "border-l-cal",
+  done: "border-l-success",
+  cancelled: "border-l-slate-400",
+};
 
 function dataCurta(iso: string) {
   return iso.split("-").reverse().slice(0, 2).join("/");
@@ -70,6 +90,8 @@ export default function TarefasEmLista({
   const [ordem, setOrdem] = useState<Ordem>("manual");
   const [recolhidos, setRecolhidos] = useState<Set<string>>(() => new Set(RECOLHIDOS_NO_INICIO));
   const [subsFechadas, setSubsFechadas] = useState<Set<string>>(new Set());
+  // Tarefa com o menu "⋮" aberto.
+  const [menuAberto, setMenuAberto] = useState<string | null>(null);
   const grade = mostrarCliente ? GRADE_COM_CLIENTE : GRADE_SEM_CLIENTE;
 
   // No prazo, só dia/mês quando é do ano corrente.
@@ -123,9 +145,9 @@ export default function TarefasEmLista({
   }
 
   return (
-    <div data-mov="card" className="overflow-hidden rounded-2xl border border-line bg-surface">
+    <div data-mov="card" className="rounded-2xl border border-line bg-surface">
       <div
-        className={`hidden items-center gap-x-3 border-b border-line bg-canvas px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted md:grid ${grade}`}
+        className={`hidden items-center gap-x-3 rounded-t-2xl border-b border-line bg-canvas px-4 py-2.5 text-xs font-medium text-ink-muted md:grid ${grade}`}
       >
         <span className="w-4" aria-hidden="true" />
         {cabecalho("titulo", "Tarefa")}
@@ -146,7 +168,7 @@ export default function TarefasEmLista({
               type="button"
               onClick={() => setRecolhidos((atual) => alternar(atual, coluna.key))}
               aria-expanded={!fechado}
-              className="flex w-full items-center gap-2 border-b border-line bg-canvas/60 px-4 py-2 text-left hover:bg-surface-hover"
+              className={`flex w-full items-center gap-2 border-b border-l-[3px] border-line bg-canvas/60 px-4 py-2.5 text-left hover:bg-surface-hover ${BORDA_DO_GRUPO[coluna.key]}`}
             >
               <ChevronDownIcon className={`h-3.5 w-3.5 text-ink-muted transition-transform ${fechado ? "-rotate-90" : ""}`} />
               <span className={`h-2 w-2 rounded-full ${coluna.dot}`} />
@@ -204,20 +226,34 @@ export default function TarefasEmLista({
                               </button>
                             )}
                           </div>
-                          {(marcas.length > 0 || temConteudo(resumo) || task.parent_id) && (
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
+                          {(marcas.length > 0 || resumo || task.parent_id) && (
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
                               {task.parent_id && <span className="font-medium text-brand-forte">↳ Subtarefa</span>}
+                              {resumo && (
+                                <>
+                                  <span className="inline-flex items-center gap-1" title="Checklist">
+                                    <CheckSquareIcon className="h-3.5 w-3.5" />
+                                    {resumo.checklistFeitos}/{resumo.checklistTotal}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1" title="Comentários">
+                                    <MessageCircleIcon className="h-3.5 w-3.5" />
+                                    {resumo.comentarios}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1" title="Anexos">
+                                    <PaperclipIcon className="h-3.5 w-3.5" />
+                                    {resumo.anexos}
+                                  </span>
+                                  {resumo.horas > 0 && (
+                                    <span className="inline-flex items-center gap-1" title="Horas registradas">
+                                      <ClockIcon className="h-3.5 w-3.5" />
+                                      {formatarHoras(resumo.horas)}
+                                    </span>
+                                  )}
+                                </>
+                              )}
                               {marcas.map((et) => (
                                 <EtiquetaSelo key={et.id} etiqueta={et} />
                               ))}
-                              {resumo && resumo.checklistTotal > 0 && (
-                                <span title="Checklist">
-                                  ✅ {resumo.checklistFeitos}/{resumo.checklistTotal}
-                                </span>
-                              )}
-                              {resumo && resumo.comentarios > 0 && <span title="Comentários">💬 {resumo.comentarios}</span>}
-                              {resumo && resumo.anexos > 0 && <span title="Anexos">📎 {resumo.anexos}</span>}
-                              {resumo && resumo.horas > 0 && <span title="Horas registradas">⏱️ {formatarHoras(resumo.horas)}</span>}
                             </div>
                           )}
                         </div>
@@ -225,7 +261,7 @@ export default function TarefasEmLista({
                         {/* No celular os campos ficam embaixo do título; no computador viram colunas. */}
                         <div className="col-start-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 md:contents">
                           {mostrarCliente && (
-                            <div className="min-w-0 truncate text-xs text-ink-muted">
+                            <div className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-ink-muted">
                               {task.project_id ? (
                                 <Link
                                   href={`/projetos/${task.project_id}`}
@@ -238,20 +274,27 @@ export default function TarefasEmLista({
                               ) : null}
                             </div>
                           )}
-                          <div className="flex -space-x-1.5">
-                            {task.assigned_to.slice(0, 3).map((id) => (
-                              <Avatar
-                                key={id}
-                                name={nomeDe(id)}
-                                src={perfis.get(id)?.avatar_url}
-                                size="xs"
-                                className="ring-2 ring-surface"
-                              />
-                            ))}
-                            {task.assigned_to.length > 3 && (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-hover text-[9px] font-semibold text-ink-muted ring-2 ring-surface">
-                                +{task.assigned_to.length - 3}
-                              </span>
+                          <div className="flex min-w-0 items-center gap-2">
+                            {task.assigned_to.length > 0 ? (
+                              <>
+                                <Avatar
+                                  name={nomeDe(task.assigned_to[0])}
+                                  src={perfis.get(task.assigned_to[0])?.avatar_url}
+                                  size="sm"
+                                  className="flex-shrink-0"
+                                />
+                                <span
+                                  className="min-w-0 truncate text-xs text-ink"
+                                  title={task.assigned_to.map(nomeDe).join(", ")}
+                                >
+                                  {nomeDe(task.assigned_to[0])}
+                                  {task.assigned_to.length > 1 && (
+                                    <span className="ml-1 text-ink-muted">+{task.assigned_to.length - 1}</span>
+                                  )}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs text-ink-muted">—</span>
                             )}
                           </div>
                           <span
@@ -269,31 +312,75 @@ export default function TarefasEmLista({
                               "—"
                             )}
                           </span>
-                          <select
-                            value={task.status}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => aoMudarStatus(task, e.target.value as TaskStatus)}
-                            aria-label="Status da tarefa"
-                            className="h-8 w-full max-w-[160px] rounded-lg border border-line bg-surface px-2 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 md:max-w-none"
-                          >
-                            {colunas.map((c) => (
-                              <option key={c.key} value={c.key}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              aoExcluir(task);
-                            }}
-                            title="Excluir tarefa"
-                            aria-label="Excluir tarefa"
-                            className="ml-auto text-ink-muted opacity-60 transition-opacity hover:text-danger group-hover:opacity-100 md:ml-0 md:opacity-0"
-                          >
-                            <Trash2Icon className="h-3.5 w-3.5" />
-                          </button>
+                          {/* Status em pílula: o seletor de verdade fica por cima, transparente. */}
+                          <span className="relative inline-flex w-[170px] max-w-full">
+                            <span className="pointer-events-none absolute inset-0 flex items-center gap-2 rounded-full border border-line bg-surface-hover pl-3 pr-7 text-xs font-medium text-ink">
+                              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${coluna.dot}`} />
+                              <span className="truncate">{coluna.label}</span>
+                              <ChevronDownIcon className="absolute right-2.5 h-3 w-3 text-ink-muted" />
+                            </span>
+                            <select
+                              value={task.status}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => aoMudarStatus(task, e.target.value as TaskStatus)}
+                              aria-label="Status da tarefa"
+                              className="h-8 w-full cursor-pointer appearance-none rounded-full bg-transparent text-transparent focus:outline-none focus:ring-2 focus:ring-brand/30"
+                            >
+                              {colunas.map((c) => (
+                                <option key={c.key} value={c.key} className="bg-surface text-ink">
+                                  {c.label}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                          <div className="relative ml-auto md:ml-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => setMenuAberto((atual) => (atual === task.id ? null : task.id))}
+                              aria-haspopup="menu"
+                              aria-expanded={menuAberto === task.id}
+                              aria-label="Mais opções da tarefa"
+                              className="grid h-7 w-7 place-items-center rounded-md text-ink-muted hover:bg-surface-hover hover:text-ink"
+                            >
+                              <MoreVerticalIcon className="h-4 w-4" />
+                            </button>
+                            {menuAberto === task.id && (
+                              <>
+                                <button
+                                  type="button"
+                                  aria-label="Fechar o menu"
+                                  tabIndex={-1}
+                                  onClick={() => setMenuAberto(null)}
+                                  className="fixed inset-0 z-10 cursor-default"
+                                />
+                                <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-lg">
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      setMenuAberto(null);
+                                      aoAbrir(task);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-hover"
+                                  >
+                                    Abrir
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      setMenuAberto(null);
+                                      aoExcluir(task);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-danger hover:bg-surface-hover"
+                                  >
+                                    <Trash2Icon className="h-3.5 w-3.5" />
+                                    Excluir
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
 

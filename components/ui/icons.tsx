@@ -505,3 +505,34 @@ export const PinIcon = createIcon(
     <path d="M12 15v5" />
   </>
 );
+
+export const PaperclipIcon = createIcon(
+  "PaperclipIcon",
+  <path d="m21 11-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6L15 6.6" />
+);
+
+// Lista de checagem com caixinha marcada (checklist da tarefa).
+export const CheckSquareIcon = createIcon(
+  "CheckSquareIcon",
+  <>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
+    <path d="m8 12 3 3 5-6" />
+  </>
+);
+
+// Visualização em colunas (quadro) e em linhas (lista).
+export const ColumnsIcon = createIcon(
+  "ColumnsIcon",
+  <>
+    <rect x="3.5" y="4" width="17" height="16" rx="2" />
+    <path d="M9.5 4v16M14.5 4v16" />
+  </>
+);
+
+export const RowsIcon = createIcon(
+  "RowsIcon",
+  <>
+    <path d="M8.5 6.5H20M8.5 12H20M8.5 17.5H20" />
+    <path d="M4 6.5h.01M4 12h.01M4 17.5h.01" />
+  </>
+);
