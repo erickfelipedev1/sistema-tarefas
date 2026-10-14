@@ -11,6 +11,8 @@ import {
   BUCKET_DOS_POSTS,
   capaValida,
   CATEGORIAS,
+  ehFormatoDeVideo,
+  rotuloDaCapa,
   midiasValidas,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
@@ -55,7 +57,7 @@ function arrumar(post: Post): Post {
 // Menu "Post" da tarefa: monta o post do cliente a partir da tarefa (a legenda
 // já vem da aba Copywrite e a data prevista, do prazo), envia pros Posts do
 // cliente e deixa editar o que já foi criado (legenda, data, redes, arquivos,
-// capa do reel). Os posts que saíram desta tarefa aparecem aqui com o status;
+// capa do vídeo). Os posts que saíram desta tarefa aparecem aqui com o status;
 // o preview de cada rede e os comentários do cliente ficam na aba Posts do
 // cliente.
 export default function PostDaTarefa({
@@ -184,7 +186,7 @@ export default function PostDaTarefa({
     if (!id) {
       return setErro("Esse link não parece ser de um vídeo do Google Drive. Copie o link de compartilhamento do arquivo.");
     }
-    if (categoria === "estatico") return setErro("Post estático leva uma imagem. O Drive serve pra vídeo (reel ou carrossel).");
+    if (categoria === "estatico") return setErro("Post estático leva uma imagem. O Drive serve pra vídeo (reel, Shorts, YouTube ou carrossel).");
     if (itens.some((i) => i.salva?.drive_id === id)) return setErro("Esse vídeo do Drive já está no post.");
     if (regra.maximo > 1 && ocupadas >= regra.maximo) {
       return setErro(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
@@ -281,7 +283,7 @@ export default function PostDaTarefa({
     });
     setErro(
       recusados.length > 0
-        ? `${recusados.join(", ")}: ${categoria === "reel" ? "reel só aceita vídeo" : categoria === "estatico" ? "post estático só aceita imagem" : "só imagem ou vídeo"}.`
+        ? `${recusados.join(", ")}: ${ehFormatoDeVideo(categoria) ? `${CATEGORIAS[categoria].rotulo} só aceita vídeo` : categoria === "estatico" ? "post estático só aceita imagem" : "só imagem ou vídeo"}.`
         : null
     );
     if (seletor.current) seletor.current.value = "";
@@ -423,9 +425,9 @@ export default function PostDaTarefa({
       midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size });
     }
 
-    // Capa do reel: só vale em reel; uma imagem nova sobe junto.
+    // Capa: só vale nos formatos de vídeo único; uma imagem nova sobe junto.
     let capaFinal: PostMedia | null = null;
-    if (categoria === "reel" && capa) {
+    if (ehFormatoDeVideo(categoria) && capa) {
       if (capa.salva) {
         capaFinal = capa.salva;
       } else {
@@ -456,9 +458,9 @@ export default function PostDaTarefa({
       networks: redesValidas(redes),
       scheduled_date: data || null,
       media: midias,
-      // A capa só entra na gravação de reel (ou de post que já tinha capa,
+      // A capa só entra na gravação de vídeo único (ou de post que já tinha capa,
       // pra limpar): os outros posts salvam como antes.
-      ...(categoria === "reel" || editando?.cover ? { cover: capaFinal } : {}),
+      ...(ehFormatoDeVideo(categoria) || editando?.cover ? { cover: capaFinal } : {}),
     };
     const gravacao = editando
       ? await supabase
@@ -645,6 +647,10 @@ export default function PostDaTarefa({
                   ativo={c === categoria}
                   onClick={() => {
                     setCategoria(c);
+                    // Shorts e vídeo do YouTube são do YouTube: já marca a rede.
+                    if (c === "shorts" || c === "youtube") {
+                      setRedes((atual) => (atual.includes("youtube") ? atual : redesValidas([...atual, "youtube"])));
+                    }
                     // Arquivos que não servem pra nova categoria saem.
                     setItens((atual) => {
                       const fica = atual
@@ -707,7 +713,7 @@ export default function PostDaTarefa({
 
           <div>
             <p className="mb-1 text-xs font-medium text-ink-muted">
-              {categoria === "reel" ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"}
+              {ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"}
             </p>
             <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
             {itens.length > 0 && (
@@ -820,9 +826,9 @@ export default function PostDaTarefa({
             )}
           </div>
 
-          {categoria === "reel" && (
+          {ehFormatoDeVideo(categoria) && (
             <div>
-              <p className="mb-1 text-xs font-medium text-ink-muted">Capa do reel</p>
+              <p className="mb-1 text-xs font-medium text-ink-muted">{rotuloDaCapa(categoria)}</p>
               <CapaDoReel
                 capa={capa}
                 urlDaCapa={capa ? (capa.salva ? links[capa.salva.path] ?? "" : capa.nova.url) : ""}

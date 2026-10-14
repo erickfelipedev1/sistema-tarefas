@@ -35,18 +35,44 @@ export const CATEGORIAS: Record<
     maximo: 1,
     dica: "Um vídeo na vertical.",
   },
+  shorts: {
+    rotulo: "Shorts",
+    artigo: "um Shorts",
+    aceita: "video/*",
+    minimo: 1,
+    maximo: 1,
+    dica: "Um vídeo na vertical (9:16), de até 60 segundos.",
+  },
+  youtube: {
+    rotulo: "YouTube",
+    artigo: "um vídeo do YouTube",
+    aceita: "video/*",
+    minimo: 1,
+    maximo: 1,
+    dica: "Um vídeo, em geral na horizontal (16:9). A capa é a miniatura do vídeo.",
+  },
 };
 
-export const ORDEM_DAS_CATEGORIAS: PostCategory[] = ["estatico", "carrossel", "reel"];
+export const ORDEM_DAS_CATEGORIAS: PostCategory[] = ["estatico", "carrossel", "reel", "shorts", "youtube"];
+
+// Reel, Shorts e vídeo do YouTube: um vídeo só, e podem ter capa.
+export function ehFormatoDeVideo(categoria: PostCategory): boolean {
+  return categoria === "reel" || categoria === "shorts" || categoria === "youtube";
+}
+
+export function rotuloDaCapa(categoria: PostCategory): string {
+  return categoria === "youtube" ? "Miniatura do vídeo" : categoria === "shorts" ? "Capa do Shorts" : "Capa do reel";
+}
 
 export const REDES: Record<PostNetwork, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
+  youtube: "YouTube",
 };
 
-export const ORDEM_DAS_REDES: PostNetwork[] = ["instagram", "facebook", "tiktok", "linkedin"];
+export const ORDEM_DAS_REDES: PostNetwork[] = ["instagram", "facebook", "tiktok", "linkedin", "youtube"];
 
 type Tom = "neutral" | "brand" | "success" | "warning" | "danger";
 
@@ -172,7 +198,7 @@ export function oQueFaltaProEnvio(post: {
   const regra = CATEGORIAS[post.category];
   if (post.quantasMidias < regra.minimo) {
     return regra.minimo === 1
-      ? `Falta ${post.category === "reel" ? "o vídeo" : "a imagem"} do post.`
+      ? `Falta ${ehFormatoDeVideo(post.category) ? "o vídeo" : "a imagem"} do post.`
       : `Um carrossel precisa de pelo menos ${regra.minimo} arquivos.`;
   }
   if (post.quantasMidias > regra.maximo) {
@@ -185,7 +211,7 @@ export function oQueFaltaProEnvio(post: {
 
 // O arquivo serve pra esta categoria?
 export function arquivoAceito(categoria: PostCategory, mime: string) {
-  if (categoria === "reel") return mime.startsWith("video/");
+  if (ehFormatoDeVideo(categoria)) return mime.startsWith("video/");
   if (categoria === "estatico") return mime.startsWith("image/");
   return mime.startsWith("image/") || mime.startsWith("video/");
 }

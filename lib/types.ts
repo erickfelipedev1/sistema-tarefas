@@ -333,8 +333,8 @@ export interface ReportAnalysis {
 
 // Preview de posts (migration 0051): o post que o colaborador monta pro
 // cliente aprovar. Ver lib/posts.ts pros rótulos de cada valor.
-export type PostCategory = "carrossel" | "estatico" | "reel";
-export type PostNetwork = "instagram" | "facebook" | "tiktok" | "linkedin";
+export type PostCategory = "carrossel" | "estatico" | "reel" | "shorts" | "youtube";
+export type PostNetwork = "instagram" | "facebook" | "tiktok" | "linkedin" | "youtube";
 export type PostStatus = "rascunho" | "enviado" | "ajuste" | "publicado";
 
 // Um arquivo do post, guardado em posts.media. "path" é o caminho no bucket
@@ -359,7 +359,8 @@ export interface Post {
   networks: PostNetwork[];
   scheduled_date: string | null;
   media: PostMedia[];
-  // Capa do reel (migration 0059): uma imagem, opcional, só em reel.
+  // Capa (migration 0059): uma imagem, opcional, nos formatos de vídeo único
+  // (reel, Shorts e vídeo do YouTube, onde é a miniatura).
   cover: PostMedia | null;
   // De qual tarefa o post saiu (migration 0062), se saiu de uma.
   task_id?: string | null;

@@ -10,6 +10,8 @@ import {
   arquivoAceito,
   BUCKET_DOS_POSTS,
   CATEGORIAS,
+  ehFormatoDeVideo,
+  rotuloDaCapa,
   capaValida,
   ehDoDrive,
   erroDeArquivoGrande,
@@ -373,7 +375,7 @@ export default function PostsManager({
     });
     setErroForm(
       recusados.length > 0
-        ? `${recusados.join(", ")}: ${categoria === "reel" ? "reel só aceita vídeo" : categoria === "estatico" ? "post estático só aceita imagem" : "só imagem ou vídeo"}.`
+        ? `${recusados.join(", ")}: ${ehFormatoDeVideo(categoria) ? `${CATEGORIAS[categoria].rotulo} só aceita vídeo` : categoria === "estatico" ? "post estático só aceita imagem" : "só imagem ou vídeo"}.`
         : null
     );
     if (seletorDeArquivo.current) seletorDeArquivo.current.value = "";
@@ -415,7 +417,7 @@ export default function PostsManager({
     if (!id) {
       return setErroForm("Esse link não parece ser de um vídeo do Google Drive. Copie o link de compartilhamento do arquivo.");
     }
-    if (categoria === "estatico") return setErroForm("Post estático leva uma imagem. O Drive serve pra vídeo (reel ou carrossel).");
+    if (categoria === "estatico") return setErroForm("Post estático leva uma imagem. O Drive serve pra vídeo (reel, Shorts, YouTube ou carrossel).");
     if (itens.some((i) => i.salva?.drive_id === id)) return setErroForm("Esse vídeo do Drive já está no post.");
     if (regra.maximo > 1 && itens.length >= regra.maximo) {
       return setErroForm(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
@@ -556,9 +558,9 @@ export default function PostsManager({
       midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size });
     }
 
-    // Capa do reel: só vale em reel; uma imagem nova sobe junto.
+    // Capa: só vale nos formatos de vídeo único; uma imagem nova sobe junto.
     let capaFinal: PostMedia | null = null;
-    if (categoria === "reel" && capa) {
+    if (ehFormatoDeVideo(categoria) && capa) {
       if (capa.salva) {
         capaFinal = capa.salva;
       } else {
@@ -591,9 +593,9 @@ export default function PostsManager({
       networks: redesValidas(redes),
       scheduled_date: data || null,
       media: midias,
-      // A capa só entra na gravação de reel (ou de post que já tinha capa,
+      // A capa só entra na gravação de vídeo único (ou de post que já tinha capa,
       // pra limpar): os outros posts salvam como antes.
-      ...(categoria === "reel" || editando?.cover ? { cover: capaFinal } : {}),
+      ...(ehFormatoDeVideo(categoria) || editando?.cover ? { cover: capaFinal } : {}),
     };
     const gravacao = editando
       ? await supabase
@@ -729,7 +731,15 @@ export default function PostsManager({
               <Campo label="Categoria" required>
                 <div className="flex flex-wrap gap-2" role="group" aria-label="Categoria">
                   {ORDEM_DAS_CATEGORIAS.map((c) => (
-                    <Opcao key={c} ativa={c === categoria} onClick={() => setCategoria(c)}>
+                    <Opcao
+                      key={c}
+                      ativa={c === categoria}
+                      onClick={() => {
+                        setCategoria(c);
+                        // Shorts e vídeo do YouTube são do YouTube: já marca a rede.
+                        if ((c === "shorts" || c === "youtube") && !redes.includes("youtube")) alternarRede("youtube");
+                      }}
+                    >
                       {CATEGORIAS[c].rotulo}
                     </Opcao>
                   ))}
@@ -765,7 +775,7 @@ export default function PostsManager({
                 </p>
               </Campo>
 
-              <Campo label={categoria === "reel" ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"} required>
+              <Campo label={ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"} required>
                 <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
                 {itens.length > 0 && (
                   <ul className="mb-3 flex flex-wrap gap-2">
@@ -862,8 +872,8 @@ export default function PostsManager({
                 )}
               </Campo>
 
-              {categoria === "reel" && (
-                <Campo label="Capa do reel">
+              {ehFormatoDeVideo(categoria) && (
+                <Campo label={rotuloDaCapa(categoria)}>
                   <CapaDoReel
                     capa={capa}
                     urlDaCapa={urlDaCapa}
@@ -885,7 +895,7 @@ export default function PostsManager({
                 categoria={categoria}
                 legenda={legenda}
                 midias={midiasDoForm}
-                capa={categoria === "reel" ? urlDaCapa || null : null}
+                capa={ehFormatoDeVideo(categoria) ? urlDaCapa || null : null}
                 conta={projectName}
                 data={data ? formatarDataBR(data) : null}
               />
@@ -966,7 +976,7 @@ export default function PostsManager({
           const nomeAutor = autor?.name || autor?.username || post.created_by_label || "Alguém";
           const aberto = abertos.has(post.id);
           const podeExcluir = souLider || post.created_by === currentUserId;
-          // Na lista, a miniatura é a capa do reel, quando tem.
+          // Na lista, a miniatura é a capa do vídeo, quando tem.
           const capa = post.cover ?? post.media[0];
           return (
             <article id={`post-${post.id}`} key={post.id} className="scroll-mt-4 rounded-2xl border border-line bg-surface p-4">

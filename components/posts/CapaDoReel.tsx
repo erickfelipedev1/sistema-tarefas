@@ -13,7 +13,7 @@ export type CapaDoForm =
 
 const TAMANHO_MAXIMO_DA_CAPA = 1080; // px no lado maior ao capturar um quadro
 
-// "Capa do reel": opcional. Dá pra enviar uma imagem ou escolher um quadro do
+// Capa do reel, do Shorts ou do vídeo do YouTube (a miniatura): opcional. Dá pra enviar uma imagem ou escolher um quadro do
 // próprio vídeo (arrastando até o ponto que a pessoa quer). Mostra a capa
 // inteira e como ela fica cortada na grade do perfil, que é onde o reel
 // aparece primeiro.
@@ -26,7 +26,7 @@ export default function CapaDoReel({
 }: {
   capa: CapaDoForm | null;
   urlDaCapa: string; // vazio = ainda sem link ou sem capa
-  urlDoVideo: string; // vazio = reel ainda sem vídeo (ou link não carregou)
+  urlDoVideo: string; // vazio = ainda sem vídeo (ou link não carregou)
   aoMudar: (capa: CapaDoForm | null) => void;
   aoErro: (mensagem: string | null) => void;
 }) {
@@ -70,7 +70,7 @@ export default function CapaDoReel({
       tela.toBlob(
         (blob) => {
           if (!blob) return aoErro("Não deu pra capturar o quadro. Envie uma imagem de capa.");
-          const arquivo = new File([blob], "capa-do-reel.jpg", { type: "image/jpeg" });
+          const arquivo = new File([blob], "capa-do-video.jpg", { type: "image/jpeg" });
           aoErro(null);
           setEscolhendoQuadro(false);
           trocar({ nova: { arquivo, url: URL.createObjectURL(arquivo) } });
@@ -95,7 +95,7 @@ export default function CapaDoReel({
           <figure>
             <div className="h-28 w-[63px] overflow-hidden rounded-lg border border-line bg-black">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={urlDaCapa} alt="Capa do reel" className="h-full w-full object-cover" />
+              <img src={urlDaCapa} alt="Capa do vídeo" className="h-full w-full object-cover" />
             </div>
             <figcaption className="mt-1 text-[10px] text-ink-muted">Capa</figcaption>
           </figure>
@@ -127,7 +127,7 @@ export default function CapaDoReel({
           size="sm"
           type="button"
           disabled={!urlDoVideo}
-          title={urlDoVideo ? undefined : "Escolha o vídeo do reel primeiro."}
+          title={urlDoVideo ? undefined : "Escolha o vídeo primeiro."}
           onClick={() => {
             setEscolhendoQuadro((a) => !a);
             setInstante(0);

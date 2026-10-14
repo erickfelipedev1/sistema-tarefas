@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import type { PostCategory, PostNetwork } from "@/lib/types";
-import { urlDoPlayerDoDrive } from "@/lib/posts";
+import { ehFormatoDeVideo, urlDoPlayerDoDrive } from "@/lib/posts";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -68,7 +68,14 @@ function PostPreviewBase({
   data: string | null; // já formatada ("12/10/2026")
 }) {
   const quando = data ? `Previsto para ${data}` : "Data a definir";
-  const proporcao = categoria === "reel" ? "aspect-[9/16]" : categoria === "carrossel" ? "aspect-[4/5]" : null;
+  const proporcao =
+    categoria === "reel" || categoria === "shorts"
+      ? "aspect-[9/16]"
+      : categoria === "youtube"
+      ? "aspect-video"
+      : categoria === "carrossel"
+      ? "aspect-[4/5]"
+      : null;
 
   if (rede === "tiktok") {
     return (
@@ -87,6 +94,65 @@ function PostPreviewBase({
           <p className="mt-1.5 text-[11px] text-white/60">{quando}</p>
         </div>
       </div>
+    );
+  }
+
+  if (rede === "youtube") {
+    // Shorts (e reel) no YouTube: tela vertical com os botões do lado.
+    if (categoria === "shorts" || categoria === "reel") {
+      return (
+        <div className="relative mx-auto aspect-[9/16] w-full max-w-[340px] overflow-hidden rounded-2xl border border-line bg-black text-white">
+          <Midias midias={midias} capa={capa} preencher />
+          <div className="pointer-events-none absolute bottom-24 right-2.5 flex flex-col items-center gap-4">
+            <ThumbsUpIcon className="h-6 w-6" />
+            <ThumbsUpIcon className="h-6 w-6 rotate-180" />
+            <MessageCircleIcon className="h-6 w-6" />
+            <ShareIcon className="h-6 w-6" />
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3.5 pb-14 pt-10">
+            <div className="flex items-center gap-2">
+              <Inicial conta={conta} className="h-7 w-7 border border-white/70 bg-white/20 text-white" />
+              <p className="text-sm font-semibold">@{conta}</p>
+            </div>
+            <Legenda texto={legenda} className="mt-1.5 text-[13px] text-white/90" linhas="line-clamp-2" clicavel />
+            <p className="mt-1.5 text-[11px] text-white/60">{quando}</p>
+          </div>
+        </div>
+      );
+    }
+    // Vídeo do YouTube: o player em 16:9, o título (primeira linha da legenda)
+    // e a descrição embaixo.
+    const [primeira, ...resto] = legenda.trim().split("\n");
+    const descricao = resto.join("\n").trim();
+    return (
+      <Moldura>
+        <Midias midias={midias} capa={capa} proporcao={categoria === "youtube" ? "aspect-video" : proporcao} />
+        <p className="line-clamp-2 px-3.5 pt-3 text-sm font-semibold text-ink">
+          {primeira || <span className="italic opacity-60">Sem título.</span>}
+        </p>
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+          <Inicial conta={conta} className="h-8 w-8 bg-avatar text-white" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">{conta}</p>
+            <p className="truncate text-[11px] text-ink-muted">{quando}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-3.5 pb-2.5 text-ink-muted">
+          {[
+            { rotulo: "Gostei", icone: ThumbsUpIcon, giro: "" },
+            { rotulo: "Não gostei", icone: ThumbsUpIcon, giro: "rotate-180" },
+            { rotulo: "Compartilhar", icone: ShareIcon, giro: "" },
+          ].map(({ rotulo, icone: Icone, giro }) => (
+            <span key={rotulo} className="flex items-center gap-1 rounded-full bg-surface-hover px-3 py-1.5 text-[11px] font-medium">
+              <Icone className={`h-3.5 w-3.5 ${giro}`} />
+              {rotulo}
+            </span>
+          ))}
+        </div>
+        {descricao && (
+          <Legenda texto={descricao} className="mx-3.5 mb-3.5 rounded-xl bg-surface-hover p-3 text-[13px] text-ink" linhas="line-clamp-3" />
+        )}
+      </Moldura>
     );
   }
 

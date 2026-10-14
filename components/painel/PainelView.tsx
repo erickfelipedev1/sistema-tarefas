@@ -395,7 +395,13 @@ function descreverOrigem(item: ItemCaixaDeEntrada) {
 
 const MAX_CAIXA = 8;
 
-const CATEGORIA_DO_POST: Record<string, string> = { carrossel: "Carrossel", estatico: "Post estático", reel: "Reel" };
+const CATEGORIA_DO_POST: Record<string, string> = {
+  carrossel: "Carrossel",
+  estatico: "Post estático",
+  reel: "Reel",
+  shorts: "Shorts",
+  youtube: "Vídeo do YouTube",
+};
 
 function CaixaDeEntrada({
   itens,
