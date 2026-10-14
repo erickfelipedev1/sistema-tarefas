@@ -87,6 +87,17 @@ export default function TaskModal({
   const supabase = createClient();
   const [current, setCurrent] = useState<Task | null>(task);
   const [aba, setAba] = useState<Aba>("detalhes");
+  // Tela larga (computador): "Comentários" abre ao lado dos detalhes, pra
+  // anotar enquanto lê a descrição. Em tela estreita continua trocando de aba.
+  const [larga, setLarga] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+  );
+  useEffect(() => {
+    const consulta = window.matchMedia("(min-width: 1024px)");
+    const aoMudar = () => setLarga(consulta.matches);
+    consulta.addEventListener("change", aoMudar);
+    return () => consulta.removeEventListener("change", aoMudar);
+  }, []);
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -268,6 +279,8 @@ export default function TaskModal({
     onClose();
   }
 
+  const comentariosAoLado = larga && aba === "comentarios" && !!current;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -275,7 +288,9 @@ export default function TaskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl md:flex-row"
+        className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl transition-[max-width] md:flex-row ${
+          comentariosAoLado ? "max-w-6xl" : "max-w-2xl"
+        }`}
       >
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-1 flex items-start justify-between gap-4">
@@ -312,7 +327,7 @@ export default function TaskModal({
             </p>
           )}
 
-          {aba === "detalhes" && (
+          {(aba === "detalhes" || comentariosAoLado) && (
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-ink-muted">
@@ -664,7 +679,7 @@ export default function TaskModal({
               currentUserLabel={currentUserLabel}
             />
           )}
-          {aba === "comentarios" && current && (
+          {aba === "comentarios" && current && !comentariosAoLado && (
             <ComentariosTab
               taskId={current.id}
               pageId={current.page_id}
@@ -697,6 +712,20 @@ export default function TaskModal({
             />
           )}
         </div>
+
+        {/* Comentários ao lado dos detalhes (tela larga): cada coluna rola sozinha. */}
+        {comentariosAoLado && current && (
+          <div className="flex w-full flex-shrink-0 flex-col overflow-y-auto border-t border-line bg-canvas/40 p-6 md:w-[420px] md:border-l md:border-t-0">
+            <h3 className="mb-3 text-sm font-semibold text-ink">Comentários</h3>
+            <ComentariosTab
+              taskId={current.id}
+              pageId={current.page_id}
+              currentUserLabel={currentUserLabel}
+              pessoas={profiles}
+              listaAlta
+            />
+          </div>
+        )}
 
         <div className="flex flex-shrink-0 flex-row gap-1 border-t border-line bg-canvas p-2 md:w-40 md:flex-col md:border-l md:border-t-0">
           <p className="hidden px-2 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-ink-muted md:block">
@@ -1040,12 +1069,15 @@ function ComentariosTab({
   pageId,
   currentUserLabel,
   pessoas,
+  listaAlta = false,
 }: {
   taskId: string;
   pageId: string | null;
   currentUserLabel: string;
   // A equipe que dá pra mencionar com "@".
   pessoas: Profile[];
+  // Ao lado dos detalhes a lista de comentários pode ser mais alta.
+  listaAlta?: boolean;
 }) {
   const supabase = createClient();
   const [comentarios, setComentarios] = useState<TaskComment[]>([]);
@@ -1202,7 +1234,7 @@ function ComentariosTab({
 
   return (
     <div>
-      <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
+      <div className={`mb-3 space-y-2 overflow-y-auto ${listaAlta ? "max-h-[52vh]" : "max-h-64"}`}>
         {comentarios.map((c) => (
           <div key={c.id} className="group rounded-lg bg-canvas px-3 py-2">
             {editandoId === c.id ? (
