@@ -40,6 +40,7 @@ export default async function ProgressoPage({
     { data: postsData },
     { data: pacoteData },
     { data: analisesData },
+    { data: otimizacoesData },
   ] = await Promise.all([
     supabase.rpc("get_project_progress", { p_token: params.token }),
     supabase.rpc("get_project_documents", { p_token: params.token }),
@@ -54,6 +55,9 @@ export default async function ProgressoPage({
     supabase.rpc("get_project_package", { p_token: params.token }),
     // As análises de relatório que a equipe publicou (migration 0058).
     supabase.rpc("get_project_analyses", { p_token: params.token }),
+    // As otimizações do tráfego (migration 0072); sem ela a função não existe
+    // e o bloco simplesmente não aparece.
+    supabase.rpc("get_project_optimizations", { p_token: params.token }),
   ]);
 
   const progresso = progressData as ProjectProgress | null;
@@ -178,6 +182,7 @@ export default async function ProgressoPage({
               portalToken={params.token}
               projectName={progresso.project_name}
               analisesDoPortal={Array.isArray(analisesData) ? analisesData : []}
+              otimizacoesDoPortal={Array.isArray(otimizacoesData) ? otimizacoesData : []}
             />
           ) : undefined
         }

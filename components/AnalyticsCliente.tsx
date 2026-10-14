@@ -14,6 +14,7 @@ import {
 import { formatarDataBR } from "@/lib/format";
 import AnalyticsCanais from "./AnalyticsCanais";
 import AnaliseDeRelatorio from "./analytics/AnaliseDeRelatorio";
+import OtimizacoesNoAnalytics, { type OtimizacaoPublica } from "./analytics/OtimizacoesNoAnalytics";
 import type { ReportAnalysis } from "@/lib/types";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
@@ -37,6 +38,8 @@ export default function AnalyticsCliente({
   portalToken,
   analise,
   analisesDoPortal,
+  otimizacoesDoPortal,
+  podeVerOtimizacoes = false,
 }: {
   projectId?: string;
   projectName: string;
@@ -45,6 +48,12 @@ export default function AnalyticsCliente({
   // se pode escrever. No portal: as análises já vêm prontas do servidor.
   analise?: { podeEscrever: boolean; souLider: boolean; currentUserId: string; autorRotulo: string };
   analisesDoPortal?: Omit<ReportAnalysis, "project_id" | "author_id">[];
+  // "Otimizações" (migration 0072): no portal vêm prontas do servidor; na
+  // equipe o bloco lê da tabela pelo projectId.
+  otimizacoesDoPortal?: OtimizacaoPublica[];
+  // Na equipe, só quem já tem a aba "Otimizações" (liderança e tráfego) vê o
+  // bloco aqui também.
+  podeVerOtimizacoes?: boolean;
 }) {
   const noPortal = !!portalToken;
   const [dias, setDias] = useState<Periodo>(30);
@@ -297,6 +306,11 @@ export default function AnalyticsCliente({
               autorRotulo={analise.autorRotulo}
             />
           )}
+
+      {/* As otimizações do tráfego, no fim da aba, embaixo da análise. */}
+      {noPortal
+        ? otimizacoesDoPortal && <OtimizacoesNoAnalytics modo="portal" otimizacoes={otimizacoesDoPortal} />
+        : projectId && podeVerOtimizacoes && <OtimizacoesNoAnalytics modo="equipe" projectId={projectId} />}
     </div>
   );
 }

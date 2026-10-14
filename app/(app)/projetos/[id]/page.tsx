@@ -281,6 +281,7 @@ export default async function ProjetoPage({
           <AnalyticsCliente
             projectId={id}
             projectName={project.name}
+            podeVerOtimizacoes={temOtimizacoes}
             analise={{
               // Escreve a "Análise de relatório": liderança e tráfego.
               podeEscrever: souLider || perfil?.faz_otimizacoes === true,
