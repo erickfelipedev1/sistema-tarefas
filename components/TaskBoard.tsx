@@ -7,6 +7,7 @@ import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
 import { corTarefa } from "@/lib/task-colors";
 import { syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
+import TarefasEmLista from "./TarefasEmLista";
 import { Avatar } from "./ui/Avatar";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -141,6 +142,23 @@ export default function TaskBoard({
   // Subtarefas de cada tarefa principal (aparecem dentro do cartão da mãe) e
   // quais mães estão com a lista recolhida.
   const [filhas, setFilhas] = useState<FilhasPorMae>({});
+  // Quadro (colunas) ou lista; a escolha fica guardada neste navegador.
+  const [visao, setVisao] = useState<"quadro" | "lista">("quadro");
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("dhub-visao-tarefas") === "lista") setVisao("lista");
+    } catch {
+      // sem armazenamento: fica no quadro
+    }
+  }, []);
+  function escolherVisao(v: "quadro" | "lista") {
+    setVisao(v);
+    try {
+      window.localStorage.setItem("dhub-visao-tarefas", v);
+    } catch {
+      // sem armazenamento: vale só nesta sessão
+    }
+  }
   const [recolhidas, setRecolhidas] = useState<Set<string>>(new Set());
   // Checklist/comentários/anexos de cada cartão (✅ 2/5 · 💬 3 · 📎 1).
   const [resumos, setResumos] = useState<Record<string, ResumoTarefa>>({});
@@ -648,6 +666,7 @@ export default function TaskBoard({
                     ))}
                   </select>
                 )}
+                <SeletorDeVisao visao={visao} aoTrocar={escolherVisao} />
                 <Button onClick={abrirCriar}>
                   <PlusIcon className="h-4 w-4" />
                   Nova tarefa
@@ -703,12 +722,37 @@ export default function TaskBoard({
           )}
         </>
       ) : (
-        <Button size="sm" onClick={abrirCriar} className="mb-4">
-          <PlusIcon className="h-3.5 w-3.5" />
-          Nova tarefa
-        </Button>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={abrirCriar}>
+            <PlusIcon className="h-3.5 w-3.5" />
+            Nova tarefa
+          </Button>
+          <SeletorDeVisao visao={visao} aoTrocar={escolherVisao} />
+        </div>
       )}
 
+      {visao === "lista" && (
+        <TarefasEmLista
+          colunas={COLUNAS}
+          tarefas={tasksVisiveis}
+          filhas={filhas}
+          hoje={hoje}
+          mostrarCliente={allProjects}
+          nomesDosProjetos={projectsById}
+          pacotes={pacoteById}
+          perfis={profileById}
+          ligacoes={ligacoes}
+          etiquetas={etiquetaPorId}
+          resumos={resumos}
+          filtrando={!!(busca || filtroResponsavel || filtroEtiqueta || filtroResumo)}
+          aoAbrir={abrirEditar}
+          aoMudarStatus={moveTaskTo}
+          aoAlternarSubtarefa={alternarSubtarefa}
+          aoExcluir={deleteTask}
+        />
+      )}
+
+      {visao === "quadro" && (
       <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 scrollbar-thin sm:mx-0 sm:snap-none sm:px-0 xl:grid xl:grid-cols-6 xl:overflow-visible">
         {COLUNAS.map((coluna) => {
           // Na ordem das posições (a que a pessoa arrumou).
@@ -964,6 +1008,7 @@ export default function TaskBoard({
           );
         })}
       </div>
+      )}
 
       {showHeader && tasks.length === 0 && (
         <div className="mt-5 flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-surface px-6 py-7 text-center">
@@ -999,6 +1044,32 @@ export default function TaskBoard({
           onDeleted={handleDeleted}
         />
       )}
+    </div>
+  );
+}
+
+// Alterna entre o quadro (colunas) e a lista de tarefas.
+function SeletorDeVisao({ visao, aoTrocar }: { visao: "quadro" | "lista"; aoTrocar: (v: "quadro" | "lista") => void }) {
+  return (
+    <div className="flex h-10 items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Visualização">
+      {(
+        [
+          ["quadro", "Quadro"],
+          ["lista", "Lista"],
+        ] as const
+      ).map(([valor, rotulo]) => (
+        <button
+          key={valor}
+          type="button"
+          onClick={() => aoTrocar(valor)}
+          aria-pressed={visao === valor}
+          className={`h-full rounded-md px-3 text-sm font-medium transition-colors ${
+            visao === valor ? "bg-brand/10 text-ink" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {rotulo}
+        </button>
+      ))}
     </div>
   );
 }
