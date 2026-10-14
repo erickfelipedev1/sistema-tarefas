@@ -138,6 +138,9 @@ export default function TaskBoard({
   const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
   const [ligacoes, setLigacoes] = useState<Record<string, string[]>>({});
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
+  // Clicar num dos cartões de resumo filtra o quadro por ele (clicar de novo
+  // desliga): tarefas abertas, pra hoje, atrasadas ou concluídas.
+  const [filtroResumo, setFiltroResumo] = useState<"abertas" | "hoje" | "atrasadas" | "concluidas" | null>(null);
   // Subtarefas de cada tarefa principal (aparecem dentro do cartão da mãe) e
   // quais mães estão com a lista recolhida.
   const [filhas, setFilhas] = useState<FilhasPorMae>({});
@@ -632,6 +635,13 @@ export default function TaskBoard({
       if (filtroEtiqueta && !(ligacoes[t.id] ?? []).includes(filtroEtiqueta)) {
         return false;
       }
+      if (filtroResumo) {
+        const emAberto = t.status !== "done" && t.status !== "cancelled";
+        if (filtroResumo === "abertas" && !emAberto) return false;
+        if (filtroResumo === "hoje" && !(emAberto && t.due_date === hoje)) return false;
+        if (filtroResumo === "atrasadas" && !(emAberto && !!t.due_date && t.due_date < hoje)) return false;
+        if (filtroResumo === "concluidas" && t.status !== "done") return false;
+      }
       return true;
     };
     // Subtarefa aparece dentro do cartão da principal, não solta na coluna.
@@ -639,7 +649,7 @@ export default function TaskBoard({
     // ou não passa pelo filtro/busca atual.
     const principaisNaTela = new Set(tasks.filter((t) => !t.parent_id && passa(t)).map((t) => t.id));
     return tasks.filter((t) => passa(t) && (!t.parent_id || !principaisNaTela.has(t.parent_id)));
-  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, ligacoes]);
+  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroResumo, hoje, ligacoes]);
 
   return (
     <div>
@@ -699,26 +709,45 @@ export default function TaskBoard({
               value={resumo.abertas}
               label="Tarefas abertas"
               tone="brand"
+              ativo={filtroResumo === "abertas"}
+              onClick={() => setFiltroResumo((a) => (a === "abertas" ? null : "abertas"))}
             />
             <StatTile
               icon={<CalendarIcon className="h-4 w-4" />}
               value={resumo.paraHoje}
               label="Para hoje"
               tone="warning"
+              ativo={filtroResumo === "hoje"}
+              onClick={() => setFiltroResumo((a) => (a === "hoje" ? null : "hoje"))}
             />
             <StatTile
               icon={<AlertTriangleIcon className="h-4 w-4" />}
               value={resumo.atrasadas}
               label="Atrasadas"
               tone="danger"
+              ativo={filtroResumo === "atrasadas"}
+              onClick={() => setFiltroResumo((a) => (a === "atrasadas" ? null : "atrasadas"))}
             />
             <StatTile
               icon={<CheckCircleIcon className="h-4 w-4" />}
               value={resumo.concluidas}
               label="Concluídas"
               tone="success"
+              ativo={filtroResumo === "concluidas"}
+              onClick={() => setFiltroResumo((a) => (a === "concluidas" ? null : "concluidas"))}
             />
           </div>
+          {filtroResumo && (
+            <p className="-mt-2 mb-4 flex items-center gap-2 text-xs text-ink-muted">
+              Mostrando só:{" "}
+              <b className="text-ink">
+                {{ abertas: "tarefas abertas", hoje: "para hoje", atrasadas: "atrasadas", concluidas: "concluídas" }[filtroResumo]}
+              </b>
+              <button type="button" onClick={() => setFiltroResumo(null)} className="font-medium text-brand-forte hover:underline">
+                Mostrar tudo
+              </button>
+            </p>
+          )}
         </>
       ) : (
         <Button size="sm" onClick={abrirCriar} className="mb-4">
@@ -976,12 +1005,12 @@ export default function TaskBoard({
                   <EmptyState
                     icon={<SparklesIcon className="h-4 w-4" />}
                     title={
-                      busca || filtroResponsavel || filtroEtiqueta
+                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo
                         ? "Nada por aqui"
                         : "Tudo limpo por aqui"
                     }
                     description={
-                      busca || filtroResponsavel || filtroEtiqueta
+                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo
                         ? "Nenhuma tarefa bate com o filtro atual."
                         : undefined
                     }
