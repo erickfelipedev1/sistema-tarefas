@@ -185,6 +185,8 @@ export default function TarefasEmLista({
                   const subsFeitas = subs.filter((s) => s.status === "done").length;
                   const aberta = !subsFechadas.has(task.id);
                   const feita = task.status === "done";
+                  // Concluída: cinza e apagada (menos o menu ⋮, que fica normal).
+                  const apagada = feita ? "opacity-60 grayscale" : "";
                   const atrasada = !!task.due_date && task.due_date < hoje && task.status !== "done" && task.status !== "cancelled";
                   const marcas = (ligacoes[task.id] ?? []).flatMap((id) => {
                     const et = etiquetas.get(id);
@@ -195,7 +197,7 @@ export default function TarefasEmLista({
                     <li key={task.id} className="border-b border-line last:border-b-0">
                       <div
                         onClick={() => aoAbrir(task)}
-                        className={`group grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-l-[3px] px-4 py-2.5 hover:bg-surface-hover ${grade} ${corTarefa(task.color).borda}`}
+                        className={`group grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-l-[3px] px-4 py-2.5 hover:bg-surface-hover ${grade} ${feita ? "border-l-slate-400" : corTarefa(task.color).borda}`}
                       >
                         <input
                           type="checkbox"
@@ -205,7 +207,7 @@ export default function TarefasEmLista({
                           aria-label={feita ? "Reabrir tarefa" : "Concluir tarefa"}
                           className="h-4 w-4"
                         />
-                        <div className="min-w-0">
+                        <div className={`min-w-0 ${apagada}`}>
                           <div className="flex items-center gap-1.5">
                             <p className={`truncate text-sm font-medium ${feita ? "text-ink-muted line-through" : "text-ink"}`}>
                               {task.title}
@@ -261,7 +263,7 @@ export default function TarefasEmLista({
                         {/* No celular os campos ficam embaixo do título; no computador viram colunas. */}
                         <div className="col-start-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 md:contents">
                           {mostrarCliente && (
-                            <div className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                            <div className={`min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-ink-muted ${apagada}`}>
                               {task.project_id ? (
                                 <Link
                                   href={`/projetos/${task.project_id}`}
@@ -274,7 +276,7 @@ export default function TarefasEmLista({
                               ) : null}
                             </div>
                           )}
-                          <div className="flex min-w-0 items-center gap-2">
+                          <div className={`flex min-w-0 items-center gap-2 ${apagada}`}>
                             {task.assigned_to.length > 0 ? (
                               <>
                                 <Avatar
@@ -300,7 +302,7 @@ export default function TarefasEmLista({
                           <span
                             className={`flex items-center gap-1 whitespace-nowrap text-xs ${
                               atrasada ? "font-medium text-danger" : "text-ink-muted"
-                            }`}
+                            } ${apagada}`}
                           >
                             {task.due_date ? (
                               <>
@@ -313,7 +315,7 @@ export default function TarefasEmLista({
                             )}
                           </span>
                           {/* Status em pílula: o seletor de verdade fica por cima, transparente. */}
-                          <span className="relative inline-flex w-[170px] max-w-full">
+                          <span className={`relative inline-flex w-[170px] max-w-full ${apagada}`}>
                             <span className="pointer-events-none absolute inset-0 flex items-center gap-2 rounded-full border border-line bg-surface-hover pl-3 pr-7 text-xs font-medium text-ink">
                               <span className={`h-2 w-2 flex-shrink-0 rounded-full ${coluna.dot}`} />
                               <span className="truncate">{coluna.label}</span>
@@ -393,7 +395,9 @@ export default function TarefasEmLista({
                               <li
                                 key={s.id}
                                 onClick={() => aoAbrir(s)}
-                                className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pl-12 pr-4 hover:bg-surface-hover"
+                                className={`flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pl-12 pr-4 hover:bg-surface-hover ${
+                                  sFeita ? "opacity-60 grayscale" : ""
+                                }`}
                               >
                                 <input
                                   type="checkbox"

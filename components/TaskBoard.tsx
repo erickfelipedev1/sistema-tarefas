@@ -804,8 +804,15 @@ export default function TaskBoard({
                       onClick={() => abrirEditar(task)}
                       data-mov="bloco"
                       className={`group relative cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
-                        corTarefa(task.color).borda
-                      } ${draggedId === task.id ? "opacity-40" : ""} ${
+                        task.status === "done" ? "border-l-slate-400" : corTarefa(task.color).borda
+                      } ${
+                        draggedId === task.id
+                          ? "opacity-40"
+                          : task.status === "done"
+                          ? // Concluída: cinza e apagada (volta ao normal com o mouse em cima).
+                            "opacity-60 grayscale hover:opacity-90"
+                          : ""
+                      } ${
                         marcaAntes
                           ? "before:pointer-events-none before:absolute before:-top-[7px] before:inset-x-0 before:h-1 before:rounded-full before:bg-brand before:content-['']"
                           : ""
@@ -1126,7 +1133,7 @@ function SubtarefasNoCartao({
             const feita = s.status === "done";
             const atrasada = !!s.due_date && s.due_date < hoje && !feita;
             return (
-              <li key={s.id} className="rounded-md px-1 py-1 hover:bg-surface-hover">
+              <li key={s.id} className={`rounded-md px-1 py-1 hover:bg-surface-hover ${feita ? "opacity-60" : ""}`}>
                 <div className="flex items-start gap-1.5">
                   <input
                     type="checkbox"
