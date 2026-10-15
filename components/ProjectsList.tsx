@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project } from "@/lib/types";
 import { formatarRelativo } from "@/lib/format";
+import { corDoCliente } from "@/lib/task-colors";
 import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
@@ -660,16 +661,24 @@ function ProjectCard({
     return () => document.removeEventListener("mousedown", handleClickFora);
   }, [menuAberto]);
 
+  // Cada cliente tem a sua cor (a mesma dos cartões de tarefa).
+  const cor = corDoCliente(project);
+
   return (
     <div
       data-mov="bloco"
-      className="group relative rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+      style={{ borderLeftColor: cor.fundo }}
+      className="group relative rounded-2xl border border-line border-l-[6px] bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
     >
       <Link href={`/projetos/${project.id}`} className="block">
-        <p className="pr-7 text-base font-semibold leading-snug text-ink">
-          {project.name}
-        </p>
-        <p className="mt-1 text-sm text-ink-muted">
+        <div
+          className="rounded-tl-[10px_15px] rounded-tr-[15px] px-4 py-3"
+          style={{ backgroundColor: cor.fundo, color: cor.texto }}
+        >
+          <p className="pr-7 text-base font-semibold leading-snug">{project.name}</p>
+        </div>
+        <div className="p-4 pt-3">
+        <p className="text-sm text-ink-muted">
           Quadro de tarefas e Wiki próprios
         </p>
 
@@ -728,9 +737,10 @@ function ProjectCard({
             <ChevronRightIcon className="h-3.5 w-3.5" />
           </span>
         </div>
+        </div>
       </Link>
 
-      <div ref={menuRef} className="absolute right-2.5 top-2.5">
+      <div ref={menuRef} className="absolute right-2.5 top-2.5" style={{ color: cor.texto }}>
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -742,7 +752,7 @@ function ProjectCard({
           aria-haspopup="menu"
           aria-expanded={menuAberto}
           data-open={menuAberto}
-          className="rounded-md p-1 text-ink-muted opacity-0 transition-opacity hover:bg-surface-hover hover:text-ink group-hover:opacity-100 data-[open=true]:opacity-100"
+          className="rounded-md p-1 opacity-0 transition-opacity hover:bg-black/15 group-hover:opacity-100 data-[open=true]:opacity-100"
         >
           <MoreVerticalIcon className="h-4 w-4" />
         </button>

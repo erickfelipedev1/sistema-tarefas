@@ -19,6 +19,7 @@ import { TipoDeServicoDoCliente } from "@/components/TipoDeServico";
 import { pacotesDisponiveis } from "@/lib/pacotes";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import CorDoCliente from "@/components/CorDoCliente";
+import { corDoCliente } from "@/lib/task-colors";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
 import ProjectFeedbackList from "@/components/ProjectFeedbackList";
@@ -136,6 +137,11 @@ export default async function ProjetoPage({
 
       <div data-mov="topo" className="mb-5 mt-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span
+            className="h-8 w-2 flex-shrink-0 rounded-full"
+            style={{ backgroundColor: corDoCliente(project).fundo }}
+            aria-hidden="true"
+          />
           <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
             {project.name}
           </h1>
