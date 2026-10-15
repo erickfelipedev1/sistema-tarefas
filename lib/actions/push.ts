@@ -172,6 +172,52 @@ export async function avisarMencao(commentId: string, apenas?: string[]) {
   });
 }
 
+// Depois de mencionar alguém na descrição de uma tarefa: avisa no celular. O
+// aviso do sininho já foi criado pelo banco (migration 0076). Só quem fez a
+// menção dispara (o aviso guarda quem foi) e só pra quem tem um aviso desta
+// tarefa que ainda não foi pro celular.
+export async function avisarMencaoNaDescricao(taskId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const { data: pendentes } = await admin
+    .from("user_notifications")
+    .select("id, profile_id")
+    .eq("task_id", taskId)
+    .eq("type", "mention")
+    .eq("actor_id", user.id)
+    .is("comment_id", null)
+    .is("pushed_at", null)
+    // Aviso antigo que ficou sem push não vale mais.
+    .gt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+  // Só quem ainda está mencionado na descrição (a menção pode ter sido tirada depois).
+  const { data: atual } = await admin.from("tasks").select("description_mentions").eq("id", taskId).maybeSingle();
+  const aindaCitados = new Set((atual?.description_mentions as string[] | null) ?? []);
+  const destinatarios = (pendentes ?? [])
+    .map((n) => n.profile_id as string)
+    .filter((id) => id !== user.id && aindaCitados.has(id));
+  if (destinatarios.length === 0) return;
+  await admin
+    .from("user_notifications")
+    .update({ pushed_at: new Date().toISOString() })
+    .in(
+      "id",
+      (pendentes ?? []).map((n) => n.id as string)
+    );
+
+  const [{ data: tarefa }, { data: autor }] = await Promise.all([
+    admin.from("tasks").select("title").eq("id", taskId).maybeSingle(),
+    admin.from("profiles").select("name, username").eq("id", user.id).maybeSingle(),
+  ]);
+  const nome = autor?.name || autor?.username || "Alguém";
+  await enviarPush(destinatarios, {
+    titulo: `${nome} mencionou você`,
+    corpo: `Na descrição de "${tarefa?.title ?? "uma tarefa"}"`,
+    url: `/board?tarefa=${taskId}`,
+    tag: `mencao-descricao-${taskId}`,
+  });
+}
+
 // Botão "Testar notificação": manda um aviso pra todos os aparelhos de quem
 // clicou e devolve o que aconteceu (pra achar o problema sem adivinhar).
 export async function testarPush(): Promise<string> {

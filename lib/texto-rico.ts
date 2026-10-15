@@ -30,6 +30,7 @@ const DESCARTAR = new Set([
 ]);
 
 const COR = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\))$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LINK_NO_TEXTO = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi;
 
 export function escaparHtml(texto: string): string {
@@ -155,6 +156,9 @@ function copiar(origem: Node, destino: Node, doc: Document, dentroDeLink: boolea
       const novo = doc.createElement(tag === "FONT" ? "span" : tag === "STRIKE" || tag === "DEL" ? "s" : tag.toLowerCase());
       const estilo = [tag === "FONT" ? estiloDoFont(el) : "", estiloPermitido(el)].filter(Boolean).join("; ");
       if (estilo) novo.setAttribute("style", estilo);
+      // Menção "@Nome": a marca guarda o id da pessoa (só no formato de uuid).
+      const mencao = tag === "SPAN" ? el.getAttribute("data-mencao") : null;
+      if (mencao && UUID.test(mencao)) novo.setAttribute("data-mencao", mencao.toLowerCase());
       copiar(el, novo, doc, dentroDeLink, linkificar);
       destino.appendChild(novo);
       return;
@@ -228,4 +232,16 @@ export function htmlParaTexto(html: string): string {
   };
   andar(doc.body);
   return partes.join("").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// Os ids das pessoas mencionadas (@nome) num HTML da descrição, sem repetir.
+export function idsDeMencoes(html: string): string[] {
+  if (typeof DOMParser === "undefined" || !html) return [];
+  const doc = new DOMParser().parseFromString(`<body>${sanitizarHtml(html, false)}</body>`, "text/html");
+  const ids = new Set<string>();
+  doc.querySelectorAll("[data-mencao]").forEach((el) => {
+    const id = el.getAttribute("data-mencao");
+    if (id && UUID.test(id)) ids.add(id.toLowerCase());
+  });
+  return Array.from(ids).slice(0, 20);
 }

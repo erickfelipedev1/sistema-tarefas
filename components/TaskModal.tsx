@@ -3,7 +3,7 @@
 import { linkDoArquivo } from "@/lib/arquivos";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import EditorDeTexto from "@/components/EditorDeTexto";
-import { LIMITE_DO_HTML, htmlParaTexto, sanitizarHtml, textoParaHtml } from "@/lib/texto-rico";
+import { LIMITE_DO_HTML, htmlParaTexto, idsDeMencoes, sanitizarHtml, textoParaHtml } from "@/lib/texto-rico";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -29,7 +29,7 @@ import {
   syncHorasWiki,
 } from "@/lib/task-wiki-sync";
 import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
-import { avisarMencao, avisarTarefaAtribuida } from "@/lib/actions/push";
+import { avisarMencao, avisarMencaoNaDescricao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
@@ -105,6 +105,9 @@ export default function TaskModal({
   const [description, setDescription] = useState(task?.description ?? "");
   // A descrição formatada (HTML limpo do editor); vazio = só texto simples.
   const [descriptionHtml, setDescriptionHtml] = useState(task?.description_html ?? "");
+  // Quem foi mencionado (@nome) na descrição (só conta quem está na equipe).
+  const [mencoesDaDescricao, setMencoesDaDescricao] = useState<string[]>(task?.description_mentions ?? []);
+  const idsDaEquipe = new Set(profiles.map((p) => p.id));
   // Descrição salva aparece como texto (com links clicáveis); clicar fora de
   // um link abre a edição.
   const [editandoDescricao, setEditandoDescricao] = useState(false);
@@ -186,6 +189,7 @@ export default function TaskModal({
         title: title.trim(),
         description: description.trim() || null,
         ...(descriptionHtml ? { description_html: descriptionHtml } : {}),
+        ...(mencoesDaDescricao.length > 0 ? { description_mentions: mencoesDaDescricao } : {}),
         status,
         position: getNextPosition(status),
         start_date: startDate || null,
@@ -218,10 +222,11 @@ export default function TaskModal({
     onCreated(tarefaFinal);
     // Notificação no celular dos responsáveis (menos quem criou).
     avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
+    if (mencoesDaDescricao.length > 0) avisarMencaoNaDescricao(tarefaFinal.id).catch(() => {});
   }
 
-  async function salvarCampo(campos: Partial<Task>) {
-    if (!current) return;
+  async function salvarCampo(campos: Partial<Task>): Promise<boolean> {
+    if (!current) return false;
     const antes = current;
     const atualizado = { ...current, ...campos } as Task;
     setCurrent(atualizado);
@@ -239,7 +244,7 @@ export default function TaskModal({
           ? "Só a liderança pode alterar as datas de uma tarefa já criada."
           : "Não deu pra salvar a data. Tenta de novo."
       );
-      return;
+      return false;
     }
 
     // A descrição não gravou (ex: falta a migration 0075): desfaz na tela e avisa,
@@ -254,7 +259,7 @@ export default function TaskModal({
           ? "Não deu pra salvar a descrição formatada. Confere se a migration 0075_descricao_formatada.sql já foi rodada no Supabase."
           : "Não deu pra salvar a descrição. Tenta de novo."
       );
-      return;
+      return false;
     }
 
     // Se essa tarefa já tem uma página vinculada na Wiki, mantém o resumo
@@ -265,6 +270,7 @@ export default function TaskModal({
         // que não atualizou dessa vez — não trava o autosave por isso.
       });
     }
+    return true;
   }
 
   function adicionarResponsavel(id: string) {
@@ -401,11 +407,13 @@ export default function TaskModal({
                   </div>
                 ) : (
                   <EditorDeTexto
+                    pessoas={profiles}
                     valorHtml={descriptionHtml || textoParaHtml(description)}
                     autoFocus={editandoDescricao}
                     aoMudar={isNovo ? (html) => {
                       setDescriptionHtml(html);
                       setDescription(htmlParaTexto(html));
+                      setMencoesDaDescricao(idsDeMencoes(html).filter((id) => idsDaEquipe.has(id)));
                     } : undefined}
                     aoSair={(html, mudou) => {
                       if (isNovo) return;
@@ -422,7 +430,21 @@ export default function TaskModal({
                       setDescriptionHtml(html);
                       setDescription(texto);
                       setEditandoDescricao(false);
-                      salvarCampo({ description: texto || null, description_html: html || null });
+                      const mencionados = idsDeMencoes(html).filter((id) => idsDaEquipe.has(id));
+                      const jaMencionados = current?.description_mentions ?? [];
+                      const tarefaId = current?.id;
+                      const mudouMencoes =
+                        mencionados.length !== jaMencionados.length || mencionados.some((id) => !jaMencionados.includes(id));
+                      salvarCampo({
+                        description: texto || null,
+                        description_html: html || null,
+                        ...(mudouMencoes ? { description_mentions: mencionados } : {}),
+                      }).then((gravou) => {
+                        // O aviso do sininho nasce no banco; aqui vai o push pro celular.
+                        if (gravou && tarefaId && mencionados.some((id) => !jaMencionados.includes(id))) {
+                          avisarMencaoNaDescricao(tarefaId).catch(() => {});
+                        }
+                      });
                     }}
                   />
                 )}
@@ -741,7 +763,9 @@ export default function TaskModal({
             <CopyTab
               key={current.id}
               valor={current.copy_text ?? ""}
-              onSalvar={(texto) => salvarCampo({ copy_text: texto.trim() || null })}
+              onSalvar={async (texto) => {
+                await salvarCampo({ copy_text: texto.trim() || null });
+              }}
             />
           )}
           {aba === "post" && current && (

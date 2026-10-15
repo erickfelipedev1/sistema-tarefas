@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { CORES_TAREFA } from "@/lib/task-colors";
+import { nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
 import { FONTES_DO_TEXTO, LIMITE_DO_HTML, TAMANHOS_DO_TEXTO, sanitizarHtml } from "@/lib/texto-rico";
 
 // Cores sentinela: aplicadas e logo trocadas por "sem cor" (é assim que a
@@ -29,6 +30,7 @@ export default function EditorDeTexto({
   aoSair,
   autoFocus = false,
   placeholder = "Detalhes da tarefa...",
+  pessoas = [],
 }: {
   valorHtml: string;
   aoMudar?: (html: string) => void;
@@ -37,6 +39,8 @@ export default function EditorDeTexto({
   aoSair?: (html: string, mudou: boolean) => void;
   autoFocus?: boolean;
   placeholder?: string;
+  // A equipe: digitar "@" abre a lista pra mencionar alguém.
+  pessoas?: readonly PessoaMencionavel[];
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const barra = useRef<HTMLDivElement>(null);
@@ -46,12 +50,19 @@ export default function EditorDeTexto({
   const [ativos, setAtivos] = useState<Ativos>({});
   const [menu, setMenu] = useState<"fonte" | "tamanho" | "cor" | "destaque" | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Menção em andamento: onde está o "@" (no texto em que o cursor está) e o
+  // que já foi digitado depois dele.
+  const [busca, setBusca] = useState<{ no: Text; inicio: number; fim: number; termo: string } | null>(null);
+  const [opcao, setOpcao] = useState(0);
+  const [lugar, setLugar] = useState<React.CSSProperties | null>(null);
 
   // Põe o conteúdo uma vez; depois o navegador cuida da caixa.
   useEffect(() => {
     const el = caixa.current;
     if (!el) return;
     el.innerHTML = sanitizarHtml(valorHtml, false);
+    // A menção é um bloco só: apagar leva o nome inteiro.
+    el.querySelectorAll("[data-mencao]").forEach((m) => m.setAttribute("contenteditable", "false"));
     inicial.current = el.textContent?.trim() ? sanitizarHtml(el.innerHTML, false) : "";
     setVazio(!el.textContent?.trim());
     if (autoFocus) {
@@ -103,6 +114,18 @@ export default function EditorDeTexto({
     document.addEventListener("selectionchange", atualizar);
     return () => document.removeEventListener("selectionchange", atualizar);
   }, []);
+
+  // A lista de menção fecha assim que o cursor sai do "@..." (clicou em outro
+  // ponto, andou com as setas): senão Enter/Tab continuariam presos nela.
+  useEffect(() => {
+    if (!busca) return;
+    function conferir() {
+      const sel = window.getSelection();
+      if (!sel || !sel.isCollapsed || sel.anchorNode !== busca!.no || sel.anchorOffset !== busca!.fim) setBusca(null);
+    }
+    document.addEventListener("selectionchange", conferir);
+    return () => document.removeEventListener("selectionchange", conferir);
+  }, [busca]);
 
   // Fecha o menu aberto ao clicar fora da barra.
   useEffect(() => {
@@ -179,6 +202,94 @@ export default function EditorDeTexto({
     else document.execCommand("foreColor", false, "#202124"); // texto escuro sobre o destaque
     avisarMudanca();
     setMenu(null);
+  }
+
+  const sugestoes = useMemo(() => {
+    if (!busca) return [];
+    const termo = semAcento(busca.termo);
+    return pessoas
+      .filter((p) => {
+        const nome = nomeParaMencao(p);
+        if (!nome) return false;
+        return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
+      })
+      .slice(0, 6);
+  }, [busca, pessoas]);
+
+  function posicionarLista() {
+    const sel = window.getSelection();
+    const faixa = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).getBoundingClientRect() : null;
+    const base = faixa && (faixa.width > 0 || faixa.height > 0) ? faixa : caixa.current?.getBoundingClientRect();
+    if (!base) return;
+    const largura = Math.min(260, window.innerWidth - 16);
+    const esquerda = Math.max(8, Math.min(base.left, window.innerWidth - largura - 8));
+    const abaixo = window.innerHeight - base.bottom - 12;
+    if (abaixo >= 180) setLugar({ left: esquerda, width: largura, top: base.bottom + 4, maxHeight: Math.min(240, abaixo) });
+    else setLugar({ left: esquerda, width: largura, bottom: window.innerHeight - base.top + 4, maxHeight: Math.min(240, base.top - 12) });
+  }
+
+  // A cada letra: se o cursor está logo depois de um "@palavra", abre a lista.
+  function aoDigitar() {
+    avisarMudanca();
+    const sel = window.getSelection();
+    const no = sel?.anchorNode;
+    if (!sel || !sel.isCollapsed || !no || no.nodeType !== Node.TEXT_NODE || !caixa.current?.contains(no)) {
+      setBusca(null);
+      return;
+    }
+    const antes = (no.textContent ?? "").slice(0, sel.anchorOffset);
+    const achou = /(?:^|\s)@([^\s@]{0,30})$/u.exec(antes);
+    if (!achou) {
+      setBusca(null);
+      return;
+    }
+    setBusca({ no: no as Text, inicio: sel.anchorOffset - achou[1].length - 1, fim: sel.anchorOffset, termo: achou[1] });
+    setOpcao(0);
+    posicionarLista();
+  }
+
+  function escolherPessoa(p: PessoaMencionavel) {
+    if (!busca) return;
+    const { no, inicio, fim } = busca;
+    const texto = no.textContent ?? "";
+    const marca = document.createElement("span");
+    marca.setAttribute("data-mencao", p.id);
+    marca.setAttribute("contenteditable", "false");
+    marca.textContent = `@${nomeParaMencao(p)}`;
+    // O espaço fixo garante um lugar pro cursor depois da menção.
+    const resto = document.createTextNode(`\u00A0${texto.slice(fim)}`);
+    no.textContent = texto.slice(0, inicio);
+    no.after(marca);
+    marca.after(resto);
+    const faixa = document.createRange();
+    faixa.setStart(resto, 1);
+    faixa.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(faixa);
+    setBusca(null);
+    avisarMudanca();
+  }
+
+  function aoApertar(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!busca) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setBusca(null);
+      return;
+    }
+    if (sugestoes.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setOpcao((d) => (d + 1) % sugestoes.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setOpcao((d) => (d - 1 + sugestoes.length) % sugestoes.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      escolherPessoa(sugestoes[Math.min(opcao, sugestoes.length - 1)]);
+    }
   }
 
   // Colar traz texto puro: nada de HTML de fora (Word, sites) entrando na descrição.
@@ -340,9 +451,11 @@ export default function EditorDeTexto({
           role="textbox"
           aria-multiline="true"
           aria-label="Descrição da tarefa"
-          onInput={avisarMudanca}
+          onInput={aoDigitar}
+          onKeyDown={aoApertar}
           onPaste={colar}
           onBlur={() => {
+            setBusca(null);
             const html = lerHtml();
             aoSair?.(html, html !== inicial.current);
           }}
@@ -350,6 +463,33 @@ export default function EditorDeTexto({
         />
       </div>
       {aviso && <p className="border-t border-line px-3 py-1.5 text-xs text-danger">{aviso}</p>}
+      {busca && sugestoes.length > 0 && lugar && (
+        <ul
+          role="listbox"
+          aria-label="Mencionar"
+          style={{ position: "fixed", ...lugar }}
+          className="z-50 overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {sugestoes.map((p, i) => (
+            <li key={p.id} role="option" aria-selected={i === opcao}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  escolherPessoa(p);
+                }}
+                className={`block w-full px-3 py-1.5 text-left text-sm text-ink ${i === opcao ? "bg-surface-hover" : "hover:bg-surface-hover"}`}
+              >
+                {nomeParaMencao(p)}
+                {p.username && p.username !== nomeParaMencao(p) && (
+                  <span className="ml-1.5 text-xs text-ink-muted">@{p.username}</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
