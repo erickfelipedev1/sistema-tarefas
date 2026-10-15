@@ -121,6 +121,9 @@ export interface Project {
   // As pessoas da equipe que cuidam do cliente (migration 0055) — aparecem
   // no cartão dele na lista de clientes. Ausente = migration não rodada.
   responsible_ids?: string[] | null;
+  // Cor do cliente (migration 0073): vale no cartão das tarefas. Vazio = cor
+  // automática (ver corDoCliente em lib/task-colors.ts).
+  color?: string | null;
   // Nome do pacote do cliente neste mês (Start, Pro, Elite). Não é coluna da
   // tabela: o servidor preenche (lib/pacotes.ts) pras telas que mostram o
   // tipo de serviço ao lado do nome do cliente.

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
-import { corTarefa } from "@/lib/task-colors";
+import { corDoCliente } from "@/lib/task-colors";
 import { syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
 import TarefasEmLista from "./TarefasEmLista";
@@ -88,6 +88,7 @@ export default function TaskBoard({
   allProjects = false,
   soMinhas = false,
   projects = [],
+  clienteDaPagina,
   profiles = [],
   podeMudarDatas = true,
   tarefaInicial = null,
@@ -109,6 +110,9 @@ export default function TaskBoard({
   // específico o quadro continua mostrando todo mundo).
   soMinhas?: boolean;
   projects?: Project[];
+  // Quadro dentro da página de um cliente: o cliente em questão, só pra pegar a
+  // cor e o nome do cartão (a lista "projects" continua vazia aí).
+  clienteDaPagina?: Project;
   profiles?: Profile[];
   // Pode mudar o início e a entrega de uma tarefa já criada. Por padrão
   // todo mundo pode; passe false pra travar as datas.
@@ -232,6 +236,11 @@ export default function TaskBoard({
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
     [projects]
+  );
+  // Cada cliente com a sua cor (cabeçalho e lateral do cartão).
+  const clientesPorId = useMemo(
+    () => new Map([...projects, ...(clienteDaPagina ? [clienteDaPagina] : [])].map((p) => [p.id, p])),
+    [projects, clienteDaPagina]
   );
   // Tipo de serviço (pacote) de cada cliente, quando a página mandou.
   const pacoteById = useMemo(
@@ -738,6 +747,7 @@ export default function TaskBoard({
         <TarefasEmLista
           colunas={COLUNAS}
           tarefas={tasksVisiveis}
+          corDoCliente={(t) => corDoCliente(t.project_id ? clientesPorId.get(t.project_id) : null).fundo}
           filhas={filhas}
           hoje={hoje}
           mostrarCliente={allProjects}
@@ -803,9 +813,8 @@ export default function TaskBoard({
                       onDragOver={(e) => handleCardDragOver(e, coluna.key, task, tarefasDaColuna)}
                       onClick={() => abrirEditar(task)}
                       data-mov="bloco"
-                      className={`group relative cursor-pointer rounded-xl border border-line border-l-[3px] bg-surface p-3.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
-                        task.status === "done" ? "border-l-slate-400" : corTarefa(task.color).borda
-                      } ${
+                      style={{ borderLeftColor: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).fundo }}
+                      className={`group relative cursor-pointer overflow-hidden rounded-xl border border-line border-l-[6px] bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
                         draggedId === task.id
                           ? "opacity-40"
                           : task.status === "done"
@@ -822,83 +831,88 @@ export default function TaskBoard({
                           : ""
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium leading-snug text-ink">
-                          {task.title}
-                        </p>
+                      {/* Cabeçalho na cor do cliente: nome, tipo de serviço e excluir. */}
+                      <div
+                        className="flex items-center justify-between gap-2 px-3.5 py-2"
+                        style={{
+                          backgroundColor: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).fundo,
+                          color: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).texto,
+                        }}
+                      >
+                        <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide">
+                          {task.project_id ? (
+                            <Link
+                              href={`/projetos/${task.project_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="hover:underline"
+                            >
+                              {clientesPorId.get(task.project_id)?.name ?? "Cliente"}
+                              {pacoteById.get(task.project_id) && (
+                                <span className="font-medium normal-case opacity-80"> · {pacoteById.get(task.project_id)}</span>
+                              )}
+                            </Link>
+                          ) : (
+                            "Sem cliente"
+                          )}
+                        </span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteTask(task);
                           }}
                           title="Excluir tarefa"
-                          className="flex-shrink-0 text-ink-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                          className="flex-shrink-0 opacity-70 transition-opacity hover:opacity-100"
                         >
                           <Trash2Icon className="h-3.5 w-3.5" />
                         </button>
                       </div>
 
-                      {(allProjects && task.project_id) ||
-                      task.assigned_to.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          {allProjects && task.project_id && (
-                            <Link
-                              href={`/projetos/${task.project_id}`}
-                              onClick={(e) => e.stopPropagation()}
+                      <div className="p-3.5">
+                      <p className="text-[15px] font-medium leading-snug text-ink">{task.title}</p>
+
+                      {(task.due_date || task.assigned_to.length > 0) && (
+                        <div className="mt-3 flex items-start justify-between gap-3">
+                          {task.due_date ? (
+                            <span
+                              className={`flex min-w-0 items-start gap-1.5 text-xs ${
+                                atrasada ? "font-medium text-danger" : "text-ink-muted"
+                              }`}
                             >
-                              <Badge tone="neutral">
-                                {projectsById.get(task.project_id) ?? "Cliente"}
-                                {pacoteById.get(task.project_id) && (
-                                  <span className="font-semibold text-brand-forte">
-                                    · {pacoteById.get(task.project_id)}
-                                  </span>
-                                )}
-                              </Badge>
-                            </Link>
+                              <CalendarIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                              <span>
+                                {task.start_date && task.start_date !== task.due_date
+                                  ? `${task.start_date.split("-").reverse().slice(0, 2).join("/")} → `
+                                  : ""}
+                                {task.due_date.split("-").reverse().join("/")}
+                                {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
+                              </span>
+                            </span>
+                          ) : (
+                            <span />
                           )}
                           {task.assigned_to.length > 0 && (
-                            <div className="flex -space-x-1.5">
+                            <div className="flex flex-shrink-0 -space-x-2">
                               {task.assigned_to.slice(0, 3).map((id) => (
                                 <Avatar
                                   key={id}
                                   name={nomeDe(id)}
                                   src={profileById.get(id)?.avatar_url}
-                                  size="xs"
+                                  size="md"
                                   className="ring-2 ring-surface"
                                 />
                               ))}
                               {task.assigned_to.length > 3 && (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-hover text-[9px] font-semibold text-ink-muted ring-2 ring-surface">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover text-[11px] font-semibold text-ink-muted ring-2 ring-surface">
                                   +{task.assigned_to.length - 3}
                                 </span>
                               )}
                             </div>
                           )}
                         </div>
-                      ) : null}
+                      )}
 
-                      {(task.due_date || task.created_by_label) && (
-                        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                          {task.due_date && (
-                            <span
-                              className={`flex items-center gap-1 ${
-                                atrasada ? "font-medium text-danger" : ""
-                              }`}
-                            >
-                              <CalendarIcon className="h-3 w-3" />
-                              {task.start_date && task.start_date !== task.due_date
-                                ? `${task.start_date.split("-").reverse().slice(0, 2).join("/")} → `
-                                : ""}
-                              {task.due_date.split("-").reverse().join("/")}
-                              {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
-                            </span>
-                          )}
-                          {task.created_by_label && (
-                            <span className="truncate">
-                              por {task.created_by_label}
-                            </span>
-                          )}
-                        </div>
+                      {task.created_by_label && (
+                        <p className="mt-2 truncate text-xs text-ink-muted">por {task.created_by_label}</p>
                       )}
 
                       {(ligacoes[task.id] ?? []).length > 0 && (
@@ -993,6 +1007,7 @@ export default function TaskBoard({
                             <ChevronDownIcon className="h-3.5 w-3.5" />
                           </button>
                         </div>
+                      </div>
                       </div>
                     </div>
                   );

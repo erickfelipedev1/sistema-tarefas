@@ -97,3 +97,18 @@ export const CORES_TAREFA: {
 export function corTarefa(key: string | null | undefined) {
   return CORES_TAREFA.find((c) => c.key === key) ?? CORES_TAREFA[0];
 }
+
+// Cores que o cliente recebe sozinho enquanto ninguém escolhe uma (sem o cinza,
+// que fica pra tarefa sem cliente).
+const CORES_AUTOMATICAS: TaskColor[] = ["green", "blue", "purple", "orange", "red", "pink"];
+
+// A cor do cliente no cartão da tarefa: a que a equipe escolheu na página do
+// cliente (projects.color) ou, sem escolha, uma cor fixa calculada pelo id (o
+// mesmo cliente tem sempre a mesma cor). Sem cliente: cinza.
+export function corDoCliente(projeto: { id: string; color?: string | null } | null | undefined) {
+  if (!projeto) return corTarefa("gray");
+  if (projeto.color && CORES_TAREFA.some((c) => c.key === projeto.color)) return corTarefa(projeto.color);
+  let h = 0;
+  for (const ch of projeto.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return corTarefa(CORES_AUTOMATICAS[h % CORES_AUTOMATICAS.length]);
+}

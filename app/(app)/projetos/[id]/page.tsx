@@ -18,6 +18,7 @@ import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDo
 import { TipoDeServicoDoCliente } from "@/components/TipoDeServico";
 import { pacotesDisponiveis } from "@/lib/pacotes";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
+import CorDoCliente from "@/components/CorDoCliente";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
 import ProjectFeedbackList from "@/components/ProjectFeedbackList";
@@ -144,6 +145,7 @@ export default async function ProjetoPage({
             pacoteAtual={(pacoteDoCliente as PacoteDoCliente | null)?.name ?? null}
             pacotes={pacotesParaEscolher}
           />
+          <CorDoCliente projectId={id} cor={(project.color as string | null) ?? null} />
         </div>
         <p className="mt-0.5 text-sm text-ink-muted">
           Quadro de tarefas e Wiki próprios
@@ -201,6 +203,7 @@ export default async function ProjetoPage({
             initialTasks={tasks ?? []}
             currentUserLabel={userLabel}
             projectId={id}
+            clienteDaPagina={project}
             profiles={profiles ?? []}
             showHeader={false}
           />

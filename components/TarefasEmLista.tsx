@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Profile, Task, TaskStatus } from "@/lib/types";
-import { corTarefa } from "@/lib/task-colors";
 import { formatarHoras, type ResumoTarefa } from "@/lib/task-resumo";
 import type { Etiqueta } from "@/lib/etiquetas";
 import { Avatar } from "./ui/Avatar";
@@ -55,6 +54,7 @@ function dataCompleta(iso: string) {
 export default function TarefasEmLista({
   colunas,
   tarefas,
+  corDoCliente,
   filhas,
   hoje,
   mostrarCliente,
@@ -72,6 +72,8 @@ export default function TarefasEmLista({
 }: {
   colunas: Coluna[];
   tarefas: Task[];
+  // Cor (hex) da lateral de cada linha: a do cliente da tarefa.
+  corDoCliente: (t: Task) => string;
   filhas: Record<string, Task[]>;
   hoje: string;
   mostrarCliente: boolean;
@@ -197,7 +199,8 @@ export default function TarefasEmLista({
                     <li key={task.id} className="border-b border-line last:border-b-0">
                       <div
                         onClick={() => aoAbrir(task)}
-                        className={`group grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-l-[3px] px-4 py-2.5 hover:bg-surface-hover ${grade} ${feita ? "border-l-slate-400" : corTarefa(task.color).borda}`}
+                        style={{ borderLeftColor: feita ? "#9AA0A6" : corDoCliente(task) }}
+                        className={`group grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-l-[3px] px-4 py-2.5 hover:bg-surface-hover ${grade}`}
                       >
                         <input
                           type="checkbox"
