@@ -667,12 +667,14 @@ function ProjectCard({
   return (
     <div
       data-mov="bloco"
-      style={{ borderLeftColor: cor.fundo }}
-      className="group relative rounded-2xl border border-line border-l-[6px] bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+      className="group relative rounded-2xl border border-line bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
     >
+      {/* Recorte arredondado só do conteúdo (o menu ⋮ fica de fora, pra não ser cortado). */}
+      <div className="relative overflow-hidden rounded-[15px] pl-1.5">
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1.5" style={{ backgroundColor: cor.fundo }} />
       <Link href={`/projetos/${project.id}`} className="block">
         <div
-          className="rounded-tl-[10px_15px] rounded-tr-[15px] px-4 py-3"
+          className="px-4 py-3"
           style={{ backgroundColor: cor.fundo, color: cor.texto }}
         >
           <p className="pr-7 text-base font-semibold leading-snug">{project.name}</p>
@@ -739,6 +741,7 @@ function ProjectCard({
         </div>
         </div>
       </Link>
+      </div>
 
       <div ref={menuRef} className="absolute right-2.5 top-2.5" style={{ color: cor.texto }}>
         <button

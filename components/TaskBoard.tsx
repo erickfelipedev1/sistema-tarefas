@@ -813,8 +813,7 @@ export default function TaskBoard({
                       onDragOver={(e) => handleCardDragOver(e, coluna.key, task, tarefasDaColuna)}
                       onClick={() => abrirEditar(task)}
                       data-mov="bloco"
-                      style={{ borderLeftColor: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).fundo }}
-                      className={`group relative cursor-pointer overflow-hidden rounded-xl border border-line border-l-[6px] bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                      className={`group relative cursor-pointer overflow-hidden rounded-xl border border-line bg-surface pl-1.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
                         draggedId === task.id
                           ? "opacity-40"
                           : task.status === "done"
@@ -831,6 +830,12 @@ export default function TaskBoard({
                           : ""
                       }`}
                     >
+                      {/* Faixa lateral na cor do cliente, por cima da borda. */}
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1.5"
+                        style={{ backgroundColor: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).fundo }}
+                      />
                       {/* Cabeçalho na cor do cliente: nome, tipo de serviço e excluir. */}
                       <div
                         className="flex items-center justify-between gap-2 px-3.5 py-2"

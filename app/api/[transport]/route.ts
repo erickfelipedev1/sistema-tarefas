@@ -612,6 +612,8 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
 
           if (descricao !== undefined) {
             atualizacoes.description = descricao.trim() || null;
+            // A descrição formatada (migration 0075) ficaria desatualizada: sai, e vale o texto.
+            atualizacoes.description_html = null;
             resumo.push(descricao.trim() ? "descrição atualizada" : "descrição removida");
           }
 

@@ -2,6 +2,8 @@
 
 import { linkDoArquivo } from "@/lib/arquivos";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
+import EditorDeTexto from "@/components/EditorDeTexto";
+import { LIMITE_DO_HTML, htmlParaTexto, sanitizarHtml, textoParaHtml } from "@/lib/texto-rico";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -101,6 +103,8 @@ export default function TaskModal({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
+  // A descrição formatada (HTML limpo do editor); vazio = só texto simples.
+  const [descriptionHtml, setDescriptionHtml] = useState(task?.description_html ?? "");
   // Descrição salva aparece como texto (com links clicáveis); clicar fora de
   // um link abre a edição.
   const [editandoDescricao, setEditandoDescricao] = useState(false);
@@ -169,6 +173,10 @@ export default function TaskModal({
       setErro("O início não pode ser depois da entrega.");
       return;
     }
+    if (descriptionHtml.length > LIMITE_DO_HTML) {
+      setErro("A descrição está grande demais pra salvar. Encurte um pouco o texto.");
+      return;
+    }
     setSaving(true);
     setErro(null);
 
@@ -177,6 +185,7 @@ export default function TaskModal({
       .insert({
         title: title.trim(),
         description: description.trim() || null,
+        ...(descriptionHtml ? { description_html: descriptionHtml } : {}),
         status,
         position: getNextPosition(status),
         start_date: startDate || null,
@@ -229,6 +238,21 @@ export default function TaskModal({
         /liderança/i.test(error.message)
           ? "Só a liderança pode alterar as datas de uma tarefa já criada."
           : "Não deu pra salvar a data. Tenta de novo."
+      );
+      return;
+    }
+
+    // A descrição não gravou (ex: falta a migration 0075): desfaz na tela e avisa,
+    // em vez de parecer salva e sumir ao reabrir.
+    if (error && ("description" in campos || "description_html" in campos)) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setDescription(antes.description ?? "");
+      setDescriptionHtml(antes.description_html ?? "");
+      setErro(
+        /description_html/i.test(error.message)
+          ? "Não deu pra salvar a descrição formatada. Confere se a migration 0075_descricao_formatada.sql já foi rodada no Supabase."
+          : "Não deu pra salvar a descrição. Tenta de novo."
       );
       return;
     }
@@ -351,29 +375,55 @@ export default function TaskModal({
                 <label className="mb-1 block text-xs font-medium text-ink-muted">
                   Descrição
                 </label>
-                {!isNovo && !editandoDescricao && description.trim() ? (
+                {!isNovo && !editandoDescricao && (description.trim() || descriptionHtml) ? (
                   <div
                     role="button"
                     tabIndex={0}
                     title="Clique pra editar"
                     onClick={() => setEditandoDescricao(true)}
                     onKeyDown={(e) => e.key === "Enter" && setEditandoDescricao(true)}
-                    className="max-h-64 min-h-[5.5rem] w-full cursor-text overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink hover:border-ink-muted/40"
+                    className="max-h-64 min-h-[5.5rem] w-full cursor-text overflow-y-auto break-words rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink hover:border-ink-muted/40"
                   >
-                    <TextoComLinks texto={description} />
+                    {descriptionHtml ? (
+                      <div
+                        className="texto-rico"
+                        onClick={(e) => {
+                          // Clicar num link abre o link; no resto do texto, edita.
+                          if ((e.target as HTMLElement).closest("a")) e.stopPropagation();
+                        }}
+                        dangerouslySetInnerHTML={{ __html: sanitizarHtml(descriptionHtml) }}
+                      />
+                    ) : (
+                      <span className="whitespace-pre-wrap">
+                        <TextoComLinks texto={description} />
+                      </span>
+                    )}
                   </div>
                 ) : (
-                  <textarea
-                    value={description}
+                  <EditorDeTexto
+                    valorHtml={descriptionHtml || textoParaHtml(description)}
                     autoFocus={editandoDescricao}
-                    onChange={(e) => setDescription(e.target.value)}
-                    onBlur={() => {
+                    aoMudar={isNovo ? (html) => {
+                      setDescriptionHtml(html);
+                      setDescription(htmlParaTexto(html));
+                    } : undefined}
+                    aoSair={(html, mudou) => {
+                      if (isNovo) return;
+                      // Clicar dentro e fora sem mexer não muda (nem reformata) nada.
+                      if (!mudou) {
+                        setEditandoDescricao(false);
+                        return;
+                      }
+                      if (html.length > LIMITE_DO_HTML) {
+                        setErro("A descrição está grande demais pra salvar. Encurte um pouco o texto.");
+                        return;
+                      }
+                      const texto = htmlParaTexto(html);
+                      setDescriptionHtml(html);
+                      setDescription(texto);
                       setEditandoDescricao(false);
-                      if (!isNovo) salvarCampo({ description: description.trim() || null });
+                      salvarCampo({ description: texto || null, description_html: html || null });
                     }}
-                    rows={4}
-                    placeholder="Detalhes da tarefa..."
-                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   />
                 )}
               </div>

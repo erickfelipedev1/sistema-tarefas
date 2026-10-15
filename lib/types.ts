@@ -6,6 +6,9 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
+  // A descrição formatada (migration 0075): HTML limpo do editor. O texto puro
+  // da mesma descrição fica em "description". Vazio = descrição só em texto.
+  description_html?: string | null;
   // Texto da aba "Copywrite" (migration 0061): a copy da peça.
   copy_text?: string | null;
   // Subtarefa (migration 0067): id da tarefa principal. Uma subtarefa é uma
