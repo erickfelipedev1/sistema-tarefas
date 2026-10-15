@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
-import { corTarefa } from "@/lib/task-colors";
+import { corDoCliente } from "@/lib/task-colors";
 import TaskModal from "./TaskModal";
 import { Button } from "./ui/Button";
 import { PageHeader } from "./ui/PageHeader";
@@ -189,6 +189,16 @@ function montarSemana(chaves: string[], tarefas: Task[]) {
     segmentos.push({ ...b, faixa });
   }
   return { segmentos, faixas: fimDaFaixa.length, ocupados, ocultos };
+}
+
+// Os clientes por id, pra cada evento do calendário pegar a cor do cliente dele.
+const ClientesDoCalendario = createContext<Map<string, Project>>(new Map());
+
+// A cor do evento: a do cliente da tarefa (a que a equipe escolheu na página do
+// cliente ou a automática); sem cliente, cinza.
+function useCorDaTarefa(task: Task) {
+  const clientes = useContext(ClientesDoCalendario);
+  return corDoCliente(task.project_id ? clientes.get(task.project_id) : null);
 }
 
 export default function CalendarView({
@@ -417,8 +427,10 @@ export default function CalendarView({
 
   const hojeKey = dateKey(hoje);
   const rotuloPeriodo = { mes: "mês", semana: "semana", dia: "dia" }[visao];
+  const clientesPorId = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
 
   return (
+    <ClientesDoCalendario.Provider value={clientesPorId}>
     <div>
       <PageHeader
         title={
@@ -678,6 +690,7 @@ export default function CalendarView({
         />
       )}
     </div>
+    </ClientesDoCalendario.Provider>
   );
 }
 
@@ -695,7 +708,7 @@ function BarraTarefa({
   onExcluir: (e: React.MouseEvent) => void;
 }) {
   const { task, col0, col1, contEsq, contDir, faixa } = seg;
-  const cor = corTarefa(task.color);
+  const cor = useCorDaTarefa(task);
   const feita = task.status === "done";
   const maisDeUmDia = !!task.start_date && !!task.due_date && task.start_date < task.due_date;
   const ate = task.due_date?.split("-").reverse().slice(0, 2).join("/");
@@ -762,9 +775,9 @@ function ChipTarefa({
   onAbrir: () => void;
   onExcluir: (e: React.MouseEvent) => void;
 }) {
-  const cor = corTarefa(task.color);
+  const cor = useCorDaTarefa(task);
   const feita = task.status === "done";
-  // Como no Google Agenda: o evento é um bloco da cor da tarefa, com o texto
+  // Como no Google Agenda: o evento é um bloco da cor do cliente, com o texto
   // por cima. Tarefa concluída fica apagada e riscada.
   return (
     <div
@@ -992,7 +1005,7 @@ function CartaoTarefa({
   onAbrir: () => void;
   onExcluir: (e: React.MouseEvent) => void;
 }) {
-  const cor = corTarefa(task.color);
+  const cor = useCorDaTarefa(task);
   const feita = task.status === "done";
   return (
     <div
