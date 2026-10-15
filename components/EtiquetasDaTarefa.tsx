@@ -177,7 +177,7 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
             autoFocus
             className={`${campo} w-40`}
           />
-          <div className="flex items-center gap-1" role="group" aria-label="Cor da etiqueta">
+          <div className="flex max-w-[16rem] flex-wrap items-center gap-1.5" role="group" aria-label="Cor da etiqueta">
             {CORES_TAREFA.map((c) => (
               <button
                 key={c.key}

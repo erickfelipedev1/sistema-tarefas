@@ -595,7 +595,7 @@ export default function TaskModal({
                   <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Cor
                   </label>
-                  <div className="flex items-center gap-1 rounded-lg border border-line px-2 py-2">
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line px-2 py-2">
                     {CORES_TAREFA.map((cor) => (
                       <button
                         key={cor.key}

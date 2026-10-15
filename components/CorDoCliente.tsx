@@ -59,7 +59,7 @@ export default function CorDoCliente({ projectId, cor }: { projectId: string; co
             onClick={() => setAberto(false)}
             className="fixed inset-0 z-10 cursor-default"
           />
-          <div className="absolute left-0 top-full z-20 mt-1.5 w-64 rounded-xl border border-line bg-surface p-3 shadow-lg">
+          <div className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-xl border border-line bg-surface p-3 shadow-lg">
             <p className="mb-2 text-xs font-medium text-ink-muted">Cor do cliente nos cartões</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Cor do cliente">
               {CORES_TAREFA.map((c) => (
