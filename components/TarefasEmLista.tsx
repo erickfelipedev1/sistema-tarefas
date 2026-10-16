@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Profile, Task, TaskStatus } from "@/lib/types";
+import { hhmm, rotuloDeHorario, umDiaSo } from "@/lib/horarios";
 import { formatarHoras, type ResumoTarefa } from "@/lib/task-resumo";
 import type { Etiqueta } from "@/lib/etiquetas";
 import { Avatar } from "./ui/Avatar";
@@ -310,8 +311,12 @@ export default function TarefasEmLista({
                             {task.due_date ? (
                               <>
                                 <CalendarIcon className="h-3 w-3" />
-                                {task.start_date && task.start_date !== task.due_date ? `${dataCurta(task.start_date)} → ` : ""}
+                                {!umDiaSo(task) ? `${dataCurta(task.start_date!)}${task.start_time ? ` ${hhmm(task.start_time)}` : ""} → ` : ""}
                                 {md(task.due_date)}
+                                {(() => {
+                                  const hora = umDiaSo(task) ? rotuloDeHorario(task) : hhmm(task.due_time);
+                                  return hora ? ` ${hora}` : "";
+                                })()}
                               </>
                             ) : (
                               "—"

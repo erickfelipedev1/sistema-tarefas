@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
 import { corDoCliente } from "@/lib/task-colors";
+import { hhmm, rotuloDeHorario, umDiaSo } from "@/lib/horarios";
 import { syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
 import TarefasEmLista from "./TarefasEmLista";
@@ -885,11 +886,16 @@ export default function TaskBoard({
                             >
                               <CalendarIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                               <span>
-                                {task.start_date && task.start_date !== task.due_date
-                                  ? `${task.start_date.split("-").reverse().slice(0, 2).join("/")} → `
+                                {!umDiaSo(task)
+                                  ? `${task.start_date!.split("-").reverse().slice(0, 2).join("/")}${
+                                      task.start_time ? ` ${hhmm(task.start_time)}` : ""
+                                    } → `
                                   : ""}
                                 {task.due_date.split("-").reverse().join("/")}
-                                {task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}
+                                {(() => {
+                                  const hora = umDiaSo(task) ? rotuloDeHorario(task) : hhmm(task.due_time);
+                                  return hora ? ` ${hora}` : "";
+                                })()}
                               </span>
                             </span>
                           ) : (

@@ -23,6 +23,8 @@ export interface Task {
   start_date?: string | null;
   due_date: string | null;
   due_time: string | null;
+  // Hora em que a tarefa começa (migration 0078); "due_time" é a hora em que termina.
+  start_time?: string | null;
   repeat_rule: RepeatRule;
   color: string | null;
   page_id: string | null;

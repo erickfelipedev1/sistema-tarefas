@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Project, Task, TaskStatus } from "@/lib/types";
 import { corDoCliente } from "@/lib/task-colors";
+import { horaNaGrade, horarioParaOrdenar, rotuloDeHorario } from "@/lib/horarios";
 import TaskModal from "./TaskModal";
 import { Button } from "./ui/Button";
 import { PageHeader } from "./ui/PageHeader";
@@ -120,13 +121,10 @@ function diasDoPeriodo(t: Task): string[] {
   return dias;
 }
 
-// Horário só conta no dia da entrega; nos outros dias do período a tarefa
-// aparece em "Dia todo".
+// Num período de vários dias o horário de início conta no dia do início e o de
+// fim no dia da entrega; nos outros dias a tarefa aparece em "Dia todo".
 function horaDaTarefa(t: Task, dia?: string): number | null {
-  if (dia && dia !== t.due_date) return null;
-  if (!t.due_time) return null;
-  const h = Number(t.due_time.slice(0, 2));
-  return Number.isFinite(h) ? h : null;
+  return horaNaGrade(t, dia);
 }
 
 // Um pedaço de tarefa dentro de uma semana: as colunas (0 = domingo) que ele
@@ -169,7 +167,7 @@ function montarSemana(chaves: string[], tarefas: Task[]) {
     (x, y) =>
       x.col0 - y.col0 ||
       y.col1 - y.col0 - (x.col1 - x.col0) ||
-      (x.task.due_time ?? "").localeCompare(y.task.due_time ?? "") ||
+      horarioParaOrdenar(x.task).localeCompare(horarioParaOrdenar(y.task)) ||
       x.task.title.localeCompare(y.task.title)
   );
 
@@ -336,7 +334,7 @@ export default function CalendarView({
     });
     // Dentro do dia: sem horário primeiro, depois por horário.
     Object.values(mapa).forEach((lista) =>
-      lista.sort((a, b) => (a.due_time ?? "").localeCompare(b.due_time ?? ""))
+      lista.sort((a, b) => horarioParaOrdenar(a).localeCompare(horarioParaOrdenar(b)))
     );
     return mapa;
   }, [tarefasVisiveis]);
@@ -719,7 +717,7 @@ function BarraTarefa({
     <div
       role="button"
       tabIndex={0}
-      title={`${task.title} · ${periodo}${task.due_time ? ` ${task.due_time.slice(0, 5)}` : ""}`}
+      title={`${task.title} · ${periodo}${rotuloDeHorario(task) ? ` ${rotuloDeHorario(task)}` : ""}`}
       onClick={(e) => {
         e.stopPropagation();
         onAbrir();
@@ -749,8 +747,9 @@ function BarraTarefa({
       {maisDeUmDia && col1 > col0 ? (
         <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">até {ate}</span>
       ) : (
-        task.due_time && !maisDeUmDia && (
-          <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">{task.due_time.slice(0, 5)}</span>
+        !maisDeUmDia &&
+        rotuloDeHorario(task) && (
+          <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">{rotuloDeHorario(task)}</span>
         )
       )}
       <button
@@ -795,12 +794,13 @@ function ChipTarefa({
       </span>
       {dia && dia !== task.due_date ? (
         <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">
-          até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}
+          {rotuloDeHorario(task, dia) ? `${rotuloDeHorario(task, dia)} · ` : ""}até{" "}
+          {task.due_date?.split("-").reverse().slice(0, 2).join("/")}
         </span>
       ) : (
-        task.due_time && (
+        rotuloDeHorario(task, dia) && (
           <span className="hidden flex-shrink-0 text-[10px] opacity-80 sm:inline">
-            {task.due_time.slice(0, 5)}
+            {rotuloDeHorario(task, dia)}
           </span>
         )
       )}
@@ -1019,9 +1019,14 @@ function CartaoTarefa({
       }`}
     >
       {dia && dia !== task.due_date ? (
-        <span className="flex-shrink-0 text-xs opacity-80">até {task.due_date?.split("-").reverse().slice(0, 2).join("/")}</span>
+        <span className="flex-shrink-0 text-xs opacity-80">
+          {rotuloDeHorario(task, dia) ? `${rotuloDeHorario(task, dia)} · ` : ""}até{" "}
+          {task.due_date?.split("-").reverse().slice(0, 2).join("/")}
+        </span>
       ) : (
-        task.due_time && <span className="flex-shrink-0 text-xs font-medium opacity-90">{task.due_time.slice(0, 5)}</span>
+        rotuloDeHorario(task, dia) && (
+          <span className="flex-shrink-0 text-xs font-medium opacity-90">{rotuloDeHorario(task, dia)}</span>
+        )
       )}
       <span className={`min-w-0 flex-1 truncate text-sm font-medium ${feita ? "line-through" : ""}`}>
         {task.title}

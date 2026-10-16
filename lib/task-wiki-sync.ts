@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types";
 import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
+import { rotuloDeHorario } from "@/lib/horarios";
 
 // Cada seção que a gente gera automaticamente na página da Wiki (resumo,
 // checklist, anexos, comentários, horas) usa um prefixo próprio no id dos
@@ -111,7 +112,7 @@ export function buildTaskSummaryBlocks(
       PREFIXO_RESUMO,
       "horario",
       "Horário",
-      task.due_time ? task.due_time.slice(0, 5) : "Sem horário"
+      rotuloDeHorario(task) || "Sem horário"
     ),
     linha(PREFIXO_RESUMO, "repetir", "Repetir", repeatLabel),
     linha(PREFIXO_RESUMO, "responsavel", "Responsável", responsavelNome),

@@ -3,6 +3,7 @@
 import { linkDoArquivo } from "@/lib/arquivos";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import EditorDeTexto from "@/components/EditorDeTexto";
+import { erroDeHorario } from "@/lib/horarios";
 import { LIMITE_DO_HTML, htmlParaTexto, idsDeMencoes, sanitizarHtml, textoParaHtml } from "@/lib/texto-rico";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useRef, useState } from "react";
@@ -119,6 +120,7 @@ export default function TaskModal({
     task ? task.start_date ?? "" : initialDueDate && initialDueDate < hojeLocal ? initialDueDate : hojeLocal
   );
   const [dueDate, setDueDate] = useState(task?.due_date ?? initialDueDate ?? "");
+  const [startTime, setStartTime] = useState(task?.start_time?.slice(0, 5) ?? "");
   const [dueTime, setDueTime] = useState(task?.due_time?.slice(0, 5) ?? initialDueTime ?? "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule>(
     task?.repeat_rule ?? "none"
@@ -176,6 +178,11 @@ export default function TaskModal({
       setErro("O início não pode ser depois da entrega.");
       return;
     }
+    const erroHora = erroDeHorario(startDate, dueDate, startTime, dueTime);
+    if (erroHora) {
+      setErro(erroHora);
+      return;
+    }
     if (descriptionHtml.length > LIMITE_DO_HTML) {
       setErro("A descrição está grande demais pra salvar. Encurte um pouco o texto.");
       return;
@@ -194,6 +201,7 @@ export default function TaskModal({
         position: getNextPosition(status),
         start_date: startDate || null,
         due_date: dueDate || null,
+        ...(startTime ? { start_time: startTime } : {}),
         due_time: dueTime || null,
         repeat_rule: repeatRule,
         color,
@@ -525,6 +533,25 @@ export default function TaskModal({
                   />
                 </div>
                 <div>
+                  <label className="mb-1 block text-xs font-medium text-ink-muted">Hora de início</label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const falha = erroDeHorario(startDate, dueDate, v, dueTime);
+                      if (falha) {
+                        setErro(falha);
+                        return;
+                      }
+                      setErro(null);
+                      setStartTime(v);
+                      if (!isNovo) salvarCampo({ start_time: v || null });
+                    }}
+                    className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                  />
+                </div>
+                <div>
                   <label className="mb-1 block text-xs font-medium text-ink-muted">
                     Entrega{isNovo && <span className="text-danger"> *</span>}
                   </label>
@@ -553,14 +580,21 @@ export default function TaskModal({
                 )}
                 <div>
                   <label className="mb-1 block text-xs font-medium text-ink-muted">
-                    Horário
+                    Hora de fim
                   </label>
                   <input
                     type="time"
                     value={dueTime}
                     onChange={(e) => {
-                      setDueTime(e.target.value);
-                      if (!isNovo) salvarCampo({ due_time: e.target.value || null });
+                      const v = e.target.value;
+                      const falha = erroDeHorario(startDate, dueDate, startTime, v);
+                      if (falha) {
+                        setErro(falha);
+                        return;
+                      }
+                      setErro(null);
+                      setDueTime(v);
+                      if (!isNovo) salvarCampo({ due_time: v || null });
                     }}
                     className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   />
