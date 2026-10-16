@@ -306,6 +306,20 @@ function Midias({
 
   const caixa = preencher ? "absolute inset-0" : `relative ${proporcao ?? ""}`;
 
+  // Reel/Shorts ainda sem vídeo, mas já com capa: mostra a capa (é a previsão de
+  // como o post vai aparecer), com um aviso de que falta o vídeo.
+  if (midias.length === 0 && capa) {
+    return (
+      <div className={`${preencher ? "absolute inset-0" : `relative ${proporcao ?? "aspect-[9/16]"}`} bg-black`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={capa} alt="Capa do vídeo" className="h-full w-full object-cover" />
+        <span className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white">
+          Capa · o vídeo ainda não foi enviado
+        </span>
+      </div>
+    );
+  }
+
   if (midias.length === 0) {
     return (
       <div className={`${preencher ? "absolute inset-0" : `relative ${proporcao ?? "aspect-[4/5]"}`} grid place-items-center bg-canvas text-ink-muted`}>
