@@ -536,3 +536,11 @@ export const RowsIcon = createIcon(
     <path d="M4 6.5h.01M4 12h.01M4 17.5h.01" />
   </>
 );
+
+export const DownloadIcon = createIcon(
+  "DownloadIcon",
+  <>
+    <path d="M12 4v11m0 0-4-4m4 4 4-4" />
+    <path d="M5 20h14" />
+  </>
+);
