@@ -23,6 +23,7 @@ export default function MencaoInput({
   aoTeclar,
   campoRef,
   semTodos = false,
+  maxLength,
 }: {
   value: string;
   onChange: (texto: string) => void;
@@ -39,6 +40,7 @@ export default function MencaoInput({
   campoRef?: React.MutableRefObject<Campo | null>;
   // Sem a opção "Todos" (conversa entre duas pessoas).
   semTodos?: boolean;
+  maxLength?: number;
 }) {
   const campo = useRef<Campo | null>(null);
   const guardarCampo = (el: Campo | null) => {
@@ -110,6 +112,11 @@ export default function MencaoInput({
     const cursor = el?.selectionStart ?? value.length;
     const nome = nomeParaMencao(p);
     const novo = `${value.slice(0, busca.inicio)}@${nome} ${value.slice(cursor)}`;
+    // Respeita o limite do campo (o atributo só segura quem digita).
+    if (maxLength && novo.length > maxLength) {
+      setBusca(null);
+      return;
+    }
     onChange(novo);
     // "Todos" não é uma pessoa: quem expande pra equipe é idsMencionados, pelo texto.
     if (p.id !== MENCAO_TODOS.id) aoEscolher(p.id);
@@ -157,6 +164,7 @@ export default function MencaoInput({
     "aria-label": ariaLabel,
     className,
     autoFocus,
+    maxLength,
   };
 
   return (

@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { Post, PostCategory, PostComment, PostMedia, PostNetwork, PostStatus, Profile } from "@/lib/types";
 import { formatarDataBR, formatarRelativo } from "@/lib/format";
 import { nomeSeguro } from "@/lib/nome-arquivo";
+import MencaoInput from "./MencaoInput";
+import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
+import { avisarMencaoNoPost } from "@/lib/actions/push";
 import {
   arquivoAceito,
   BUCKET_DOS_POSTS,
@@ -684,14 +687,23 @@ export default function PostsManager({
     if (editando?.id === post.id) fecharForm();
   }
 
-  async function responder(post: Post, texto: string): Promise<string | null> {
+  async function responder(post: Post, texto: string, mencoes: string[]): Promise<string | null> {
     const { data: fala, error } = await supabase
       .from("post_comments")
-      .insert({ post_id: post.id, sender_type: "team", sender_label: meuNome.slice(0, 80), sender_id: currentUserId, content: texto })
+      .insert({
+        post_id: post.id,
+        sender_type: "team",
+        sender_label: meuNome.slice(0, 80),
+        sender_id: currentUserId,
+        content: texto,
+        ...(mencoes.length > 0 ? { mentions: mencoes } : {}),
+      })
       .select()
       .single();
     if (error || !fala) return "Não foi possível enviar a resposta. Tente de novo.";
     setComentarios((atual) => (atual.some((c) => c.id === fala.id) ? atual : [...atual, fala as PostComment]));
+    // O sininho nasce no banco; aqui vai o push pro celular de quem foi citado.
+    if (mencoes.length > 0) avisarMencaoNoPost(fala.id).catch(() => {});
     return null;
   }
 
@@ -1096,7 +1108,9 @@ export default function PostsManager({
                   aoMudarPost={(mudancas) =>
                     setPosts((atual) => ordenar(atual.map((p) => (p.id === post.id ? { ...p, ...mudancas } : p))))
                   }
-                  aoResponder={(texto) => responder(post, texto)}
+                  aoResponder={(texto, mencoes) => responder(post, texto, mencoes)}
+                  equipe={profiles}
+                  euId={currentUserId}
                 />
               )}
             </article>
@@ -1127,6 +1141,8 @@ function PostAberto({
   instagramLigado,
   aoMudarPost,
   aoResponder,
+  equipe,
+  euId,
 }: {
   post: Post;
   falas: PostComment[];
@@ -1134,23 +1150,30 @@ function PostAberto({
   projectName: string;
   instagramLigado: string | null;
   aoMudarPost: (mudancas: Partial<Post>) => void;
-  aoResponder: (texto: string) => Promise<string | null>;
+  aoResponder: (texto: string, mencoes: string[]) => Promise<string | null>;
+  // A equipe: digitar "@" na resposta abre a lista (menos eu); o @Nome dela fica em destaque.
+  equipe: Profile[];
+  euId: string;
 }) {
   const redes = redesValidas(post.networks);
   const [rede, setRede] = useState<PostNetwork>(redes[0] ?? "instagram");
   const [texto, setTexto] = useState("");
+  const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const mencionaveis = useMemo(() => equipe.filter((p) => p.id !== euId), [equipe, euId]);
+  const nomesDaEquipe = [...equipe.map(nomeParaMencao), MENCAO_TODOS.name ?? "Todos"];
 
   async function enviar() {
     const limpo = texto.trim();
     if (!limpo || enviando) return;
     setEnviando(true);
     setErro(null);
-    const falha = await aoResponder(limpo);
+    const falha = await aoResponder(limpo, idsMencionados(limpo, mencionaveis, escolhidos));
     setEnviando(false);
     if (falha) return setErro(falha);
     setTexto("");
+    setEscolhidos([]);
   }
 
   return (
@@ -1201,18 +1224,34 @@ function PostAberto({
                 {formatarRelativo(c.created_at)}
                 {c.is_adjust && <Badge tone="warning">Pedido de ajuste</Badge>}
               </p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{c.content}</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">
+                {c.sender_type === "team"
+                  ? partirPorMencoes(c.content, nomesDaEquipe).map((parte, k) =>
+                      parte.mencao ? (
+                        <span key={k} className="rounded bg-cal/15 px-0.5 font-medium text-cal">
+                          {parte.texto}
+                        </span>
+                      ) : (
+                        <span key={k}>{parte.texto}</span>
+                      )
+                    )
+                  : c.content}
+              </p>
             </li>
           ))}
         </ul>
         {post.status !== "rascunho" && (
           <div className="mt-3">
-            <textarea
+            <MencaoInput
               value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              rows={2}
+              onChange={setTexto}
+              pessoas={mencionaveis}
+              aoEscolher={(id) => setEscolhidos((atual) => (atual.includes(id) ? atual : [...atual, id]))}
+              multilinha
+              linhas={2}
               maxLength={2000}
-              placeholder="Responder ao cliente (ele vê no portal)"
+              placeholder="Responder ao cliente (ele vê no portal) — use @ pra avisar alguém da equipe"
+              ariaLabel="Responder ao cliente"
               className={campoClasse}
             />
             {erro && <p className="mt-1 text-sm text-danger">{erro}</p>}

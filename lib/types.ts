@@ -401,6 +401,8 @@ export interface PostComment {
   content: string;
   // true = veio com o botão "Pedir ajuste" do cliente.
   is_adjust: boolean;
+  // Quem foi mencionado com "@" na resposta da equipe (migration 0081).
+  mentions?: string[];
   created_at: string;
 }
 

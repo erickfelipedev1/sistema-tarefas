@@ -252,6 +252,39 @@ export async function avisarMencaoNaDescricao(taskId: string) {
   });
 }
 
+// Depois de mencionar alguém na resposta da equipe num post: avisa no celular.
+// O aviso do sininho já foi criado pelo banco (migration 0081). Só quem escreveu
+// o comentário dispara, e só vale quem está mesmo citado no texto.
+export async function avisarMencaoNoPost(commentId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("post_comments")
+    .select("id, post_id, sender_id, sender_type, content, mentions")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!c || c.sender_type !== "team" || c.sender_id !== user.id) return;
+
+  const candidatos = ((c.mentions as string[] | null) ?? []).filter((id) => id !== user.id);
+  if (candidatos.length === 0) return;
+  const [{ data: pessoas }, { data: post }, { data: autor }] = await Promise.all([
+    admin.from("profiles").select("id, name, username").in("id", candidatos),
+    admin.from("posts").select("project_id").eq("id", c.post_id).maybeSingle(),
+    admin.from("profiles").select("name, username").eq("id", user.id).maybeSingle(),
+  ]);
+  const citados = idsMencionados(c.content ?? "", pessoas ?? [], candidatos);
+  if (citados.length === 0 || !post) return;
+  const { data: cliente } = await admin.from("projects").select("name").eq("id", post.project_id).maybeSingle();
+  const nome = autor?.name || autor?.username || "Alguém";
+  await enviarPush(citados, {
+    titulo: `${nome} mencionou você`,
+    corpo: `No post de ${cliente?.name ?? "um cliente"}: ${c.content}`,
+    url: `/projetos/${post.project_id}?aba=posts&post=${c.post_id}`,
+    tag: `mencao-post-${commentId}`,
+  });
+}
+
 // Botão "Testar notificação": manda um aviso pra todos os aparelhos de quem
 // clicou e devolve o que aconteceu (pra achar o problema sem adivinhar).
 export async function testarPush(): Promise<string> {
