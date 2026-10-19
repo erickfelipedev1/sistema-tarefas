@@ -4,7 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { PostMedia } from "@/lib/types";
 import { BUCKET_DOS_POSTS, ehDoDrive } from "@/lib/posts";
-import { Button } from "../ui/Button";
+import { lerEndereco } from "@/lib/baixar-varios";
+import BotaoBaixarTodos from "./BotaoBaixarTodos";
 import { DownloadIcon } from "../ui/icons";
 
 // Baixar os arquivos do post direto no formulário (criar ou editar): tanto os
@@ -50,7 +51,7 @@ export function BaixarItem({ item, indice, total }: { item: ItemBaixavel; indice
   const [ocupado, setOcupado] = useState(false);
   const nome = nomeDoItem(item, indice, total);
   const classe =
-    "absolute bottom-1 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-black/70 text-white hover:bg-black disabled:opacity-50";
+    "absolute bottom-1 left-1/2 grid h-7 w-7 -translate-x-1/2 sm:h-5 sm:w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black disabled:opacity-50";
   const drive = linkDoDrive(item);
 
   if (drive) {
@@ -90,37 +91,25 @@ export function BaixarItem({ item, indice, total }: { item: ItemBaixavel; indice
   );
 }
 
-// "Baixar todos": um de cada vez, com uma pausa (o navegador pode pedir pra
-// permitir vários downloads). Vídeo do Drive fica de fora: baixa pelo botão dele.
+// Conteúdo do arquivo: do próprio aparelho (ainda não subiu) ou do link assinado.
+async function conteudo(item: ItemBaixavel): Promise<Blob> {
+  if (item.nova) return lerEndereco(item.nova.url);
+  const { data, error } = await createClient().storage.from(BUCKET_DOS_POSTS).createSignedUrl(item.salva.path, 300);
+  if (error || !data?.signedUrl) throw new Error("Não deu pra preparar o arquivo.");
+  return lerEndereco(data.signedUrl);
+}
+
+// "Baixar todos": cada arquivo solto (no celular, pelo menu de compartilhar).
+// Vídeo do Drive fica de fora: baixa pelo botão dele.
 export function BaixarTodos({ itens }: { itens: ItemBaixavel[] }) {
-  const [ocupado, setOcupado] = useState(false);
   const baixaveis = itens
     .map((item, i) => ({ item, nome: nomeDoItem(item, i, itens.length) }))
     .filter(({ item }) => !linkDoDrive(item));
-  if (baixaveis.length < 2) return null;
-
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      type="button"
-      disabled={ocupado}
-      onClick={async () => {
-        setOcupado(true);
-        try {
-          for (const { item, nome } of baixaveis) {
-            await baixar(item, nome);
-            await new Promise((r) => setTimeout(r, 700));
-          }
-        } catch (e) {
-          window.alert(e instanceof Error ? e.message : "Não deu pra baixar. Tente de novo.");
-        }
-        setOcupado(false);
-      }}
+    <BotaoBaixarTodos
+      itens={baixaveis.map(({ item, nome }) => ({ nome, obter: () => conteudo(item) }))}
+      aoErro={(m) => m && window.alert(m)}
       className="ml-2"
-    >
-      <DownloadIcon className="h-3.5 w-3.5" />
-      {ocupado ? "Baixando..." : `Baixar todos (${baixaveis.length})`}
-    </Button>
+    />
   );
 }

@@ -327,6 +327,9 @@ export default function TaskModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        // dvh = a área realmente visível no celular (sem as barras do Safari/Chrome);
+        // onde o navegador não conhece, vale o max-h-[90vh] da classe.
+        style={{ maxHeight: "90dvh" }}
         className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl transition-[max-width] md:flex-row ${
           comentariosAoLado ? "max-w-6xl" : "max-w-2xl"
         }`}

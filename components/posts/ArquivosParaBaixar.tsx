@@ -4,6 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/lib/types";
 import { BUCKET_DOS_POSTS, ehDoDrive } from "@/lib/posts";
+import { lerEndereco } from "@/lib/baixar-varios";
+import BotaoBaixarTodos from "./BotaoBaixarTodos";
 import { Button } from "../ui/Button";
 import { DownloadIcon } from "../ui/icons";
 
@@ -58,21 +60,6 @@ export default function ArquivosParaBaixar({ post }: { post: Post }) {
     setOcupado(null);
   }
 
-  // Um de cada vez, com uma pausa: o navegador pode pedir pra permitir vários downloads.
-  async function baixarTodos() {
-    setErro(null);
-    setOcupado("todos");
-    try {
-      for (const item of itens.filter((i) => !i.driveId)) {
-        await baixar(item);
-        await new Promise((r) => setTimeout(r, 700));
-      }
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não deu pra baixar. Tente de novo.");
-    }
-    setOcupado(null);
-  }
-
   async function copiarLegenda() {
     try {
       await navigator.clipboard.writeText(post.caption);
@@ -83,7 +70,6 @@ export default function ArquivosParaBaixar({ post }: { post: Post }) {
     }
   }
 
-  const baixaveis = itens.filter((i) => !i.driveId).length;
   return (
     <div className="mt-4 rounded-xl border border-line bg-canvas p-3">
       <p className="text-xs font-medium text-ink">Pra postar</p>
@@ -119,12 +105,19 @@ export default function ArquivosParaBaixar({ post }: { post: Post }) {
         ))}
       </ul>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        {baixaveis > 1 && (
-          <Button size="sm" variant="secondary" onClick={baixarTodos} disabled={ocupado !== null}>
-            <DownloadIcon className="h-3.5 w-3.5" />
-            {ocupado === "todos" ? "Baixando..." : `Baixar tudo (${baixaveis})`}
-          </Button>
-        )}
+        <BotaoBaixarTodos
+          itens={itens
+            .filter((i) => !i.driveId)
+            .map((item) => ({
+              nome: item.nome,
+              obter: async () => {
+                const { data, error } = await supabase.storage.from(BUCKET_DOS_POSTS).createSignedUrl(item.path, 300);
+                if (error || !data?.signedUrl) throw new Error("Não deu pra preparar o arquivo.");
+                return lerEndereco(data.signedUrl);
+              },
+            }))}
+          aoErro={setErro}
+        />
         {post.caption.trim() && (
           <Button size="sm" variant="secondary" onClick={copiarLegenda}>
             {copiada ? "Legenda copiada ✓" : "Copiar legenda"}

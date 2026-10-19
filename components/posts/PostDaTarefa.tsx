@@ -752,7 +752,7 @@ export default function PostDaTarefa({
                         type="button"
                         onClick={() => tirar(item.chave)}
                         aria-label={`Tirar o arquivo ${i + 1}`}
-                        className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-danger"
+                        className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/70 sm:h-5 sm:w-5 text-white hover:bg-danger"
                       >
                         <XIcon className="h-3 w-3" />
                       </button>
@@ -764,7 +764,7 @@ export default function PostDaTarefa({
                             onClick={() => mover(item.chave, -1)}
                             disabled={i === 0}
                             aria-label={`Mover o arquivo ${i + 1} pra antes`}
-                            className="grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black disabled:opacity-30"
+                            className="grid h-7 w-7 place-items-center rounded-full bg-black/70 sm:h-5 sm:w-5 text-white hover:bg-black disabled:opacity-30"
                           >
                             <ChevronLeftIcon className="h-3 w-3" />
                           </button>
@@ -773,7 +773,7 @@ export default function PostDaTarefa({
                             onClick={() => mover(item.chave, 1)}
                             disabled={i === itens.length - 1}
                             aria-label={`Mover o arquivo ${i + 1} pra depois`}
-                            className="grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black disabled:opacity-30"
+                            className="grid h-7 w-7 place-items-center rounded-full bg-black/70 sm:h-5 sm:w-5 text-white hover:bg-black disabled:opacity-30"
                           >
                             <ChevronRightIcon className="h-3 w-3" />
                           </button>
