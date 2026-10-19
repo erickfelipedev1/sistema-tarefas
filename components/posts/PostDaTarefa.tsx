@@ -33,6 +33,7 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
 import CapaDoReel, { type CapaDoForm } from "./CapaDoReel";
+import ArquivosParaBaixar from "./ArquivosParaBaixar";
 
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
@@ -608,6 +609,8 @@ export default function PostDaTarefa({
                       Abrir nos Posts do cliente
                     </Link>
                   </div>
+                  {/* Arquivos e capa pra baixar na hora de postar. */}
+                  <ArquivosParaBaixar post={post} />
                 </div>
               </li>
             );

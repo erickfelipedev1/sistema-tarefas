@@ -3,7 +3,9 @@
 import { useRef, useState } from "react";
 import type { PostMedia } from "@/lib/types";
 import { Button } from "../ui/Button";
-import { ImageIcon, XIcon } from "../ui/icons";
+import { DownloadIcon, ImageIcon, XIcon } from "../ui/icons";
+import { createClient } from "@/lib/supabase/client";
+import { BUCKET_DOS_POSTS } from "@/lib/posts";
 
 // A capa no formulário: a que já está salva no post, ou uma nova que ainda vai
 // subir (com um endereço local só pro preview).
@@ -35,6 +37,38 @@ export default function CapaDoReel({
   const [escolhendoQuadro, setEscolhendoQuadro] = useState(false);
   const [duracao, setDuracao] = useState(0);
   const [instante, setInstante] = useState(0);
+
+  const [baixando, setBaixando] = useState(false);
+
+  // Baixa a capa como arquivo: a que ainda vai subir sai do próprio aparelho;
+  // a salva, por um link assinado de curta duração.
+  async function baixarCapa() {
+    if (!capa || baixando) return;
+    setBaixando(true);
+    aoErro(null);
+    try {
+      const nome = capa.nova ? capa.nova.arquivo.name : `capa-${capa.salva.name || "capa"}`;
+      let href: string;
+      if (capa.nova) {
+        href = capa.nova.url;
+      } else {
+        const { data, error } = await createClient()
+          .storage.from(BUCKET_DOS_POSTS)
+          .createSignedUrl(capa.salva.path, 120, { download: nome });
+        if (error || !data?.signedUrl) throw new Error("Não deu pra preparar a capa.");
+        href = data.signedUrl;
+      }
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      aoErro(e instanceof Error ? e.message : "Não deu pra baixar a capa. Tente de novo.");
+    }
+    setBaixando(false);
+  }
 
   function trocar(nova: CapaDoForm | null) {
     if (capa?.nova) URL.revokeObjectURL(capa.nova.url);
@@ -136,6 +170,12 @@ export default function CapaDoReel({
         >
           {escolhendoQuadro ? "Fechar" : "Escolher um quadro do vídeo"}
         </Button>
+        {capa && (
+          <Button variant="secondary" size="sm" type="button" onClick={baixarCapa} disabled={baixando}>
+            <DownloadIcon className="h-3.5 w-3.5" />
+            {baixando ? "Preparando..." : "Baixar capa"}
+          </Button>
+        )}
         {capa && (
           <button
             type="button"
