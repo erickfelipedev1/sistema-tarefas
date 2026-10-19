@@ -34,6 +34,7 @@ import { Button } from "../ui/Button";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
 import CapaDoReel, { type CapaDoForm } from "./CapaDoReel";
 import ArquivosParaBaixar from "./ArquivosParaBaixar";
+import { BaixarItem, BaixarTodos } from "./BaixarDoForm";
 
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
@@ -755,6 +756,7 @@ export default function PostDaTarefa({
                       >
                         <XIcon className="h-3 w-3" />
                       </button>
+                      <BaixarItem item={item} indice={i} total={itens.length} />
                       {itens.length > 1 && (
                         <span className="absolute inset-x-1 bottom-1 flex justify-between">
                           <button
@@ -799,6 +801,7 @@ export default function PostDaTarefa({
                   : "Escolher arquivo"}
               </Button>
             )}
+            <BaixarTodos itens={itens} />
 
             {categoria !== "estatico" && (
               <div className="mt-4 rounded-lg border border-line bg-surface p-3">

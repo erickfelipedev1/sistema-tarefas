@@ -34,6 +34,7 @@ import {
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
 import PublicarNoInstagram from "./posts/PublicarNoInstagram";
 import ArquivosParaBaixar from "./posts/ArquivosParaBaixar";
+import { BaixarItem, BaixarTodos } from "./posts/BaixarDoForm";
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
@@ -819,6 +820,7 @@ export default function PostsManager({
                           >
                             <XIcon className="h-3 w-3" />
                           </button>
+                          <BaixarItem item={item} indice={i} total={itens.length} />
                           {itens.length > 1 && (
                             <span className="absolute inset-x-1 bottom-1 flex justify-between">
                               <button
@@ -860,6 +862,7 @@ export default function PostsManager({
                     {regra.maximo === 1 && itens.length > 0 ? "Trocar arquivo" : "Escolher arquivo" + (regra.maximo > 1 ? "s" : "")}
                   </Button>
                 )}
+                <BaixarTodos itens={itens} />
 
                 {categoria !== "estatico" && (
                   <div className="mt-4 rounded-lg border border-line bg-canvas p-3">
