@@ -28,7 +28,7 @@ export default async function AtasPage() {
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <PageHeader
           title="Atas"
-          subtitle="Grave a reunião, transcreva e deixe a IA rascunhar a ata. Uso interno: o cliente não vê."
+          subtitle="Grave a reunião: a transcrição sai ao vivo, e a ata fica guardada por cliente. Uso interno: o cliente não vê."
           icon={<UsersIcon className="h-6 w-6" />}
         />
         <div data-mov="card">
@@ -38,6 +38,8 @@ export default async function AtasPage() {
             currentUserId={user?.id ?? ""}
             currentUserLabel={userLabel}
             souLider={perfil?.ve_tudo === true}
+            transcricaoPaga={!!process.env.ASSEMBLYAI_API_KEY}
+            iaLigada={!!process.env.ANTHROPIC_API_KEY}
           />
         </div>
       </main>

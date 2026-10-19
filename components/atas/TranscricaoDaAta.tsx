@@ -8,6 +8,16 @@ import type { Ata } from "@/lib/types";
 import { Button } from "../ui/Button";
 import { CopyIcon, SparklesIcon } from "../ui/icons";
 
+// O pedido que vai junto com a transcrição quando a pessoa monta a ata no chat
+// do Claude (sem a API paga).
+const PEDIDO_PRO_CLAUDE = `Abaixo está a transcrição de uma reunião (com o tempo de cada fala). Escreva a ata em português, com frases curtas e objetivas, em três partes:
+1. Pauta: os assuntos tratados, na ordem em que apareceram.
+2. Decisões: só o que ficou de fato decidido ou aprovado.
+3. Próximos passos: as tarefas combinadas, com o responsável e o prazo quando forem ditos.
+Não invente nada que não esteja na transcrição.
+
+TRANSCRIÇÃO:`;
+
 type Parte = Pick<Ata, "id" | "audio_path" | "audio_seconds" | "transcricao_status" | "transcricao_texto" | "transcricao_erro">;
 
 // A gravação da ata (pra ouvir) e a transcrição: transcrever, acompanhar
@@ -17,17 +27,22 @@ export default function TranscricaoDaAta({
   ata,
   aoMudar,
   aoRascunho,
+  transcricaoPaga,
+  iaLigada,
 }: {
   ata: Parte;
   aoMudar: (mudancas: Partial<Ata>) => void;
   // Só no formulário: recebe o rascunho da IA pra preencher os campos.
   aoRascunho?: (rascunho: RascunhoNaTela) => void;
+  // Os serviços pagos só aparecem quando as chaves estão configuradas.
+  transcricaoPaga: boolean;
+  iaLigada: boolean;
 }) {
   const [urlDoAudio, setUrlDoAudio] = useState("");
   const [ocupado, setOcupado] = useState<"transcrever" | "ia" | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aberta, setAberta] = useState(false);
-  const [copiada, setCopiada] = useState(false);
+  const [copiada, setCopiada] = useState<"texto" | "pedido" | null>(null);
   const status = ata.transcricao_status;
 
   // Link assinado pra ouvir a gravação.
@@ -105,12 +120,14 @@ export default function TranscricaoDaAta({
     setAberta((a) => !a);
   }
 
-  async function copiar() {
+  // "texto": só a transcrição. "pedido": a transcrição com o pedido pronto pra
+  // colar no Claude (chat) e receber a ata, sem pagar API.
+  async function copiar(oQue: "texto" | "pedido") {
     try {
       const t = await texto();
-      await navigator.clipboard.writeText(t);
-      setCopiada(true);
-      setTimeout(() => setCopiada(false), 2000);
+      await navigator.clipboard.writeText(oQue === "texto" ? t : `${PEDIDO_PRO_CLAUDE}\n\n${t}`);
+      setCopiada(oQue);
+      setTimeout(() => setCopiada(null), 2000);
     } catch {
       setErro("Não deu pra copiar. Abra a transcrição e selecione o texto.");
     }
@@ -126,11 +143,16 @@ export default function TranscricaoDaAta({
       )}
       {ata.audio_seconds ? <p className="text-[11px] text-ink-muted">Duração: {duracaoLegivel(ata.audio_seconds)}</p> : null}
 
-      {!status && (
-        <Button size="sm" variant="secondary" type="button" onClick={transcrever} disabled={ocupado !== null}>
-          {ocupado === "transcrever" ? "Enviando..." : "Transcrever a gravação"}
-        </Button>
-      )}
+      {!status &&
+        (transcricaoPaga ? (
+          <Button size="sm" variant="secondary" type="button" onClick={transcrever} disabled={ocupado !== null}>
+            {ocupado === "transcrever" ? "Enviando..." : "Transcrever a gravação"}
+          </Button>
+        ) : (
+          <p className="text-[11px] text-ink-muted">
+            Sem transcrição. A transcrição grátis é feita ao vivo, enquanto você grava pelo d.hub (Chrome, Edge ou Safari).
+          </p>
+        ))}
 
       {status === "processando" && (
         <p className="flex items-center gap-2 text-sm text-ink-muted" role="status">
@@ -142,9 +164,11 @@ export default function TranscricaoDaAta({
       {status === "erro" && (
         <div className="space-y-2">
           <p className="text-xs text-danger">{ata.transcricao_erro ?? "A transcrição falhou."}</p>
-          <Button size="sm" variant="secondary" type="button" onClick={transcrever} disabled={ocupado !== null}>
-            {ocupado === "transcrever" ? "Enviando..." : "Tentar transcrever de novo"}
-          </Button>
+          {transcricaoPaga && (
+            <Button size="sm" variant="secondary" type="button" onClick={transcrever} disabled={ocupado !== null}>
+              {ocupado === "transcrever" ? "Enviando..." : "Tentar transcrever de novo"}
+            </Button>
+          )}
         </div>
       )}
 
@@ -154,11 +178,23 @@ export default function TranscricaoDaAta({
             <Button size="sm" variant="secondary" type="button" onClick={abrirOuFechar}>
               {aberta ? "Esconder a transcrição" : "Ver a transcrição"}
             </Button>
-            <Button size="sm" variant="secondary" type="button" onClick={copiar}>
+            <Button size="sm" variant="secondary" type="button" onClick={() => copiar("texto")}>
               <CopyIcon className="h-3.5 w-3.5" />
-              {copiada ? "Copiada ✓" : "Copiar"}
+              {copiada === "texto" ? "Copiada ✓" : "Copiar"}
             </Button>
-            {aoRascunho && (
+            {!iaLigada && (
+              <Button
+                size="sm"
+                variant="secondary"
+                type="button"
+                onClick={() => copiar("pedido")}
+                title="Copia a transcrição com o pedido da ata, pra colar no Claude (chat)"
+              >
+                <SparklesIcon className="h-3.5 w-3.5" />
+                {copiada === "pedido" ? "Copiado: cole no Claude ✓" : "Copiar pra montar a ata no Claude"}
+              </Button>
+            )}
+            {aoRascunho && iaLigada && (
               <Button size="sm" type="button" onClick={rascunhar} disabled={ocupado !== null}>
                 <SparklesIcon className="h-3.5 w-3.5" />
                 {ocupado === "ia" ? "Escrevendo a ata..." : "Preencher a ata com IA"}

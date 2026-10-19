@@ -6,7 +6,7 @@ import type { Ata, Profile } from "@/lib/types";
 import { formatarDataBR } from "@/lib/format";
 import { htmlParaTexto, sanitizarHtml } from "@/lib/texto-rico";
 import { BUCKET_DAS_GRAVACOES } from "@/lib/atas";
-import type { RascunhoNaTela } from "@/lib/actions/atas";
+import { salvarTranscricaoAoVivo, type RascunhoNaTela } from "@/lib/actions/atas";
 import EditorDeTexto from "../EditorDeTexto";
 import GravadorDeReuniao, { type GravacaoEnviada } from "./GravadorDeReuniao";
 import TranscricaoDaAta from "./TranscricaoDaAta";
@@ -78,6 +78,8 @@ export default function AtasManager({
   currentUserId,
   currentUserLabel,
   souLider,
+  transcricaoPaga = false,
+  iaLigada = false,
 }: {
   // Fixo na aba do cliente; null = todas (menu "Atas").
   projectId?: string | null;
@@ -86,6 +88,9 @@ export default function AtasManager({
   currentUserId: string;
   currentUserLabel: string;
   souLider: boolean;
+  // Os serviços pagos (AssemblyAI e Claude) só aparecem com as chaves configuradas.
+  transcricaoPaga?: boolean;
+  iaLigada?: boolean;
 }) {
   const supabase = createClient();
   const [atas, setAtas] = useState<Ata[]>([]);
@@ -264,6 +269,8 @@ export default function AtasManager({
           clientes={clientes}
           profiles={profiles}
           currentUserLabel={currentUserLabel}
+          transcricaoPaga={transcricaoPaga}
+          iaLigada={iaLigada}
           aoSalvar={aoSalvar}
           aoCancelar={() => setForm(null)}
           aoMudarNaLista={(ata) => setAtas((atual) => ordenar([ata, ...atual.filter((a) => a.id !== ata.id)]))}
@@ -320,6 +327,8 @@ export default function AtasManager({
                     cliente={cliente}
                     profiles={profiles}
                     podeExcluir={podeExcluir}
+                    transcricaoPaga={transcricaoPaga}
+                    iaLigada={iaLigada}
                     aoEditar={() => editar(ata)}
                     aoExcluir={() => excluir(ata)}
                     aoMudar={(m) => mudarNaLista(ata.id, m)}
@@ -349,6 +358,8 @@ function LeituraDaAta({
   cliente,
   profiles,
   podeExcluir,
+  transcricaoPaga,
+  iaLigada,
   aoEditar,
   aoExcluir,
   aoMudar,
@@ -357,6 +368,8 @@ function LeituraDaAta({
   cliente: string | null;
   profiles: Profile[];
   podeExcluir: boolean;
+  transcricaoPaga: boolean;
+  iaLigada: boolean;
   aoEditar: () => void;
   aoExcluir: () => void;
   aoMudar: (mudancas: Partial<Ata>) => void;
@@ -394,7 +407,7 @@ function LeituraDaAta({
       {ata.audio_path && (
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Gravação</p>
-          <TranscricaoDaAta ata={ata} aoMudar={aoMudar} />
+          <TranscricaoDaAta ata={ata} aoMudar={aoMudar} transcricaoPaga={transcricaoPaga} iaLigada={iaLigada} />
         </div>
       )}
 
@@ -428,11 +441,15 @@ function FormDaAta({
   clientes,
   profiles,
   currentUserLabel,
+  transcricaoPaga,
+  iaLigada,
   aoSalvar,
   aoCancelar,
   aoMudarNaLista,
 }: {
   inicial: Ata;
+  transcricaoPaga: boolean;
+  iaLigada: boolean;
   salva: boolean;
   projetoFixo: string | null;
   clientes: Cliente[];
@@ -534,8 +551,26 @@ function FormDaAta({
     }
     if (anterior && anterior !== g.path) await supabase.storage.from(BUCKET_DAS_GRAVACOES).remove([anterior]);
     setSalva(true);
-    setAta((a) => ({ ...a, ...r.ata, agenda_html: a.agenda_html, decisions_html: a.decisions_html, next_steps_html: a.next_steps_html, title: a.title }));
-    aoMudarNaLista(r.ata);
+    let salvaNaLista = r.ata;
+    // A transcrição ao vivo (grátis) vai junto, depois que o áudio está salvo.
+    const transcricao = g.transcricao?.trim();
+    if (transcricao) {
+      const t = await salvarTranscricaoAoVivo(r.ata.id, transcricao);
+      if ("ok" in t) {
+        salvaNaLista = { ...r.ata, transcricao_status: "pronta", transcricao_texto: transcricao, transcricao_erro: null };
+      } else {
+        setErro(`A gravação foi salva, mas a transcrição não: ${t.erro}`);
+      }
+    }
+    setAta((a) => ({
+      ...a,
+      ...salvaNaLista,
+      agenda_html: a.agenda_html,
+      decisions_html: a.decisions_html,
+      next_steps_html: a.next_steps_html,
+      title: a.title,
+    }));
+    aoMudarNaLista(salvaNaLista);
     return null;
   }
 
@@ -573,7 +608,13 @@ function FormDaAta({
         />
         {ata.audio_path && (
           <div className="mt-3">
-            <TranscricaoDaAta ata={ata} aoMudar={(m) => mudar(m)} aoRascunho={aoRascunho} />
+            <TranscricaoDaAta
+              ata={ata}
+              aoMudar={(m) => mudar(m)}
+              aoRascunho={aoRascunho}
+              transcricaoPaga={transcricaoPaga}
+              iaLigada={iaLigada}
+            />
           </div>
         )}
       </div>

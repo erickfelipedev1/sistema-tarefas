@@ -224,6 +224,8 @@ export default async function ProjetoPage({
             currentUserId={user?.id ?? ""}
             currentUserLabel={userLabel}
             souLider={souLider}
+            transcricaoPaga={!!process.env.ASSEMBLYAI_API_KEY}
+            iaLigada={!!process.env.ANTHROPIC_API_KEY}
           />
         }
         tarefas={

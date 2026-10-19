@@ -205,3 +205,27 @@ export async function rascunharAtaComIA(ataId: string): Promise<{ rascunho: Rasc
     return { erro: mensagem(e, "Não deu pra rascunhar a ata. Tente de novo.") };
   }
 }
+
+// Guarda a transcrição feita ao vivo pelo navegador (grátis) na ata, depois que
+// a gravação foi salva. As colunas transcricao_* só o servidor grava (0082).
+export async function salvarTranscricaoAoVivo(ataId: string, texto: string): Promise<{ ok: true } | Erro> {
+  if (!UUID.test(ataId)) return { erro: "Ata inválida." };
+  if (typeof texto !== "string" || !texto.trim()) return { erro: "A transcrição ficou vazia." };
+  if (!(await logado())) return { erro: "Sessão expirada. Entre de novo." };
+  const admin = createAdminClient();
+  const { data: ata } = await admin.from("atas").select("audio_path").eq("id", ataId).maybeSingle();
+  if (!ata?.audio_path) return { erro: "Salve a gravação antes da transcrição." };
+  const { error } = await admin
+    .from("atas")
+    .update({
+      transcricao_status: "pronta",
+      transcricao_texto: texto.trim().slice(0, 800000),
+      transcricao_id: null,
+      transcricao_erro: null,
+      transcricao_em: new Date().toISOString(),
+    })
+    .eq("id", ataId)
+    .eq("audio_path", ata.audio_path);
+  if (error) return { erro: "Não deu pra salvar a transcrição." };
+  return { ok: true };
+}

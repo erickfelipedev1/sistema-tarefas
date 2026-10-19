@@ -5,12 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import { BUCKET_DAS_GRAVACOES, duracaoLegivel, LIMITE_DA_GRAVACAO_MB } from "@/lib/atas";
 import { Button } from "../ui/Button";
 import { DownloadIcon } from "../ui/icons";
+import { useTranscricaoAoVivo } from "./useTranscricaoAoVivo";
 
 export interface GravacaoEnviada {
   path: string;
   mime: string;
   size: number;
   segundos: number | null;
+  // O que a transcrição ao vivo (grátis, do navegador) pegou durante a gravação.
+  transcricao?: string;
 }
 
 type Estado = "parado" | "gravando" | "pausado" | "enviando";
@@ -54,7 +57,12 @@ export default function GravadorDeReuniao({
   const [estado, setEstado] = useState<Estado>("parado");
   const [segundos, setSegundos] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
-  const [pendente, setPendente] = useState<{ blob: Blob; mime: string; segundos: number | null } | null>(null);
+  const [pendente, setPendente] = useState<{ blob: Blob; mime: string; segundos: number | null; transcricao?: string } | null>(null);
+  // O relógio do onstop e da transcrição precisa do valor atual.
+  const segundosRef = useRef(0);
+  segundosRef.current = segundos;
+  const aoVivo = useTranscricaoAoVivo(() => segundosRef.current);
+  const transcricaoRef = useRef("");
   const gravador = useRef<MediaRecorder | null>(null);
   const microfone = useRef<MediaStream | null>(null);
   const pedacos = useRef<Blob[]>([]);
@@ -150,25 +158,25 @@ export default function GravadorDeReuniao({
       const tipo = (r.mimeType || mime).split(";")[0];
       const blob = new Blob(pedacos.current, { type: tipo });
       pedacos.current = [];
-      void enviar(blob, tipo, segundosRef.current);
+      void enviar(blob, tipo, segundosRef.current, transcricaoRef.current);
     };
     gravador.current = r;
     // Um pedaço a cada 5 s (fica na memória desta aba até parar: fechar ou
     // recarregar a aba no meio perde a gravação).
     r.start(5000);
+    transcricaoRef.current = "";
     setSegundos(0);
+    segundosRef.current = 0;
     setEstado("gravando");
     ligarRelogio();
+    aoVivo.iniciar();
     void manterTelaAcesa();
   }
-
-  // O relógio do onstop precisa do valor atual (não do de quando começou).
-  const segundosRef = useRef(0);
-  segundosRef.current = segundos;
 
   function pausar() {
     if (gravador.current?.state !== "recording") return;
     gravador.current.pause();
+    aoVivo.pausar();
     desligarRelogio();
     setEstado("pausado");
   }
@@ -176,18 +184,21 @@ export default function GravadorDeReuniao({
   function retomar() {
     if (gravador.current?.state !== "paused") return;
     gravador.current.resume();
+    aoVivo.retomar();
     ligarRelogio();
     setEstado("gravando");
   }
 
-  function parar() {
+  async function parar() {
     if (!gravador.current || gravador.current.state === "inactive") return;
     desligarRelogio();
     setEstado("enviando");
-    gravador.current.stop();
+    // Primeiro a transcrição ao vivo termina (as últimas frases chegam), depois o áudio.
+    transcricaoRef.current = await aoVivo.encerrar();
+    gravador.current?.stop();
   }
 
-  async function enviar(blob: Blob, mime: string, duracao: number | null) {
+  async function enviar(blob: Blob, mime: string, duracao: number | null, transcricao?: string) {
     setEstado("enviando");
     setErro(null);
     if (blob.size === 0) {
@@ -196,7 +207,7 @@ export default function GravadorDeReuniao({
       return;
     }
     if (blob.size > LIMITE_DA_GRAVACAO_MB * 1024 * 1024) {
-      setPendente({ blob, mime, segundos: duracao });
+      setPendente({ blob, mime, segundos: duracao, transcricao });
       setErro(`A gravação passou de ${LIMITE_DA_GRAVACAO_MB} MB e não dá pra enviar. Baixe o arquivo pra não perder.`);
       setEstado("parado");
       return;
@@ -206,7 +217,7 @@ export default function GravadorDeReuniao({
       .storage.from(BUCKET_DAS_GRAVACOES)
       .upload(caminho, blob, { contentType: mime || "audio/webm" });
     if (error) {
-      setPendente({ blob, mime, segundos: duracao });
+      setPendente({ blob, mime, segundos: duracao, transcricao });
       setErro(
         /bucket|not found/i.test(error.message)
           ? "As gravações ainda não estão liberadas no banco (migration 0082). Baixe o arquivo pra não perder."
@@ -215,9 +226,9 @@ export default function GravadorDeReuniao({
       setEstado("parado");
       return;
     }
-    const falha = await aoGravado({ path: caminho, mime, size: blob.size, segundos: duracao });
+    const falha = await aoGravado({ path: caminho, mime, size: blob.size, segundos: duracao, transcricao });
     if (falha) {
-      setPendente({ blob, mime, segundos: duracao });
+      setPendente({ blob, mime, segundos: duracao, transcricao });
       setErro(falha);
     } else {
       setPendente(null);
@@ -294,6 +305,25 @@ export default function GravadorDeReuniao({
               Parar e salvar
             </Button>
           </div>
+          {aoVivo.disponivel && !aoVivo.aviso && (
+            <div
+              className="max-h-32 w-full overflow-y-auto rounded-lg border border-line bg-surface p-2 text-xs leading-relaxed text-ink"
+              aria-live="polite"
+              aria-label="Transcrição ao vivo"
+            >
+              {aoVivo.linhas.length === 0 && !aoVivo.parcial ? (
+                <span className="text-ink-muted">A transcrição aparece aqui enquanto as pessoas falam...</span>
+              ) : (
+                <>
+                  {aoVivo.linhas.slice(-6).map((l, i) => (
+                    <p key={i}>{l}</p>
+                  ))}
+                  {aoVivo.parcial && <p className="text-ink-muted">{aoVivo.parcial}</p>}
+                </>
+              )}
+            </div>
+          )}
+          {aoVivo.aviso && <p className="w-full text-[11px] text-warning">{aoVivo.aviso}</p>}
           <p className="w-full text-[11px] text-ink-muted">
             Deixe esta tela aberta até terminar (fechar ou recarregar perde a gravação). Numa reunião online, use o alto-falante (sem fone) pra gravação pegar
             todo mundo.
@@ -307,7 +337,7 @@ export default function GravadorDeReuniao({
       {pendente && estado === "parado" && (
         <div className="mt-2 flex flex-wrap gap-2">
           {pendente.blob.size <= LIMITE_DA_GRAVACAO_MB * 1024 * 1024 && (
-            <Button size="sm" type="button" onClick={() => void enviar(pendente.blob, pendente.mime, pendente.segundos)}>
+            <Button size="sm" type="button" onClick={() => void enviar(pendente.blob, pendente.mime, pendente.segundos, pendente.transcricao)}>
               Tentar enviar de novo
             </Button>
           )}
