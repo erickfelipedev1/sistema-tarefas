@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
+import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
 
 type Campo = HTMLInputElement | HTMLTextAreaElement;
 
@@ -71,13 +71,12 @@ export default function MencaoInput({
   const sugestoes = useMemo(() => {
     if (!busca) return [];
     const termo = semAcento(busca.termo);
-    return pessoas
-      .filter((p) => {
-        const nome = nomeParaMencao(p);
-        if (!nome) return false;
-        return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
-      })
-      .slice(0, 6);
+    const lista = pessoas.filter((p) => {
+      const nome = nomeParaMencao(p);
+      if (!nome) return false;
+      return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
+    });
+    return comOpcaoTodos(busca.termo, lista).slice(0, 6);
   }, [busca, pessoas]);
 
   function aoDigitar(e: React.ChangeEvent<Campo>) {
@@ -102,7 +101,8 @@ export default function MencaoInput({
     const nome = nomeParaMencao(p);
     const novo = `${value.slice(0, busca.inicio)}@${nome} ${value.slice(cursor)}`;
     onChange(novo);
-    aoEscolher(p.id);
+    // "Todos" não é uma pessoa: quem expande pra equipe é idsMencionados, pelo texto.
+    if (p.id !== MENCAO_TODOS.id) aoEscolher(p.id);
     setBusca(null);
     const posicao = busca.inicio + nome.length + 2;
     requestAnimationFrame(() => {
@@ -180,6 +180,7 @@ export default function MencaoInput({
                   {nomeParaMencao(p).charAt(0).toUpperCase()}
                 </span>
                 <span className="truncate">{nomeParaMencao(p)}</span>
+                {p.id === MENCAO_TODOS.id && <span className="ml-auto text-xs text-ink-muted">a equipe toda</span>}
               </button>
             </li>
           ))}

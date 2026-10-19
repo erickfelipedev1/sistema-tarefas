@@ -36,7 +36,7 @@ import PostDaTarefa from "./posts/PostDaTarefa";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
-import { idsMencionados, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
+import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
 
 type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "horas" | "copy" | "post";
 
@@ -422,7 +422,7 @@ export default function TaskModal({
                     aoMudar={isNovo ? (html) => {
                       setDescriptionHtml(html);
                       setDescription(htmlParaTexto(html));
-                      setMencoesDaDescricao(idsDeMencoes(html).filter((id) => idsDaEquipe.has(id)));
+                      setMencoesDaDescricao(idsDeMencoes(html, [...idsDaEquipe]).filter((id) => idsDaEquipe.has(id)));
                     } : undefined}
                     aoSair={(html, mudou) => {
                       if (isNovo) return;
@@ -439,7 +439,7 @@ export default function TaskModal({
                       setDescriptionHtml(html);
                       setDescription(texto);
                       setEditandoDescricao(false);
-                      const mencionados = idsDeMencoes(html).filter((id) => idsDaEquipe.has(id));
+                      const mencionados = idsDeMencoes(html, [...idsDaEquipe]).filter((id) => idsDaEquipe.has(id));
                       const jaMencionados = current?.description_mentions ?? [];
                       const tarefaId = current?.id;
                       const mudouMencoes =
@@ -1389,10 +1389,13 @@ function ComentariosTab({
               <p className="whitespace-pre-wrap break-words text-sm text-ink">
                 <TextoComMencoes
                   texto={c.content}
-                  nomes={(c.mentions ?? []).flatMap((id) => {
-                    const p = pessoas.find((x) => x.id === id);
-                    return p ? [nomeParaMencao(p)] : [];
-                  })}
+                  nomes={[
+                    ...(c.mentions ?? []).flatMap((id) => {
+                      const p = pessoas.find((x) => x.id === id);
+                      return p ? [nomeParaMencao(p)] : [];
+                    }),
+                    MENCAO_TODOS.name ?? "Todos",
+                  ]}
                 />
               </p>
             )}

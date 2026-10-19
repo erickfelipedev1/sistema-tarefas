@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { CORES_TAREFA } from "@/lib/task-colors";
-import { nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
+import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
 import { FONTES_DO_TEXTO, LIMITE_DO_HTML, TAMANHOS_DO_TEXTO, sanitizarHtml } from "@/lib/texto-rico";
 
 // Cores sentinela: aplicadas e logo trocadas por "sem cor" (é assim que a
@@ -207,13 +207,12 @@ export default function EditorDeTexto({
   const sugestoes = useMemo(() => {
     if (!busca) return [];
     const termo = semAcento(busca.termo);
-    return pessoas
-      .filter((p) => {
-        const nome = nomeParaMencao(p);
-        if (!nome) return false;
-        return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
-      })
-      .slice(0, 6);
+    const lista = pessoas.filter((p) => {
+      const nome = nomeParaMencao(p);
+      if (!nome) return false;
+      return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
+    });
+    return comOpcaoTodos(busca.termo, lista).slice(0, 6);
   }, [busca, pessoas]);
 
   function posicionarLista() {
@@ -482,6 +481,7 @@ export default function EditorDeTexto({
                 className={`block w-full px-3 py-1.5 text-left text-sm text-ink ${i === opcao ? "bg-surface-hover" : "hover:bg-surface-hover"}`}
               >
                 {nomeParaMencao(p)}
+                {p.id === MENCAO_TODOS.id && <span className="ml-1.5 text-xs text-ink-muted">a equipe toda</span>}
                 {p.username && p.username !== nomeParaMencao(p) && (
                   <span className="ml-1.5 text-xs text-ink-muted">@{p.username}</span>
                 )}

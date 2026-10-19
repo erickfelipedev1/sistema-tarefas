@@ -159,6 +159,7 @@ function copiar(origem: Node, destino: Node, doc: Document, dentroDeLink: boolea
       // Menção "@Nome": a marca guarda o id da pessoa (só no formato de uuid).
       const mencao = tag === "SPAN" ? el.getAttribute("data-mencao") : null;
       if (mencao && UUID.test(mencao)) novo.setAttribute("data-mencao", mencao.toLowerCase());
+      else if (mencao === "todos") novo.setAttribute("data-mencao", "todos");
       copiar(el, novo, doc, dentroDeLink, linkificar);
       destino.appendChild(novo);
       return;
@@ -235,13 +236,16 @@ export function htmlParaTexto(html: string): string {
 }
 
 // Os ids das pessoas mencionadas (@nome) num HTML da descrição, sem repetir.
-export function idsDeMencoes(html: string): string[] {
+// "@Todos" (marca "todos") vira a equipe inteira: quem chama passa o "equipe"
+// (os ids de todos); sem ele, só contam as pessoas citadas pelo nome.
+export function idsDeMencoes(html: string, equipe: readonly string[] = []): string[] {
   if (typeof DOMParser === "undefined" || !html) return [];
   const doc = new DOMParser().parseFromString(`<body>${sanitizarHtml(html, false)}</body>`, "text/html");
   const ids = new Set<string>();
   doc.querySelectorAll("[data-mencao]").forEach((el) => {
     const id = el.getAttribute("data-mencao");
-    if (id && UUID.test(id)) ids.add(id.toLowerCase());
+    if (id === "todos") equipe.forEach((e) => ids.add(e.toLowerCase()));
+    else if (id && UUID.test(id)) ids.add(id.toLowerCase());
   });
   return Array.from(ids).slice(0, 20);
 }

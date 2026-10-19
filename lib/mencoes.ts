@@ -7,6 +7,10 @@ export interface PessoaMencionavel {
   username: string | null;
 }
 
+// "@Todos": menciona a equipe inteira. Não é uma pessoa: na hora de salvar
+// vira a lista de todos os ids (idsMencionados), e o aviso sai pra cada um.
+export const MENCAO_TODOS: PessoaMencionavel = { id: "todos", name: "Todos", username: null };
+
 export function nomeParaMencao(p: Pick<PessoaMencionavel, "name" | "username">): string {
   return (p.name || p.username || "").trim();
 }
@@ -34,11 +38,22 @@ export function idsMencionados(
   escolhidos: readonly string[]
 ): string[] {
   const ids = new Set<string>();
+  // "@Todos" no texto: a equipe inteira.
+  if (aparece(texto, MENCAO_TODOS.name ?? "")) {
+    for (const p of pessoas) ids.add(p.id);
+  }
   for (const id of escolhidos) {
     const p = pessoas.find((x) => x.id === id);
     if (p && aparece(texto, nomeParaMencao(p))) ids.add(id);
   }
   return Array.from(ids);
+}
+
+// A opção "Todos" no começo da lista, quando o que a pessoa digitou combina.
+export function comOpcaoTodos(termo: string, pessoas: readonly PessoaMencionavel[]): PessoaMencionavel[] {
+  const t = semAcento(termo);
+  const combina = t === "" || "todos".startsWith(t) || "equipe".startsWith(t);
+  return combina ? [MENCAO_TODOS, ...pessoas] : [...pessoas];
 }
 
 // Quebra o texto em pedaços "normal" e "menção" pra destacar os nomes de
