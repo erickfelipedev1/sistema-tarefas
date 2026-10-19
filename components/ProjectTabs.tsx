@@ -11,12 +11,14 @@ import {
   MessageCircleIcon,
   ReceiptIcon,
   SlidersIcon,
+  UsersIcon,
 } from "./ui/icons";
 
 const ABAS = [
   { key: "tarefas", label: "Tarefas", icon: ClipboardListIcon },
   { key: "otimizacoes", label: "Otimizações", icon: SlidersIcon },
   { key: "posts", label: "Posts", icon: ImageIcon },
+  { key: "atas", label: "Atas", icon: UsersIcon },
   { key: "wiki", label: "Wiki", icon: BookOpenIcon },
   { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
@@ -40,6 +42,7 @@ export default function ProjectTabs({
   tarefas,
   otimizacoes,
   posts,
+  atas,
   wiki,
   arquivos,
   faturas,
@@ -50,6 +53,8 @@ export default function ProjectTabs({
   tarefas: ReactNode;
   otimizacoes?: ReactNode;
   posts: ReactNode;
+  // Atas de reunião do cliente (migration 0082): só monta quando a aba é aberta.
+  atas?: ReactNode;
   wiki: ReactNode;
   arquivos: ReactNode;
   faturas: ReactNode;
@@ -57,10 +62,13 @@ export default function ProjectTabs({
   analytics: ReactNode;
   inicial?: string;
 }) {
-  const abas = ABAS.filter((item) => item.key !== "otimizacoes" || !!otimizacoes);
+  const abas = ABAS.filter(
+    (item) => (item.key !== "otimizacoes" || !!otimizacoes) && (item.key !== "atas" || !!atas)
+  );
   const [aba, setAba] = useState<AbaKey>(abas.find((item) => item.key === inicial)?.key ?? "tarefas");
   const [abriuAnalytics, setAbriuAnalytics] = useState(aba === "analytics");
   const [abriuPosts, setAbriuPosts] = useState(aba === "posts");
+  const [abriuAtas, setAbriuAtas] = useState(aba === "atas");
 
   return (
     <div>
@@ -75,6 +83,7 @@ export default function ProjectTabs({
                 setAba(item.key);
                 if (item.key === "analytics") setAbriuAnalytics(true);
                 if (item.key === "posts") setAbriuPosts(true);
+                if (item.key === "atas") setAbriuAtas(true);
               }}
               className={`flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 ativa
@@ -94,6 +103,7 @@ export default function ProjectTabs({
         <div className={aba === "otimizacoes" ? "" : "hidden"}>{otimizacoes}</div>
       )}
       {abriuPosts && <div className={aba === "posts" ? "" : "hidden"}>{posts}</div>}
+      {abriuAtas && atas && <div className={aba === "atas" ? "" : "hidden"}>{atas}</div>}
       <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
       <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
       <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>

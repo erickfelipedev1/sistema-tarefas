@@ -523,3 +523,33 @@ export interface Message {
   // Quem foi mencionado com "@" (migration 0080).
   mentions?: string[];
 }
+
+// Ata de reunião (migration 0082). project_id null = reunião interna.
+// transcricao_* só o servidor grava (lib/actions/atas.ts).
+export interface Ata {
+  id: string;
+  project_id: string | null;
+  title: string;
+  meeting_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  place: string | null;
+  participant_ids: string[];
+  external_participants: string | null;
+  agenda_html: string;
+  decisions_html: string;
+  next_steps_html: string;
+  audio_path: string | null;
+  audio_mime: string | null;
+  audio_size: number | null;
+  audio_seconds: number | null;
+  transcricao_status: "processando" | "pronta" | "erro" | null;
+  transcricao_id: string | null;
+  transcricao_texto: string | null;
+  transcricao_erro: string | null;
+  transcricao_em: string | null;
+  created_by: string | null;
+  created_by_label: string | null;
+  created_at: string;
+  updated_at: string;
+}

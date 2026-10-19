@@ -27,6 +27,7 @@ import {
   SendIcon,
   SparklesIcon,
   UserIcon,
+  UsersIcon,
   SunIcon,
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
@@ -55,6 +56,7 @@ const SECOES: {
       // "Arquivos" (ver ProjectTabs), então não tem link avulso aqui.
       { href: "/projetos", label: "Clientes", icon: FolderIcon },
       { href: "/postagens", label: "Calendário de postagem", icon: ImageIcon },
+      { href: "/atas", label: "Atas", icon: UsersIcon },
     ],
   },
   {

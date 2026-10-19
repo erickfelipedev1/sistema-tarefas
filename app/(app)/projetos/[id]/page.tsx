@@ -13,6 +13,7 @@ import Coreografia from "@/components/movimento/Coreografia";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
+import AtasManager from "@/components/atas/AtasManager";
 import PostsManager from "@/components/PostsManager";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { TipoDeServicoDoCliente } from "@/components/TipoDeServico";
@@ -28,6 +29,10 @@ import { PaginaRow } from "@/components/WikiPagesPanel";
 import type { PaginaResumo } from "@/lib/wiki";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
+
+// A transcrição e o rascunho da ata com IA (aba "Atas") rodam em Server
+// Actions desta página: a IA pode levar mais de um minuto numa reunião longa.
+export const maxDuration = 300;
 
 export default async function ProjetoPage({
   params,
@@ -209,6 +214,16 @@ export default async function ProjetoPage({
             postInicial={searchParams?.post}
             novoEm={searchParams?.novo}
             instagramLigado={project.instagram_account_id ? (project.instagram_username as string | null) ?? "" : null}
+          />
+        }
+        atas={
+          <AtasManager
+            projectId={id}
+            clientes={[{ id, name: project.name as string }]}
+            profiles={profiles ?? []}
+            currentUserId={user?.id ?? ""}
+            currentUserLabel={userLabel}
+            souLider={souLider}
           />
         }
         tarefas={

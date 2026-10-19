@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@blocknote/core": "^0.54.0",
     "@blocknote/mantine": "^0.54.0",
     "@blocknote/react": "^0.54.0",
