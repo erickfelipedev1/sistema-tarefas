@@ -16,12 +16,15 @@ export default function PublicarNoInstagram({
   post,
   instagramLigado,
   usuario,
+  nota,
   aoMudar,
 }: {
   post: Post;
   // @usuario da conta ligada ao cliente (ou "" se ligada sem nome); null = não ligada.
   instagramLigado: string | null;
   usuario?: string;
+  // Aviso curto embaixo do botão (ex.: "publica o que está salvo").
+  nota?: string;
   aoMudar: (mudancas: Partial<Post>) => void;
 }) {
   const [trabalhando, setTrabalhando] = useState(post.ig_estado === "preparando" || post.ig_estado === "publicando");
@@ -162,6 +165,7 @@ export default function PublicarNoInstagram({
             </Button>
             {instagramLigado && <span className="text-xs text-ink-muted">em @{instagramLigado}</span>}
           </div>
+          {nota && !trabalhando && <p className="mt-2 text-[11px] text-ink-muted">{nota}</p>}
           {trabalhando && (
             <p className="mt-2 text-xs text-ink-muted">
               A Meta está processando os arquivos (vídeo pode levar alguns minutos). Deixe este post aberto até terminar: é

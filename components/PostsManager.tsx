@@ -924,6 +924,20 @@ export default function PostsManager({
             {editado?.status === "enviado" && (
               <p className="text-xs text-ink-muted">O cliente já está vendo este post: o que você salvar muda lá na hora.</p>
             )}
+            {/* Também aqui, pra não precisar fechar a edição: publica o que já está salvo. */}
+            {editado && (
+              <div className="w-full max-w-md self-end text-left">
+                <PublicarNoInstagram
+                  post={editado}
+                  instagramLigado={instagramLigado}
+                  usuario={instagramLigado ?? undefined}
+                  nota="Publica o post como ele está salvo: clique em “Salvar alterações” antes, se mexeu em alguma coisa."
+                  aoMudar={(mudancas) =>
+                    setPosts((atual) => ordenar(atual.map((p) => (p.id === editado.id ? { ...p, ...mudancas } : p))))
+                  }
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
