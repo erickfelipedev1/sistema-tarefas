@@ -29,6 +29,7 @@ import {
   STATUS_DO_POST,
 } from "@/lib/posts";
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
+import PublicarNoInstagram from "./posts/PublicarNoInstagram";
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
@@ -93,6 +94,7 @@ export default function PostsManager({
   profiles,
   postInicial,
   novoEm,
+  instagramLigado = null,
 }: {
   projectId: string;
   projectName: string;
@@ -104,6 +106,9 @@ export default function PostsManager({
   // (AAAA-MM-DD) pra começar um post novo.
   postInicial?: string;
   novoEm?: string;
+  // @usuario da conta de Instagram ligada ao cliente ("" = ligada sem nome);
+  // null = não ligada (migration 0079).
+  instagramLigado?: string | null;
 }) {
   const supabase = createClient();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -1073,6 +1078,10 @@ export default function PostsManager({
                   falas={falas}
                   links={links}
                   projectName={projectName}
+                  instagramLigado={instagramLigado}
+                  aoMudarPost={(mudancas) =>
+                    setPosts((atual) => ordenar(atual.map((p) => (p.id === post.id ? { ...p, ...mudancas } : p))))
+                  }
                   aoResponder={(texto) => responder(post, texto)}
                 />
               )}
@@ -1101,12 +1110,16 @@ function PostAberto({
   falas,
   links,
   projectName,
+  instagramLigado,
+  aoMudarPost,
   aoResponder,
 }: {
   post: Post;
   falas: PostComment[];
   links: Record<string, string>;
   projectName: string;
+  instagramLigado: string | null;
+  aoMudarPost: (mudancas: Partial<Post>) => void;
   aoResponder: (texto: string) => Promise<string | null>;
 }) {
   const redes = redesValidas(post.networks);
@@ -1142,6 +1155,12 @@ function PostAberto({
           data={post.scheduled_date ? formatarDataBR(post.scheduled_date) : null}
         />
         <ArquivosParaBaixar post={post} />
+        <PublicarNoInstagram
+          post={post}
+          instagramLigado={instagramLigado}
+          usuario={instagramLigado ?? undefined}
+          aoMudar={aoMudarPost}
+        />
       </div>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-ink">

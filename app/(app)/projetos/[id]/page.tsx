@@ -19,6 +19,7 @@ import { TipoDeServicoDoCliente } from "@/components/TipoDeServico";
 import { pacotesDisponiveis } from "@/lib/pacotes";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import CorDoCliente from "@/components/CorDoCliente";
+import InstagramDoCliente from "@/components/InstagramDoCliente";
 import { corDoCliente } from "@/lib/task-colors";
 import ProjectDetailsCard from "@/components/ProjectDetailsCard";
 import ProjectMessagesManager from "@/components/ProjectMessagesManager";
@@ -152,6 +153,11 @@ export default async function ProjetoPage({
             pacotes={pacotesParaEscolher}
           />
           <CorDoCliente projectId={id} cor={(project.color as string | null) ?? null} />
+          <InstagramDoCliente
+            projectId={id}
+            contaId={(project.instagram_account_id as string | null) ?? null}
+            username={project.instagram_account_id ? (project.instagram_username as string | null) ?? "" : null}
+          />
         </div>
         <p className="mt-0.5 text-sm text-ink-muted">
           Quadro de tarefas e Wiki próprios
@@ -202,6 +208,7 @@ export default async function ProjetoPage({
             profiles={profiles ?? []}
             postInicial={searchParams?.post}
             novoEm={searchParams?.novo}
+            instagramLigado={project.instagram_account_id ? (project.instagram_username as string | null) ?? "" : null}
           />
         }
         tarefas={

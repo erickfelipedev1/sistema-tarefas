@@ -131,6 +131,9 @@ export interface Project {
   // Cor do cliente (migration 0073): vale no cartão das tarefas. Vazio = cor
   // automática (ver corDoCliente em lib/task-colors.ts).
   color?: string | null;
+  // Instagram do cliente (migration 0079), pra publicar os posts direto.
+  instagram_account_id?: string | null;
+  instagram_username?: string | null;
   // Nome do pacote do cliente neste mês (Start, Pro, Elite). Não é coluna da
   // tabela: o servidor preenche (lib/pacotes.ts) pras telas que mostram o
   // tipo de serviço ao lado do nome do cliente.
@@ -374,6 +377,12 @@ export interface Post {
   cover: PostMedia | null;
   // De qual tarefa o post saiu (migration 0062), se saiu de uma.
   task_id?: string | null;
+  // Publicação no Instagram (migration 0079): só o servidor grava.
+  ig_estado?: "preparando" | "publicando" | "publicado" | "erro" | null;
+  ig_media_id?: string | null;
+  ig_permalink?: string | null;
+  ig_publicado_em?: string | null;
+  ig_erro?: string | null;
   status: PostStatus;
   sent_count: number;
   sent_at: string | null;
