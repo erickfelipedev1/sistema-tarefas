@@ -1,6 +1,7 @@
 "use client";
 
-import { linkDoArquivo } from "@/lib/arquivos";
+import { linkDoArquivo, linkParaBaixar } from "@/lib/arquivos";
+import { DownloadIcon } from "@/components/ui/icons";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import EditorDeTexto from "@/components/EditorDeTexto";
 import { erroDeHorario } from "@/lib/horarios";
@@ -1156,12 +1157,25 @@ function AnexosTab({
             >
               📎 {a.file_name}
             </a>
-            <button
-              onClick={() => remover(a)}
-              className="flex-shrink-0 text-xs text-ink-muted hover:text-danger"
-            >
-              ✕
-            </button>
+            <div className="flex flex-shrink-0 items-center gap-3">
+              <a
+                href={linkParaBaixar("task-attachments", a.file_path, a.file_name)}
+                download={a.file_name}
+                title={`Baixar ${a.file_name}`}
+                aria-label={`Baixar ${a.file_name}`}
+                className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink"
+              >
+                <DownloadIcon className="h-3.5 w-3.5" />
+                Baixar
+              </a>
+              <button
+                onClick={() => remover(a)}
+                aria-label={`Remover ${a.file_name}`}
+                className="text-xs text-ink-muted hover:text-danger"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         ))}
         {anexos.length === 0 && (

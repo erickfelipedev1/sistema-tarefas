@@ -38,7 +38,16 @@ export async function GET(request: NextRequest, { params }: { params: { bucket: 
     return NextResponse.redirect(login);
   }
 
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(caminho, 300);
+  // ?baixar=<nome>: o arquivo vem pra baixar, com esse nome (sem barras, aspas
+  // ou caracteres de controle); sem o parâmetro, abre no navegador.
+  const pedido = request.nextUrl.searchParams.get("baixar");
+  const nomeParaBaixar = pedido
+    ? pedido.replace(/[\u0000-\u001f\u007f\\/"]/g, "_").trim().slice(0, 200) || true
+    : undefined;
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(caminho, 300, nomeParaBaixar ? { download: nomeParaBaixar } : undefined);
   if (error || !data?.signedUrl) {
     return new NextResponse("Arquivo não encontrado ou sem permissão.", { status: 404 });
   }

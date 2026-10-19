@@ -10,3 +10,9 @@ export type BucketProtegido = (typeof BUCKETS_PROTEGIDOS)[number];
 export function linkDoArquivo(bucket: BucketProtegido, caminho: string) {
   return `/arquivos/${bucket}/${caminho.split("/").map(encodeURIComponent).join("/")}`;
 }
+
+// O mesmo arquivo, mas pro navegador baixar (em vez de abrir) já com o nome
+// original, sem o prefixo de data que vai no caminho.
+export function linkParaBaixar(bucket: BucketProtegido, caminho: string, nome: string) {
+  return `${linkDoArquivo(bucket, caminho)}?baixar=${encodeURIComponent(nome)}`;
+}
