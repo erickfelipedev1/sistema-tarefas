@@ -3,6 +3,7 @@
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import { Fragment, useEffect, useState } from "react";
 import type { Message } from "@/lib/types";
+import { MENCAO_TODOS, nomeParaMencao, partirPorMencoes, type PessoaMencionavel } from "@/lib/mencoes";
 import { createClient } from "@/lib/supabase/client";
 import {
   chaveDoDia,
@@ -37,16 +38,20 @@ export default function ChatMensagens({
   mensagens,
   currentUserId,
   remetentes,
+  pessoas,
   estadoDe,
   aoApagar,
 }: {
   mensagens: Message[];
   currentUserId: string;
   remetentes?: Record<string, Remetente>;
+  // Quem pode ser mencionado na conversa: o "@Nome" deles fica em destaque.
+  pessoas?: readonly PessoaMencionavel[];
   estadoDe: (m: Message) => EstadoEnvio;
   aoApagar?: (m: Message) => void;
 }) {
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const nomesMencionaveis = [...(pessoas ?? []).map(nomeParaMencao), MENCAO_TODOS.name ?? "Todos"];
 
   async function copiar(m: Message) {
     if (await copiarMensagem(m.content || m.attachment_name || "")) {
@@ -130,7 +135,15 @@ export default function ChatMensagens({
                   )}
                   {m.content && (
                     <span className="whitespace-pre-wrap break-words">
-                      <TextoComLinks texto={m.content} corDoLink="text-current" />
+                      {partirPorMencoes(m.content, nomesMencionaveis).map((parte, k) =>
+                        parte.mencao ? (
+                          <span key={k} className="rounded bg-black/15 px-0.5 font-semibold">
+                            {parte.texto}
+                          </span>
+                        ) : (
+                          <TextoComLinks key={k} texto={parte.texto} corDoLink="text-current" />
+                        )
+                      )}
                     </span>
                   )}
                   <span className="float-right ml-3 mt-1.5 inline-flex translate-y-0.5 items-center gap-0.5 text-[10px] leading-none text-ink-muted">

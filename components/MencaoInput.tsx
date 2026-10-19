@@ -21,6 +21,8 @@ export default function MencaoInput({
   className,
   autoFocus,
   aoTeclar,
+  campoRef,
+  semTodos = false,
 }: {
   value: string;
   onChange: (texto: string) => void;
@@ -33,8 +35,16 @@ export default function MencaoInput({
   className?: string;
   autoFocus?: boolean;
   aoTeclar?: (e: React.KeyboardEvent<Campo>) => void;
+  // Pra quem usa o campo focar nele de fora (ex.: depois de anexar um arquivo).
+  campoRef?: React.MutableRefObject<Campo | null>;
+  // Sem a opção "Todos" (conversa entre duas pessoas).
+  semTodos?: boolean;
 }) {
-  const campo = useRef<Campo>(null);
+  const campo = useRef<Campo | null>(null);
+  const guardarCampo = (el: Campo | null) => {
+    campo.current = el;
+    if (campoRef) campoRef.current = el;
+  };
   // Onde está o "@" que está sendo digitado, e o que veio depois dele.
   const [busca, setBusca] = useState<{ inicio: number; termo: string } | null>(null);
   const [destaque, setDestaque] = useState(0);
@@ -76,8 +86,8 @@ export default function MencaoInput({
       if (!nome) return false;
       return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
     });
-    return comOpcaoTodos(busca.termo, lista).slice(0, 6);
-  }, [busca, pessoas]);
+    return (semTodos ? lista : comOpcaoTodos(busca.termo, lista)).slice(0, 6);
+  }, [busca, pessoas, semTodos]);
 
   function aoDigitar(e: React.ChangeEvent<Campo>) {
     const texto = e.target.value;
@@ -152,9 +162,9 @@ export default function MencaoInput({
   return (
     <div className="relative min-w-0 flex-1">
       {multilinha ? (
-        <textarea ref={campo as React.RefObject<HTMLTextAreaElement>} rows={linhas} {...comum} />
+        <textarea ref={guardarCampo} rows={linhas} {...comum} />
       ) : (
-        <input ref={campo as React.RefObject<HTMLInputElement>} {...comum} />
+        <input ref={guardarCampo} {...comum} />
       )}
       {busca && sugestoes.length > 0 && lugar && (
         <ul

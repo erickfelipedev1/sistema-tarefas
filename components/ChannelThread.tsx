@@ -148,7 +148,18 @@ export default function ChannelThread({
     );
   }, [messages, busca]);
 
-  async function enviar(arquivo: File | null): Promise<boolean> {
+  // Quem dá pra mencionar: os membros do canal (todos, se for aberto), menos eu.
+  const pessoas = useMemo(
+    () =>
+      membrosIds.flatMap((id) => {
+        const p = profilesById[id];
+        return p ? [{ id, name: p.name, username: p.username }] : [];
+      }),
+    [membrosIds, profilesById]
+  );
+  const mencionaveis = useMemo(() => pessoas.filter((p) => p.id !== currentUserId), [pessoas, currentUserId]);
+
+  async function enviar(arquivo: File | null, mencoes: string[]): Promise<boolean> {
     const content = text.trim();
     if ((!content && !arquivo) || sending) return false;
     setSending(true);
@@ -168,7 +179,13 @@ export default function ChannelThread({
     setText("");
     const { data, error } = await supabase
       .from("messages")
-      .insert({ sender_id: currentUserId, channel_id: channelId, content, ...(anexo ?? {}) })
+      .insert({
+        sender_id: currentUserId,
+        channel_id: channelId,
+        content,
+        ...(mencoes.length > 0 ? { mentions: mencoes } : {}),
+        ...(anexo ?? {}),
+      })
       .select()
       .single();
 
@@ -280,6 +297,7 @@ export default function ChannelThread({
           mensagens={mensagensVisiveis}
           currentUserId={currentUserId}
           remetentes={profilesById}
+          pessoas={pessoas}
           estadoDe={estadoDe}
           aoApagar={apagar}
         />
@@ -303,6 +321,7 @@ export default function ChannelThread({
         enviando={sending}
         placeholder={`Mensagem em #${channelName}`}
         erro={erroEnvio}
+        pessoas={mencionaveis}
       />
     </div>
   );

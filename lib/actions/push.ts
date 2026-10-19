@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { avisarTarefaParaResponsaveis, enviarPush } from "@/lib/push";
 import { textoDaMensagem } from "@/lib/chat";
+import { idsMencionados } from "@/lib/mencoes";
 
 // Server Actions das notificações no celular. Quem chama é o navegador
 // logado: salvar/remover a inscrição do aparelho e avisar os destinatários
@@ -54,11 +55,17 @@ export async function avisarMensagemNova(messageId: string) {
   const user = await usuarioAtual();
   if (!user) return;
   const admin = createAdminClient();
-  const { data: m } = await admin
+  const colunas = "id, sender_id, recipient_id, channel_id, content, attachment_name";
+  let { data: m, error: erroMensagem } = await admin
     .from("messages")
-    .select("id, sender_id, recipient_id, channel_id, content, attachment_name")
+    .select(`${colunas}, mentions`)
     .eq("id", messageId)
     .maybeSingle();
+  // Sem a coluna "mentions" (migration 0080 ainda não aplicada) o aviso comum
+  // da mensagem não pode parar: tenta de novo sem ela.
+  if (erroMensagem) {
+    ({ data: m } = await admin.from("messages").select(colunas).eq("id", messageId).maybeSingle());
+  }
   // Só quem mandou pode disparar o aviso da própria mensagem.
   if (!m || m.sender_id !== user.id) return;
 
@@ -70,13 +77,39 @@ export async function avisarMensagemNova(messageId: string) {
   const nome = remetente?.name || remetente?.username || "Alguém";
   const texto = textoDaMensagem({ content: m.content ?? "", attachment_name: m.attachment_name });
 
+  // Quem foi mencionado (@nome / @Todos) recebe o aviso "mencionou você" no
+  // lugar do aviso comum da mensagem. Só conta quem pode ver a mensagem e
+  // está mesmo citado no texto (o sininho já foi criado pelo banco, 0080).
+  async function avisar(destinatarios: string[], comum: { titulo: string; url: string; tag: string }, onde: string) {
+    const candidatos = ((m!.mentions as string[] | null) ?? []).filter(
+      (id) => id !== user!.id && destinatarios.includes(id)
+    );
+    let citados: string[] = [];
+    if (candidatos.length > 0) {
+      const { data: pessoas } = await admin.from("profiles").select("id, name, username").in("id", candidatos);
+      citados = idsMencionados(m!.content ?? "", pessoas ?? [], candidatos);
+    }
+    const outros = destinatarios.filter((id) => !citados.includes(id));
+    // Juntos, mas independentes: uma falha num não segura o aviso do outro.
+    await Promise.allSettled([
+      citados.length > 0
+        ? enviarPush(citados, {
+            titulo: `${nome} mencionou você`,
+            corpo: `Em ${onde}: ${texto}`,
+            url: comum.url,
+            tag: `mencao-msg-${m!.id}`,
+          })
+        : null,
+      outros.length > 0 ? enviarPush(outros, { ...comum, corpo: texto }) : null,
+    ]);
+  }
+
   if (m.recipient_id) {
-    await enviarPush([m.recipient_id as string], {
-      titulo: nome,
-      corpo: texto,
-      url: `/chat/dm/${user.id}`,
-      tag: `dm-${user.id}`,
-    });
+    await avisar(
+      [m.recipient_id as string],
+      { titulo: nome, url: `/chat/dm/${user.id}`, tag: `dm-${user.id}` },
+      "conversa direta"
+    );
     return;
   }
 
@@ -95,9 +128,10 @@ export async function avisarMensagemNova(messageId: string) {
       const { data: todos } = await admin.from("profiles").select("id");
       destinatarios = (todos ?? []).map((x) => x.id as string);
     }
-    await enviarPush(
+    await avisar(
       destinatarios.filter((id) => id !== user.id),
-      { titulo: `#${canal.name} · ${nome}`, corpo: texto, url: `/chat/canal/${canal.id}`, tag: `canal-${canal.id}` }
+      { titulo: `#${canal.name} · ${nome}`, url: `/chat/canal/${canal.id}`, tag: `canal-${canal.id}` },
+      `#${canal.name}`
     );
   }
 }

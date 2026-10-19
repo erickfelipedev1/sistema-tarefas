@@ -19,12 +19,15 @@ export default function ChatThread({
   otherLabel,
   otherAvatarUrl,
   initialMessages,
+  currentUserLabel,
 }: {
   currentUserId: string;
   otherUserId: string;
   otherLabel: string;
   otherAvatarUrl: string | null;
   initialMessages: Message[];
+  // Meu nome: pra destacar quando a outra pessoa me menciona.
+  currentUserLabel: string;
 }) {
   const supabase = createClient();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -139,7 +142,18 @@ export default function ChatThread({
     );
   }, [messages, busca]);
 
-  async function enviar(arquivo: File | null): Promise<boolean> {
+  // Na conversa direta só dá pra mencionar a outra pessoa.
+  const mencionaveis = useMemo(
+    () => [{ id: otherUserId, name: otherLabel, username: null }],
+    [otherUserId, otherLabel]
+  );
+
+  const paraDestacar = useMemo(
+    () => [...mencionaveis, { id: currentUserId, name: currentUserLabel, username: null }],
+    [mencionaveis, currentUserId, currentUserLabel]
+  );
+
+  async function enviar(arquivo: File | null, mencoes: string[]): Promise<boolean> {
     const content = text.trim();
     if ((!content && !arquivo) || sending) return false;
     setSending(true);
@@ -163,6 +177,7 @@ export default function ChatThread({
         sender_id: currentUserId,
         recipient_id: otherUserId,
         content,
+        ...(mencoes.length > 0 ? { mentions: mencoes } : {}),
         ...(anexo ?? {}),
       })
       .select()
@@ -275,6 +290,7 @@ export default function ChatThread({
         <ChatMensagens
           mensagens={mensagensVisiveis}
           currentUserId={currentUserId}
+          pessoas={paraDestacar}
           estadoDe={estadoDe}
           aoApagar={apagar}
         />
@@ -298,6 +314,8 @@ export default function ChatThread({
         enviando={sending}
         placeholder="Escreva uma mensagem..."
         erro={erroEnvio}
+        pessoas={mencionaveis}
+        semTodos
       />
     </div>
   );

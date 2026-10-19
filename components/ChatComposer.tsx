@@ -4,11 +4,14 @@ import { useRef, useState } from "react";
 import { formatarTamanho, LIMITE_ANEXO_MB } from "@/lib/chat";
 import { FileTextIcon, PlusIcon, SendIcon, XIcon } from "@/components/ui/icons";
 import EmojiPicker from "./EmojiPicker";
+import MencaoInput from "./MencaoInput";
+import { idsMencionados, type PessoaMencionavel } from "@/lib/mencoes";
 
 // Campo de escrever mensagem (conversa direta e canal): "+" pra anexar um
 // arquivo, caixa com emoji à direita e botão verde de enviar. Enter envia;
 // Shift+Enter quebra linha. O texto é opcional quando há anexo (vira
-// legenda).
+// legenda). Digitar "@" abre a lista de quem pode ser mencionado; quem foi
+// escolhido (e continua escrito no texto) sai junto no envio.
 export default function ChatComposer({
   texto,
   setTexto,
@@ -16,15 +19,21 @@ export default function ChatComposer({
   enviando,
   placeholder,
   erro,
+  pessoas,
+  semTodos = false,
 }: {
   texto: string;
   setTexto: (valor: string | ((atual: string) => string)) => void;
-  enviar: (arquivo: File | null) => Promise<boolean>;
+  enviar: (arquivo: File | null, mencoes: string[]) => Promise<boolean>;
   enviando: boolean;
   placeholder: string;
   erro: string | null;
+  // Quem dá pra mencionar nesta conversa (sem quem está escrevendo).
+  pessoas: readonly PessoaMencionavel[];
+  semTodos?: boolean;
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
+  const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const inputArquivo = useRef<HTMLInputElement | null>(null);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
@@ -33,8 +42,11 @@ export default function ChatComposer({
 
   async function submeter() {
     if (!podeEnviar) return;
-    const ok = await enviar(arquivo);
-    if (ok) setArquivo(null);
+    const ok = await enviar(arquivo, idsMencionados(texto, pessoas, escolhidos));
+    if (ok) {
+      setArquivo(null);
+      setEscolhidos([]);
+    }
   }
 
   function escolher(e: React.ChangeEvent<HTMLInputElement>) {
@@ -90,20 +102,24 @@ export default function ChatComposer({
         <input ref={inputArquivo} type="file" onChange={escolher} className="hidden" />
 
         <div className="flex min-h-[44px] flex-1 items-end rounded-xl border border-line bg-canvas px-3 py-1.5 focus-within:border-brand">
-          <textarea
-            ref={textareaRef}
+          <MencaoInput
+            campoRef={textareaRef}
             value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={(valor) => setTexto(valor)}
+            pessoas={pessoas}
+            semTodos={semTodos}
+            aoEscolher={(id) => setEscolhidos((atual) => (atual.includes(id) ? atual : [...atual, id]))}
+            aoTeclar={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 void submeter();
               }
             }}
-            rows={1}
+            multilinha
+            linhas={1}
             placeholder={arquivo ? "Adicione uma legenda (opcional)..." : placeholder}
-            aria-label="Mensagem"
-            className="max-h-32 flex-1 resize-none self-center bg-transparent py-1 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+            ariaLabel="Mensagem"
+            className="max-h-32 w-full resize-none self-center bg-transparent py-1 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
           />
           <EmojiPicker
             onSelect={(emoji) => {

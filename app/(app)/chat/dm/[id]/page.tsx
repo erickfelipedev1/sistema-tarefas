@@ -21,6 +21,8 @@ export default async function DmPage({
 
   if (!otherProfile) notFound();
 
+  const { data: eu } = await supabase.from("profiles").select("name, username").eq("id", user.id).maybeSingle();
+
   const { data: messages } = await supabase
     .from("messages")
     .select("*")
@@ -36,6 +38,7 @@ export default async function DmPage({
       otherLabel={otherProfile.name || otherProfile.username || "Conversa"}
       otherAvatarUrl={otherProfile.avatar_url}
       initialMessages={messages ?? []}
+      currentUserLabel={eu?.name || eu?.username || ""}
     />
   );
 }

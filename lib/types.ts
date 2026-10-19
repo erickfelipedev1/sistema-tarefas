@@ -518,4 +518,6 @@ export interface Message {
   attachment_name?: string | null;
   attachment_mime?: string | null;
   attachment_size?: number | null;
+  // Quem foi mencionado com "@" (migration 0080).
+  mentions?: string[];
 }
