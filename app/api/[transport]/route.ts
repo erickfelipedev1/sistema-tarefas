@@ -4,7 +4,8 @@ import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { avisarTarefaParaResponsaveis } from "@/lib/push";
-import { verificarTokenPessoal, type PerfilAutenticado } from "@/lib/mcp-tokens";
+import { verificarTokenPessoal } from "@/lib/mcp-tokens";
+import { registrarFerramentasDeLeitura } from "@/lib/mcp-leitura";
 import { podeVerTudo } from "@/lib/permissions";
 import {
   resolverProjeto,
@@ -15,6 +16,11 @@ import {
   tarefaEhVisivel,
   urlDoApp,
   STATUS_LABEL,
+  hojeEmSP,
+  mensagemDeErro,
+  perfilDoContexto,
+  resolverSubprojeto,
+  type ContextoFerramenta,
 } from "@/lib/mcp-server-helpers";
 import type { ChecklistItem, TaskAttachment, TaskComment, TaskHourEntry, TaskStatus } from "@/lib/types";
 import {
@@ -36,29 +42,6 @@ import {
 // token em verificarTokenPessoal() antes de qualquer leitura/escrita, e
 // replica as mesmas regras de visibilidade que a pessoa já tem no site
 // (ver lib/mcp-server-helpers.ts).
-
-interface ContextoFerramenta {
-  authInfo?: {
-    extra?: Record<string, unknown>;
-  };
-}
-
-function perfilDoContexto(extra: ContextoFerramenta): PerfilAutenticado {
-  const info = extra.authInfo?.extra;
-  if (!info || typeof info.profileId !== "string") {
-    throw new Error("Token inválido ou ausente.");
-  }
-  return {
-    profileId: info.profileId,
-    nome: typeof info.nome === "string" ? info.nome : "Alguém",
-    username: typeof info.username === "string" ? info.username : null,
-  };
-}
-
-function mensagemDeErro(error: unknown): string {
-  const msg = error instanceof Error ? error.message : String(error);
-  return `Erro: ${msg}`;
-}
 
 // Acha UMA tarefa pelo título (e projeto, opcional), respeitando o que a
 // pessoa enxerga. Usado pelas ferramentas de checklist.
@@ -123,6 +106,8 @@ function tipoDoArquivo(nome: string, ehTexto: boolean) {
 
 const handler = createMcpHandler(
   (server) => {
+    registrarFerramentasDeLeitura(server);
+
     server.registerTool(
       "now_listar_projetos",
       {
@@ -188,6 +173,7 @@ Args:
   - data_inicio (string, opcional): início do período, no formato AAAA-MM-DD. Se informar o prazo sem o início, a tarefa começa hoje.
   - data_prazo (string, obrigatório): data de entrega (fim do período), no formato AAAA-MM-DD.
   - responsavel (string, opcional): nome de quem deve ficar responsável. Aceita "eu"/"mim" pra atribuir a quem pediu a tarefa. Se não informar, a tarefa fica sem responsável.
+  - projeto_do_cliente (string, opcional): nome de um projeto DENTRO do cliente (ex: "Site novo"), pra tarefa entrar nele. Exige "projeto". Veja os nomes com now_listar_projetos_do_cliente.
 
 Retorna: confirmação com o título, projeto e link da tarefa criada.
 
@@ -227,6 +213,11 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
             .max(200)
             .optional()
             .describe('Nome de quem fica responsável. Aceita "eu"/"mim".'),
+          projeto_do_cliente: z
+            .string()
+            .max(200)
+            .optional()
+            .describe('Projeto dentro do cliente (ex: "Site novo"). Exige "projeto".'),
         },
         annotations: {
           readOnlyHint: false,
@@ -235,7 +226,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           openWorldHint: false,
         },
       },
-      async ({ titulo, descricao, checklist, projeto, status, data_inicio, data_prazo, responsavel }, extra) => {
+      async ({ titulo, descricao, checklist, projeto, status, data_inicio, data_prazo, responsavel, projeto_do_cliente }, extra) => {
         try {
           const perfil = perfilDoContexto(extra as ContextoFerramenta);
           const admin = createAdminClient();
@@ -248,6 +239,16 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           const resolResp = await resolverResponsavel(admin, perfil.profileId, responsavel);
           if (!resolResp.ok) {
             return { isError: true, content: [{ type: "text", text: resolResp.erro }] };
+          }
+
+          let subprojeto: { id: string; name: string } | null = null;
+          if (projeto_do_cliente?.trim()) {
+            if (!resolProjeto.projeto) {
+              return { isError: true, content: [{ type: "text", text: 'Pra usar "projeto_do_cliente", informe também o cliente em "projeto".' }] };
+            }
+            const resolSub = await resolverSubprojeto(admin, resolProjeto.projeto.id, projeto_do_cliente);
+            if (!resolSub.ok) return { isError: true, content: [{ type: "text", text: resolSub.erro }] };
+            subprojeto = { id: resolSub.id, name: resolSub.name };
           }
 
           const statusFinal: TaskStatus = (status as TaskStatus) ?? "todo";
@@ -273,6 +274,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
               start_date: inicioFinal,
               due_date: data_prazo || null,
               project_id: resolProjeto.projeto?.id ?? null,
+              ...(subprojeto ? { subproject_id: subprojeto.id } : {}),
               assigned_to: resolResp.ids,
               created_by: perfil.profileId,
               created_by_label: `${perfil.nome} (via IA)`,
@@ -310,7 +312,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
             content: [
               {
                 type: "text",
-                text: `Tarefa "${tarefa.title}" criada em "${nomeProjeto}" (status: ${
+                text: `Tarefa "${tarefa.title}" criada em "${nomeProjeto}"${subprojeto ? `, no projeto "${subprojeto.name}"` : ""} (status: ${
                   STATUS_LABEL[statusFinal]
                 })${
                   itensChecklist.length ? `, com ${itensChecklist.length} itens no checklist` : ""
@@ -339,9 +341,11 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
         description: `Lista tarefas do d.hub, com filtros opcionais.
 
 Args:
-  - projeto (string, opcional): nome do projeto pra filtrar. Sem isso, lista as tarefas "Geral" (sem projeto) dessa pessoa.
+  - projeto (string, opcional): nome do projeto pra filtrar. Sem isso (e sem responsavel/prazo/todos_os_clientes), lista as tarefas "Geral" (sem projeto) dessa pessoa.
   - status (string, opcional): "todo", "doing", "dependency" (em dependência), "approval" (em aprovação), "done" ou "cancelled".
   - responsavel (string, opcional): "eu"/"mim" pra só as tarefas dessa pessoa, ou o nome de alguém do time.
+  - todos_os_clientes (boolean, opcional): true = procura em todos os clientes que a pessoa enxerga (e no Geral). Sem "projeto", isso já vale quando informar "responsavel" ou "prazo" (ex: "o que a Ana tem pra hoje?", "o que está atrasado?").
+  - prazo (string, opcional): "atrasadas" (prazo vencido e não concluídas), "hoje" ou "semana" (entrega nos próximos 7 dias).
   - limit (number, opcional): máximo de resultados (padrão 20, máximo 50).
 
 Retorna: lista de tarefas com título, status, projeto e prazo.`,
@@ -349,6 +353,8 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
           projeto: z.string().max(200).optional(),
           status: z.enum(["todo", "doing", "dependency", "approval", "done", "cancelled"]).optional(),
           responsavel: z.string().max(200).optional(),
+          todos_os_clientes: z.boolean().optional(),
+          prazo: z.enum(["atrasadas", "hoje", "semana"]).optional(),
           limit: z.number().int().min(1).max(50).optional(),
         },
         annotations: {
@@ -358,7 +364,7 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
           openWorldHint: false,
         },
       },
-      async ({ projeto, status, responsavel, limit }, extra) => {
+      async ({ projeto, status, responsavel, todos_os_clientes, prazo, limit }, extra) => {
         try {
           const perfil = perfilDoContexto(extra as ContextoFerramenta);
           const admin = createAdminClient();
@@ -381,14 +387,31 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
           const visiveis = await projetosVisiveis(admin, perfil.profileId);
           const idsVisiveis = new Set(visiveis.map((p) => p.id));
 
+          // Sem cliente, mas perguntando por prazo ou pessoa: procura em todos os
+          // clientes (antes só olhava o "Geral").
+          const amplo = !resolProjeto.projeto && (!!todos_os_clientes || !!prazo || !!responsavelId);
           let query = admin
             .from("tasks")
             .select("id, title, status, project_id, due_date, created_by, assigned_to")
-            .order("position", { ascending: true })
-            .limit(200);
+            .order(amplo ? "due_date" : "position", { ascending: true, nullsFirst: false })
+            .limit(amplo ? 1000 : 200);
 
           if (resolProjeto.projeto) {
             query = query.eq("project_id", resolProjeto.projeto.id);
+          } else if (amplo) {
+            // Todos os clientes visíveis + o Geral da pessoa, já na consulta (pra o
+            // limite não gastar linhas com o que ela não vê).
+            if (responsavelId) query = query.contains("assigned_to", [responsavelId]);
+            if (!verTudo) {
+              const ids = Array.from(idsVisiveis);
+              query = query.or(
+                [
+                  ...(ids.length ? [`project_id.in.(${ids.join(",")})`] : []),
+                  `created_by.eq.${perfil.profileId}`,
+                  `assigned_to.cs.{${perfil.profileId}}`,
+                ].join(",")
+              );
+            }
           } else if (!projeto) {
             query = query.is("project_id", null);
             if (!verTudo) {
@@ -399,6 +422,19 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
           }
 
           if (status) query = query.eq("status", status);
+          // Buscando amplo ou por prazo, sem status pedido: só o que está em aberto.
+          else if (amplo || prazo) query = query.not("status", "in", "(done,cancelled)");
+
+          const hoje = hojeEmSP();
+          if (prazo === "atrasadas") {
+            query = query.lt("due_date", hoje);
+          } else if (prazo === "hoje") {
+            query = query.eq("due_date", hoje);
+          } else if (prazo === "semana") {
+            const fim = new Date(`${hoje}T12:00:00Z`);
+            fim.setUTCDate(fim.getUTCDate() + 7);
+            query = query.gte("due_date", hoje).lte("due_date", fim.toISOString().slice(0, 10));
+          }
 
           const { data } = await query;
 
@@ -437,9 +473,12 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
           });
 
           const aviso = total > tarefas.length ? `\n(mostrando ${tarefas.length} de ${total})` : "";
+          const onde = amplo
+            ? `Em aberto, em todos os clientes que você vê${status ? "" : " (concluídas e canceladas ficam de fora)"}:\n`
+            : "";
 
           return {
-            content: [{ type: "text", text: linhas.join("\n") + aviso }],
+            content: [{ type: "text", text: onde + linhas.join("\n") + aviso }],
             structuredContent: { total, count: tarefas.length, tarefas },
           };
         } catch (error) {
@@ -552,6 +591,7 @@ Args:
   - responsavel (string, opcional): nome de quem deve ficar responsável (aceita "eu"/"mim", e substitui quem já estava). Pra tirar o responsável, mande "remover" ou "ninguém".
   - status (string, opcional): "todo", "doing", "dependency" (em dependência), "approval" (em aprovação), "done" ou "cancelled".
   - projeto (string, opcional): nome do projeto, só pra ajudar a achar a tarefa certa quando o título é ambíguo (não move a tarefa de projeto).
+  - projeto_do_cliente (string, opcional): põe a tarefa num projeto DENTRO do cliente dela (ex: "Site novo"); "remover" tira do projeto. As subtarefas acompanham.
 
 Retorna: confirmação com o que foi alterado.
 
@@ -581,6 +621,11 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
             .describe('Nome de quem fica responsável (substitui). Aceita "eu"/"mim". Mande "remover" pra tirar.'),
           status: z.enum(["todo", "doing", "dependency", "approval", "done", "cancelled"]).optional().describe("Novo status."),
           projeto: z.string().max(200).optional().describe("Nome do projeto, pra desambiguar (opcional)."),
+          projeto_do_cliente: z
+            .string()
+            .max(200)
+            .optional()
+            .describe('Projeto dentro do cliente da tarefa (ex: "Site novo"). "remover" tira do projeto.'),
         },
         annotations: {
           readOnlyHint: false,
@@ -590,7 +635,7 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
         },
       },
       async (
-        { tarefa, novo_titulo, descricao, data_inicio, data_prazo, responsavel, status, projeto },
+        { tarefa, novo_titulo, descricao, data_inicio, data_prazo, responsavel, status, projeto, projeto_do_cliente },
         extra
       ) => {
         try {
@@ -675,13 +720,13 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
             resumo.push(`status → ${STATUS_LABEL[status as TaskStatus]}`);
           }
 
-          if (Object.keys(atualizacoes).length === 0) {
+          if (Object.keys(atualizacoes).length === 0 && projeto_do_cliente === undefined) {
             return {
               isError: true,
               content: [
                 {
                   type: "text",
-                  text: "Nada pra atualizar. Informe ao menos um campo: novo_titulo, descricao, data_inicio, data_prazo, responsavel ou status.",
+                  text: "Nada pra atualizar. Informe ao menos um campo: novo_titulo, descricao, data_inicio, data_prazo, responsavel, status ou projeto_do_cliente.",
                 },
               ],
             };
@@ -720,7 +765,34 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
 
           const alvo = candidatas[0];
 
+          // Projeto do cliente (migration 0083): só entre os do cliente da tarefa.
+          let subprojetoNovo: string | null | undefined;
+          if (projeto_do_cliente !== undefined) {
+            const normalizado = projeto_do_cliente.trim().toLowerCase();
+            if (normalizado === "" || ["remover", "nenhum", "sem projeto"].includes(normalizado)) {
+              subprojetoNovo = null;
+              resumo.push("saiu do projeto do cliente");
+            } else {
+              if (!alvo.project_id) {
+                return { isError: true, content: [{ type: "text", text: "Essa tarefa não é de um cliente, então não entra em projeto de cliente." }] };
+              }
+              const resolSub = await resolverSubprojeto(admin, alvo.project_id, projeto_do_cliente);
+              if (!resolSub.ok) return { isError: true, content: [{ type: "text", text: resolSub.erro }] };
+              subprojetoNovo = resolSub.id;
+              resumo.push(`projeto do cliente → ${resolSub.name}`);
+            }
+            atualizacoes.subproject_id = subprojetoNovo;
+          }
+
           const { error } = await admin.from("tasks").update(atualizacoes).eq("id", alvo.id);
+          // As subtarefas acompanham o projeto da tarefa principal.
+          if (!error && subprojetoNovo !== undefined) {
+            const { error: erroFilhas } = await admin
+              .from("tasks")
+              .update({ subproject_id: subprojetoNovo })
+              .eq("parent_id", alvo.id);
+            if (erroFilhas) resumo.push("(as subtarefas não mudaram de projeto: tente de novo)");
+          }
 
           if (error) {
             return { isError: true, content: [{ type: "text", text: `Erro ao atualizar: ${error.message}` }] };

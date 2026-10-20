@@ -258,3 +258,80 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   done: "Concluída",
   cancelled: "Cancelada",
 };
+
+// Quem está chamando a ferramenta (o token já foi conferido na rota do MCP).
+export interface ContextoFerramenta {
+  authInfo?: {
+    extra?: Record<string, unknown>;
+  };
+}
+
+export function perfilDoContexto(extra: ContextoFerramenta): {
+  profileId: string;
+  nome: string;
+  username: string | null;
+} {
+  const info = extra.authInfo?.extra;
+  if (!info || typeof info.profileId !== "string") {
+    throw new Error("Token inválido ou ausente.");
+  }
+  return {
+    profileId: info.profileId,
+    nome: typeof info.nome === "string" ? info.nome : "Alguém",
+    username: typeof info.username === "string" ? info.username : null,
+  };
+}
+
+export function mensagemDeErro(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  return `Erro: ${msg}`;
+}
+
+// Hoje no horário de Brasília (AAAA-MM-DD), como o resto do sistema.
+export function hojeEmSP(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
+// "coloca no projeto Site novo" → acha o projeto (migration 0083) entre os do
+// cliente da tarefa, por nome (parcial, sem diferenciar maiúsculas).
+export async function resolverSubprojeto(
+  admin: SupabaseClient,
+  clienteId: string,
+  nome: string
+): Promise<{ ok: true; id: string; name: string } | { ok: false; erro: string }> {
+  const { data, error } = await admin.from("subprojects").select("id, name").eq("project_id", clienteId);
+  if (error) return { ok: false, erro: "Os projetos do cliente ainda não estão disponíveis (migration 0083)." };
+  const lista = (data ?? []) as { id: string; name: string }[];
+  const busca = nome.trim().toLowerCase();
+  const exato = lista.filter((p) => p.name.toLowerCase() === busca);
+  const candidatos = exato.length ? exato : lista.filter((p) => p.name.toLowerCase().includes(busca));
+  if (candidatos.length === 1) return { ok: true, ...candidatos[0] };
+  const nomes = lista.map((p) => `"${p.name}"`).join(", ") || "nenhum";
+  return {
+    ok: false,
+    erro:
+      candidatos.length === 0
+        ? `Não achei o projeto "${nome}" nesse cliente. Projetos do cliente: ${nomes}. Use now_listar_projetos_do_cliente.`
+        : `Mais de um projeto do cliente bate com "${nome}": ${candidatos.map((p) => `"${p.name}"`).join(", ")}.`,
+  };
+}
+
+// Texto simples a partir do HTML limpo do editor (descrição formatada, atas),
+// sem DOM: quebra de linha nos blocos, "- " nos itens de lista.
+export function htmlEmTexto(html: string | null | undefined): string {
+  if (!html) return "";
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n- ")
+    .replace(/<\/(p|div|h[1-6]|ul|ol|blockquote)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
