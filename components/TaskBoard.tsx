@@ -9,7 +9,6 @@ import { hhmm, rotuloDeHorario, umDiaSo } from "@/lib/horarios";
 import { syncTaskWiki } from "@/lib/task-wiki-sync";
 import TaskModal from "./TaskModal";
 import TarefasEmLista from "./TarefasEmLista";
-import { Avatar } from "./ui/Avatar";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
@@ -32,6 +31,7 @@ import {
   FolderIcon,
   PlusIcon,
   RowsIcon,
+  UsersIcon,
   SparklesIcon,
   Trash2Icon,
 } from "./ui/icons";
@@ -892,13 +892,13 @@ export default function TaskBoard({
                       />
                       {/* Cabeçalho na cor do cliente: nome, tipo de serviço e excluir. */}
                       <div
-                        className="flex items-center justify-between gap-2 px-3.5 py-2"
+                        className="flex items-center justify-between gap-2 px-3 py-1.5"
                         style={{
                           backgroundColor: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).fundo,
                           color: corDoCliente(task.project_id ? clientesPorId.get(task.project_id) : null).texto,
                         }}
                       >
-                        <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide">
+                        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wide">
                           {task.project_id ? (
                             <Link
                               href={`/projetos/${task.project_id}`}
@@ -926,64 +926,43 @@ export default function TaskBoard({
                         </button>
                       </div>
 
-                      <div className="p-3.5">
-                      <p className="text-[15px] font-medium leading-snug text-ink">{task.title}</p>
+                      <div className="p-3">
+                      <p className="text-[13px] font-medium leading-snug text-ink">{task.title}</p>
 
-                      {(task.due_date || task.assigned_to.length > 0) && (
-                        <div className="mt-3 flex items-start justify-between gap-3">
-                          {task.due_date ? (
-                            <span
-                              className={`flex min-w-0 items-start gap-1.5 text-xs ${
-                                atrasada ? "font-medium text-danger" : "text-ink-muted"
-                              }`}
-                            >
-                              <CalendarIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                              <span>
-                                {!umDiaSo(task)
-                                  ? `${task.start_date!.split("-").reverse().slice(0, 2).join("/")}${
-                                      task.start_time ? ` ${hhmm(task.start_time)}` : ""
-                                    } → `
-                                  : ""}
-                                {task.due_date.split("-").reverse().join("/")}
-                                {(() => {
-                                  const hora = umDiaSo(task) ? rotuloDeHorario(task) : hhmm(task.due_time);
-                                  return hora ? ` ${hora}` : "";
-                                })()}
-                              </span>
-                            </span>
-                          ) : (
-                            <span />
-                          )}
-                          {task.assigned_to.length > 0 && (
-                            <div className="flex flex-shrink-0 -space-x-2">
-                              {task.assigned_to.slice(0, 3).map((id) => (
-                                <Avatar
-                                  key={id}
-                                  name={nomeDe(id)}
-                                  src={profileById.get(id)?.avatar_url}
-                                  size="md"
-                                  className="ring-2 ring-surface"
-                                />
-                              ))}
-                              {task.assigned_to.length > 3 && (
-                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover text-[11px] font-semibold text-ink-muted ring-2 ring-surface">
-                                  +{task.assigned_to.length - 3}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                      {task.due_date && (
+                        <p
+                          className={`mt-2 flex min-w-0 items-start gap-1 text-[11px] ${
+                            atrasada ? "font-medium text-danger" : "text-ink-muted"
+                          }`}
+                        >
+                          <CalendarIcon className="mt-px h-3 w-3 flex-shrink-0" />
+                          <span>
+                            {!umDiaSo(task)
+                              ? `${task.start_date!.split("-").reverse().slice(0, 2).join("/")}${
+                                  task.start_time ? ` ${hhmm(task.start_time)}` : ""
+                                } → `
+                              : ""}
+                            {task.due_date.split("-").reverse().slice(0, 2).join("/")}
+                            {(() => {
+                              const hora = umDiaSo(task) ? rotuloDeHorario(task) : hhmm(task.due_time);
+                              return hora ? ` ${hora}` : "";
+                            })()}
+                          </span>
+                        </p>
                       )}
 
-                      {task.created_by_label && (
-                        <p className="mt-2 truncate text-xs text-ink-muted">por {task.created_by_label}</p>
+                      {task.assigned_to.length > 0 && (
+                        <p className="mt-1 flex min-w-0 items-start gap-1 text-[11px] text-ink-muted" title="Responsáveis">
+                          <UsersIcon className="mt-px h-3 w-3 flex-shrink-0" />
+                          <span className="min-w-0">{task.assigned_to.map(nomeDe).join(", ")}</span>
+                        </p>
                       )}
 
                       {(ligacoes[task.id] ?? []).length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {(ligacoes[task.id] ?? []).flatMap((id) => {
                             const et = etiquetaPorId.get(id);
-                            return et ? [<EtiquetaSelo key={id} etiqueta={et} />] : [];
+                            return et ? [<EtiquetaSelo key={id} etiqueta={et} pequena />] : [];
                           })}
                         </div>
                       )}
@@ -1012,7 +991,6 @@ export default function TaskBoard({
                         <SubtarefasNoCartao
                           subtarefas={filhas[task.id]}
                           hoje={hoje}
-                          perfis={profileById}
                           recolhida={recolhidas.has(task.id)}
                           aoRecolher={() =>
                             setRecolhidas((atual) => {
@@ -1023,7 +1001,6 @@ export default function TaskBoard({
                             })
                           }
                           aoAbrir={abrirEditar}
-                          aoAlternar={alternarSubtarefa}
                         />
                       )}
 
@@ -1171,26 +1148,21 @@ function SeletorDeVisao({ visao, aoTrocar }: { visao: "quadro" | "lista"; aoTroc
   );
 }
 
-// As subtarefas dentro do cartão da tarefa principal: uma linha por subtarefa
-// (concluir, abrir, responsáveis e prazo), com a lista recolhível. Clicar numa
-// linha abre a subtarefa inteira; o resto do cartão continua abrindo a
-// principal.
+// As subtarefas dentro do cartão da tarefa principal, como atalhos: bolinha
+// da cor do status + título. Clicar abre a subtarefa inteira; o resto do
+// cartão continua abrindo a principal. A lista é recolhível.
 function SubtarefasNoCartao({
   subtarefas,
   hoje,
-  perfis,
   recolhida,
   aoRecolher,
   aoAbrir,
-  aoAlternar,
 }: {
   subtarefas: Task[];
   hoje: string;
-  perfis: Map<string, Profile>;
   recolhida: boolean;
   aoRecolher: () => void;
   aoAbrir: (t: Task) => void;
-  aoAlternar: (t: Task) => void;
 }) {
   const ativas = subtarefas.filter((s) => s.status !== "cancelled");
   const feitas = ativas.filter((s) => s.status === "done").length;
@@ -1198,15 +1170,12 @@ function SubtarefasNoCartao({
   const [verTodas, setVerTodas] = useState(false);
   const mostradas = verTodas ? ativas : ativas.slice(0, MAX);
   return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="mt-2.5 rounded-lg border border-line bg-canvas/60 p-1.5"
-    >
+    <div onClick={(e) => e.stopPropagation()} className="mt-2 rounded-lg border border-line bg-canvas/60 p-1">
       <button
         type="button"
         onClick={aoRecolher}
         aria-expanded={!recolhida}
-        className="flex w-full items-center justify-between gap-2 px-1 py-0.5 text-left text-[11px] font-medium text-ink-muted hover:text-ink"
+        className="flex w-full items-center justify-between gap-2 px-1 py-0.5 text-left text-[10px] font-medium text-ink-muted hover:text-ink"
       >
         <span>
           🧩 Subtarefas · {feitas}/{ativas.length}
@@ -1214,56 +1183,25 @@ function SubtarefasNoCartao({
         <ChevronDownIcon className={`h-3 w-3 transition-transform ${recolhida ? "-rotate-90" : ""}`} />
       </button>
       {!recolhida && (
-        <ul className="mt-1 space-y-0.5">
+        <ul className="mt-0.5">
           {mostradas.map((s) => {
             const feita = s.status === "done";
             const atrasada = !!s.due_date && s.due_date < hoje && !feita;
+            const coluna = COLUNAS.find((c) => c.key === s.status);
             return (
-              <li key={s.id} className={`rounded-md px-1 py-1 hover:bg-surface-hover ${feita ? "opacity-60" : ""}`}>
-                <div className="flex items-start gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={feita}
-                    onChange={() => aoAlternar(s)}
-                    aria-label={feita ? "Reabrir subtarefa" : "Concluir subtarefa"}
-                    className="mt-0.5 flex-shrink-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => aoAbrir(s)}
-                    title="Abrir a subtarefa"
-                    className={`min-w-0 flex-1 text-left text-xs leading-snug ${
-                      feita ? "text-ink-muted line-through" : "text-ink"
-                    }`}
-                  >
-                    {s.title}
-                  </button>
-                </div>
-                {(s.due_date || s.assigned_to.length > 0 || (s.status !== "todo" && s.status !== "done")) && (
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[22px] text-[10px] text-ink-muted">
-                    {s.status !== "todo" && s.status !== "done" && (
-                      <span>{COLUNAS.find((c) => c.key === s.status)?.label ?? ""}</span>
-                    )}
-                    {s.due_date && (
-                      <span className={atrasada ? "font-medium text-danger" : ""}>
-                        {s.due_date.split("-").reverse().slice(0, 2).join("/")}
-                      </span>
-                    )}
-                    {s.assigned_to.length > 0 && (
-                      <span className="flex -space-x-1">
-                        {s.assigned_to.slice(0, 3).map((id) => (
-                          <Avatar
-                            key={id}
-                            name={perfis.get(id)?.name || perfis.get(id)?.username || "?"}
-                            src={perfis.get(id)?.avatar_url}
-                            size="xs"
-                            className="ring-1 ring-surface"
-                          />
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                )}
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => aoAbrir(s)}
+                  title={`Abrir a subtarefa · ${coluna?.label ?? ""}${atrasada ? " · atrasada" : ""}`}
+                  className={`flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-left text-[11px] leading-snug hover:bg-surface-hover ${
+                    feita ? "text-ink-muted line-through opacity-70" : atrasada ? "text-danger" : "text-ink"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${coluna?.dot ?? "bg-slate-400"}`} aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{s.title}</span>
+                  <ChevronRightIcon className="h-3 w-3 flex-shrink-0 opacity-50" />
+                </button>
               </li>
             );
           })}

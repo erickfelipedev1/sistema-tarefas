@@ -7,12 +7,23 @@ import { CORES_TAREFA, corTarefa } from "@/lib/task-colors";
 import { XIcon } from "./ui/icons";
 
 // Selo colorido de uma etiqueta (cartão do quadro, modal da tarefa).
-export function EtiquetaSelo({ etiqueta, aoTirar }: { etiqueta: Pick<Etiqueta, "name" | "color">; aoTirar?: () => void }) {
+export function EtiquetaSelo({
+  etiqueta,
+  aoTirar,
+  pequena = false,
+}: {
+  etiqueta: Pick<Etiqueta, "name" | "color">;
+  aoTirar?: () => void;
+  // Versão menor, pro cartão do quadro.
+  pequena?: boolean;
+}) {
   const cor = corTarefa(etiqueta.color);
   return (
     <span
       style={{ backgroundColor: cor.fundo, color: cor.texto }}
-      className="inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium leading-4"
+      className={`inline-flex max-w-full items-center gap-1 rounded-full font-medium ${
+        pequena ? "px-1.5 text-[9px] leading-[14px]" : "px-2 py-0.5 text-[10px] leading-4"
+      }`}
     >
       <span className="truncate">{etiqueta.name}</span>
       {aoTirar && (
