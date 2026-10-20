@@ -209,6 +209,31 @@ export function oQueFaltaProEnvio(post: {
   return null;
 }
 
+// O tipo do arquivo (image/..., video/...). Alguns computadores e celulares
+// entregam o vídeo sem tipo (ex.: .mov ou .mkv no Windows): aí vale a extensão.
+const TIPOS_POR_EXTENSAO: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  heic: "image/heic",
+  heif: "image/heif",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  "3gp": "video/3gpp",
+};
+
+export function tipoDoArquivo(arquivo: { name: string; type: string }): string {
+  if (arquivo.type) return arquivo.type;
+  const extensao = arquivo.name.split(".").pop()?.toLowerCase() ?? "";
+  return TIPOS_POR_EXTENSAO[extensao] ?? "";
+}
+
 // O arquivo serve pra esta categoria?
 export function arquivoAceito(categoria: PostCategory, mime: string) {
   if (ehFormatoDeVideo(categoria)) return mime.startsWith("video/");

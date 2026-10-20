@@ -27,6 +27,7 @@ import {
   redesValidas,
   rotuloDoStatus,
   STATUS_DO_POST,
+  tipoDoArquivo,
 } from "@/lib/posts";
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { Badge } from "../ui/Badge";
@@ -258,7 +259,7 @@ export default function PostDaTarefa({
     const recusados: string[] = [];
     const novos: ItemDeMidia[] = [];
     for (const arquivo of Array.from(arquivos)) {
-      if (!arquivoAceito(categoria, arquivo.type)) {
+      if (!arquivoAceito(categoria, tipoDoArquivo(arquivo))) {
         recusados.push(arquivo.name);
         continue;
       }
@@ -267,7 +268,7 @@ export default function PostDaTarefa({
         nova: {
           arquivo,
           url: URL.createObjectURL(arquivo),
-          tipo: arquivo.type.startsWith("video/") ? "video" : "image",
+          tipo: tipoDoArquivo(arquivo).startsWith("video/") ? "video" : "image",
         },
       });
     }
@@ -399,7 +400,7 @@ export default function PostDaTarefa({
       const caminho = `${projectId}/${postId}/${Date.now()}-${feitos}-${nomeSeguro(arquivo.name)}`;
       const { error } = await supabase.storage
         .from(BUCKET_DOS_POSTS)
-        .upload(caminho, arquivo, { contentType: arquivo.type || undefined });
+        .upload(caminho, arquivo, { contentType: tipoDoArquivo(arquivo) || undefined });
       if (error) {
         // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
         if (erroDeArquivoGrande(error.message) && tipo === "video") {
@@ -797,7 +798,9 @@ export default function PostDaTarefa({
                 {regra.maximo === 1 && ocupadas > 0
                   ? "Trocar arquivo"
                   : regra.maximo > 1
-                  ? "Escolher arquivos"
+                  ? categoria === "carrossel"
+                    ? "Escolher imagens ou vídeos"
+                    : "Escolher arquivos"
                   : "Escolher arquivo"}
               </Button>
             )}

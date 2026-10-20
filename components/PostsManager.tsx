@@ -30,6 +30,7 @@ import {
   redesValidas,
   rotuloDoStatus,
   STATUS_DO_POST,
+  tipoDoArquivo,
 } from "@/lib/posts";
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
 import PublicarNoInstagram from "./posts/PublicarNoInstagram";
@@ -358,7 +359,7 @@ export default function PostsManager({
     const recusados: string[] = [];
     const novos: ItemDeMidia[] = [];
     for (const arquivo of Array.from(arquivos)) {
-      if (!arquivoAceito(categoria, arquivo.type)) {
+      if (!arquivoAceito(categoria, tipoDoArquivo(arquivo))) {
         recusados.push(arquivo.name);
         continue;
       }
@@ -367,7 +368,7 @@ export default function PostsManager({
         nova: {
           arquivo,
           url: URL.createObjectURL(arquivo),
-          tipo: arquivo.type.startsWith("video/") ? "video" : "image",
+          tipo: tipoDoArquivo(arquivo).startsWith("video/") ? "video" : "image",
         },
       });
     }
@@ -539,7 +540,7 @@ export default function PostsManager({
       const caminho = `${projectId}/${postId}/${Date.now()}-${feitos}-${nomeSeguro(arquivo.name)}`;
       const { error } = await supabase.storage
         .from(BUCKET_DOS_POSTS)
-        .upload(caminho, arquivo, { contentType: arquivo.type || undefined });
+        .upload(caminho, arquivo, { contentType: tipoDoArquivo(arquivo) || undefined });
       if (error) {
         // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
         if (erroDeArquivoGrande(error.message) && tipo === "video") {
@@ -859,7 +860,11 @@ export default function PostsManager({
                 {(regra.maximo === 1 || itens.length < regra.maximo) && (
                   <Button variant="secondary" size="sm" type="button" onClick={() => seletorDeArquivo.current?.click()}>
                     <PlusIcon className="h-3.5 w-3.5" />
-                    {regra.maximo === 1 && itens.length > 0 ? "Trocar arquivo" : "Escolher arquivo" + (regra.maximo > 1 ? "s" : "")}
+                    {regra.maximo === 1 && itens.length > 0
+                      ? "Trocar arquivo"
+                      : categoria === "carrossel"
+                      ? "Escolher imagens ou vídeos"
+                      : "Escolher arquivo" + (regra.maximo > 1 ? "s" : "")}
                   </Button>
                 )}
                 <BaixarTodos itens={itens} />
