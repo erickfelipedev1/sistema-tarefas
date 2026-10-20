@@ -544,3 +544,11 @@ export const DownloadIcon = createIcon(
     <path d="M5 20h14" />
   </>
 );
+
+export const BotIcon = createIcon(
+  "BotIcon",
+  <>
+    <rect x="4" y="8" width="16" height="12" rx="3" />
+    <path d="M12 8V4M12 4h.01M9 13v1M15 13v1M10 17h4M2 13v2M22 13v2" />
+  </>
+);

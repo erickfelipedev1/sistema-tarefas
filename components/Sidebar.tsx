@@ -14,6 +14,7 @@ import {
   BarChartIcon,
   BellIcon,
   BookOpenIcon,
+  BotIcon,
   CalendarIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -47,6 +48,7 @@ const SECOES: {
       { href: "/board", label: "Tarefas", icon: ClipboardListIcon },
       { href: "/calendario", label: "Calendário", icon: CalendarIcon },
       { href: "/wiki", label: "Wiki", icon: BookOpenIcon },
+      { href: "/agente", label: "Agente de IA", icon: BotIcon },
     ],
   },
   {
