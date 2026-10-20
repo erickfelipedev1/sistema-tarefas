@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { pessoaAtiva } from "@/lib/mencoes";
 import type { Profile, Project } from "@/lib/types";
 import { formatarRelativo } from "@/lib/format";
 import { corDoCliente } from "@/lib/task-colors";
@@ -536,8 +537,11 @@ function ResponsaveisDoCliente({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const pessoas = useMemo(
-    () => [...profiles].sort((a, b) => nomeDaPessoa(a).localeCompare(nomeDaPessoa(b), "pt-BR")),
-    [profiles]
+    () =>
+      profiles
+        .filter((p) => pessoaAtiva(p) || marcados.has(p.id))
+        .sort((a, b) => nomeDaPessoa(a).localeCompare(nomeDaPessoa(b), "pt-BR")),
+    [profiles, marcados]
   );
   // Na ordem da lista, e só quem ainda existe na equipe.
   const idsMarcados = pessoas.filter((p) => marcados.has(p.id)).map((p) => p.id);

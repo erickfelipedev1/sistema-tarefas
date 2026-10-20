@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Profile } from "@/lib/types";
+import { pessoaAtiva } from "@/lib/mencoes";
 import { Avatar } from "@/components/ui/Avatar";
 import { SearchIcon, XIcon } from "@/components/ui/icons";
 import { useChatUI } from "./ChatUIContext";
@@ -18,8 +19,9 @@ export default function NovaMensagemModal({
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    if (!termo) return profiles;
-    return profiles.filter((p) =>
+    const equipe = profiles.filter(pessoaAtiva);
+    if (!termo) return equipe;
+    return equipe.filter((p) =>
       (p.name || p.username || "").toLowerCase().includes(termo)
     );
   }, [busca, profiles]);

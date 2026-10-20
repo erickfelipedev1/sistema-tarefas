@@ -21,7 +21,7 @@ export default async function ChatLayout({
       supabase.from("channels").select("*").order("name"),
       supabase
         .from("profiles")
-        .select("id, username, name, avatar_url")
+        .select("id, username, name, avatar_url, ativo")
         .neq("id", user?.id ?? "")
         .order("name", { ascending: true }),
       // Últimas mensagens — usadas só pra montar os previews "última

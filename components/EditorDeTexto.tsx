@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { CORES_TAREFA } from "@/lib/task-colors";
-import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
+import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, pessoaAtiva, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
 import { FONTES_DO_TEXTO, LIMITE_DO_HTML, TAMANHOS_DO_TEXTO, sanitizarHtml } from "@/lib/texto-rico";
 
 // Cores sentinela: aplicadas e logo trocadas por "sem cor" (é assim que a
@@ -209,7 +209,7 @@ export default function EditorDeTexto({
     const termo = semAcento(busca.termo);
     const lista = pessoas.filter((p) => {
       const nome = nomeParaMencao(p);
-      if (!nome) return false;
+      if (!nome || !pessoaAtiva(p)) return false;
       return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
     });
     return comOpcaoTodos(busca.termo, lista).slice(0, 6);

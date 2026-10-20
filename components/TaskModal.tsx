@@ -36,7 +36,7 @@ import PostDaTarefa from "./posts/PostDaTarefa";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
-import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
+import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes, pessoaAtiva } from "@/lib/mencoes";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 
 type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "horas" | "copy" | "post";
@@ -701,7 +701,7 @@ export default function TaskModal({
                 >
                   <option value="">+ Adicionar responsável</option>
                   {profiles
-                    .filter((p) => !assignedTo.includes(p.id))
+                    .filter((p) => !assignedTo.includes(p.id) && pessoaAtiva(p))
                     .map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name || p.username || "Sem nome"}

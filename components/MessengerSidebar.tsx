@@ -9,6 +9,7 @@ import { previewMensagem, rotuloHoraLista, rotuloPresenca } from "@/lib/chat";
 import { Avatar } from "@/components/ui/Avatar";
 import { LockIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
 import { useChatUI } from "./ChatUIContext";
+import { pessoaAtiva } from "@/lib/mencoes";
 import { useClickOutside } from "@/lib/useClickOutside";
 
 export type ConversaCanalPreview = { content: string; created_at: string };
@@ -45,8 +46,9 @@ export default function MessengerSidebar({
   );
 
   const dmsOrdenados = useMemo(() => {
-    const filtrados = profiles.filter((p) =>
-      (p.name || p.username || "").toLowerCase().includes(termo)
+    // Quem saiu da equipe só continua na lista se já tinha conversa.
+    const filtrados = profiles.filter(
+      (p) => (pessoaAtiva(p) || !!previewDms[p.id]) && (p.name || p.username || "").toLowerCase().includes(termo)
     );
     return filtrados.sort((a, b) => {
       const unreadA = unreadByConversation[dmKey(a.id)] ?? 0;

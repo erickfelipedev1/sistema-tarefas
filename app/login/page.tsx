@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/ui/Logo";
@@ -31,6 +31,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Veio de /sair porque o acesso foi desativado (migration 0084).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("inativo") === "1") {
+      setError("Seu acesso ao d.hub foi desativado. Fale com a liderança.");
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -132,6 +138,9 @@ export default function LoginPage() {
 }
 
 function traduzErro(mensagem: string) {
+  if (/banned/i.test(mensagem)) {
+    return "Seu acesso ao d.hub foi desativado. Fale com a liderança.";
+  }
   if (mensagem.includes("Invalid login credentials")) {
     return "Usuário ou senha incorretos.";
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Task, TaskStatus } from "@/lib/types";
-import { nomeParaMencao } from "@/lib/mencoes";
+import { nomeParaMencao, pessoaAtiva } from "@/lib/mencoes";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { STATUS_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
@@ -306,7 +306,7 @@ export default function SubtarefasTab({
           className="max-w-[11rem] rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
           <option value="">Sem responsável</option>
-          {pessoas.map((p) => (
+          {pessoas.filter(pessoaAtiva).map((p) => (
             <option key={p.id} value={p.id}>
               {nomeParaMencao(p) || "Sem nome"}
             </option>

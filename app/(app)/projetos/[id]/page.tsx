@@ -74,7 +74,7 @@ export default async function ProjetoPage({
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, name, avatar_url")
+    .select("id, username, name, avatar_url, ativo")
     .order("name", { ascending: true });
 
   // Quem cuida do cliente (migration 0055; marcado na lista de clientes).

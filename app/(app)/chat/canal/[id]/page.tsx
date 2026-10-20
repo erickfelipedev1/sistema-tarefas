@@ -27,7 +27,7 @@ export default async function ChannelPage({
       .select("*")
       .eq("channel_id", channelId)
       .order("created_at", { ascending: true }),
-    supabase.from("profiles").select("id, name, username, avatar_url"),
+    supabase.from("profiles").select("id, name, username, avatar_url, ativo"),
   ]);
 
   // Canal privado (migration 0035): quem não é membro nem chega aqui — o

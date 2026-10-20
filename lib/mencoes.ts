@@ -5,6 +5,13 @@ export interface PessoaMencionavel {
   id: string;
   name: string | null;
   username: string | null;
+  // false = saiu da equipe (migration 0084): não aparece pra mencionar.
+  ativo?: boolean | null;
+}
+
+// Quem ainda está na equipe (sem a coluna "ativo", todo mundo está).
+export function pessoaAtiva(p: { ativo?: boolean | null }): boolean {
+  return p.ativo !== false;
 }
 
 // "@Todos": menciona a equipe inteira. Não é uma pessoa: na hora de salvar

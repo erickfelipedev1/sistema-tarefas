@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { pessoaAtiva } from "@/lib/mencoes";
 import type { Profile, Project, Task, TaskRequest } from "@/lib/types";
 import { formatarDataHora } from "@/lib/format";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
@@ -434,7 +435,7 @@ export default function TaskRequests({
                 >
                   <option value="">Selecione</option>
                   {profiles
-                    .filter((p) => p.id !== currentUserId)
+                    .filter((p) => p.id !== currentUserId && pessoaAtiva(p))
                     .map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name || p.username}

@@ -46,7 +46,7 @@ export default async function PainelPage({
   const pessoaId = verTudo && searchParams.pessoa ? searchParams.pessoa : user.id;
 
   const [{ data: perfis }, { data: projetos }] = await Promise.all([
-    supabase.from("profiles").select("id, name, username, email, avatar_url").order("name"),
+    supabase.from("profiles").select("id, name, username, email, avatar_url, ativo").order("name"),
     supabase.from("projects").select("id, name"),
   ]);
   const pessoa = (perfis ?? []).find((p) => p.id === pessoaId);
@@ -153,7 +153,9 @@ export default async function PainelPage({
       semanas={periodo.semanas}
       pessoas={
         verTudo
-          ? (perfis ?? []).map((p) => ({ id: p.id, nome: p.name || p.username || "Sem nome" }))
+          ? (perfis ?? [])
+              .filter((p) => p.ativo !== false || p.id === pessoaId)
+              .map((p) => ({ id: p.id, nome: p.name || p.username || "Sem nome" }))
           : null
       }
       pessoaAtual={pessoaId}

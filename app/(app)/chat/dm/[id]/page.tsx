@@ -15,7 +15,7 @@ export default async function DmPage({
 
   const { data: otherProfile } = await supabase
     .from("profiles")
-    .select("id, name, username, avatar_url")
+    .select("id, name, username, avatar_url, ativo")
     .eq("id", otherUserId)
     .single();
 

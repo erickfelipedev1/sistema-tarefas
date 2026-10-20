@@ -465,6 +465,10 @@ export interface Profile {
   username: string | null;
   name: string | null;
   avatar_url: string | null;
+  // Pessoa que saiu da equipe (migration 0084): não entra mais nas listas de
+  // escolha (responsável, menção, participantes...), mas o nome continua no
+  // histórico. Ausente = ativa.
+  ativo?: boolean | null;
 }
 
 export interface PersonalApiToken {

@@ -20,7 +20,7 @@ export default async function SolicitacoesPage() {
         .order("created_at", { ascending: false }),
       supabase
         .from("profiles")
-        .select("id, username, name, avatar_url")
+        .select("id, username, name, avatar_url, ativo")
         .order("name", { ascending: true }),
       supabase.from("projects").select("*").order("name", { ascending: true }),
     ]);

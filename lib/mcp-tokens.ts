@@ -50,11 +50,12 @@ export async function verificarTokenPessoal(
 
   const { data: perfil } = await admin
     .from("profiles")
-    .select("id, name, username")
+    .select("*")
     .eq("id", linhaToken.profile_id)
     .maybeSingle();
 
-  if (!perfil) return null;
+  // Quem saiu da equipe (migration 0084) não usa mais a IA conectada.
+  if (!perfil || perfil.ativo === false) return null;
 
   await admin
     .from("personal_api_tokens")

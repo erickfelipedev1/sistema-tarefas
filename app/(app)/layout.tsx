@@ -18,6 +18,8 @@ export default async function AppLayout({
 
   // Portões que antes rodavam no middleware em toda requisição: sem nome →
   // onboarding; senha padrão → trocar a senha antes de usar o sistema.
+  // Saiu da equipe (migration 0084): encerra a sessão que ainda estava aberta.
+  if (profile?.ativo === false) redirect("/sair");
   if (!profile?.name) redirect("/onboarding");
   if (profile.precisa_trocar_senha === true) redirect("/trocar-senha");
 

@@ -18,7 +18,7 @@ export default async function AtasPage() {
     usuarioAtual(),
     perfilAtual(),
     supabase.from("projects").select("id, name").order("name", { ascending: true }),
-    supabase.from("profiles").select("id, username, name, avatar_url").order("name", { ascending: true }),
+    supabase.from("profiles").select("id, username, name, avatar_url, ativo").order("name", { ascending: true }),
   ]);
   const userLabel =
     (user?.user_metadata?.username as string | undefined) ?? user?.email?.split("@")[0] ?? "";

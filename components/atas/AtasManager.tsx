@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { pessoaAtiva } from "@/lib/mencoes";
 import type { Ata, Profile } from "@/lib/types";
 import { formatarDataBR } from "@/lib/format";
 import { htmlParaTexto, sanitizarHtml } from "@/lib/texto-rico";
@@ -676,7 +677,9 @@ function FormDaAta({
       <div>
         <p className="mb-1 text-xs font-medium text-ink-muted">Participantes da equipe</p>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Participantes da equipe">
-          {profiles.map((p) => {
+          {profiles
+            .filter((p) => pessoaAtiva(p) || ata.participant_ids.includes(p.id))
+            .map((p) => {
             const ativo = ata.participant_ids.includes(p.id);
             return (
               <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
+import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, pessoaAtiva, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
 
 type Campo = HTMLInputElement | HTMLTextAreaElement;
 
@@ -85,7 +85,7 @@ export default function MencaoInput({
     const termo = semAcento(busca.termo);
     const lista = pessoas.filter((p) => {
       const nome = nomeParaMencao(p);
-      if (!nome) return false;
+      if (!nome || !pessoaAtiva(p)) return false;
       return semAcento(nome).includes(termo) || semAcento(p.username ?? "").includes(termo);
     });
     return (semTodos ? lista : comOpcaoTodos(busca.termo, lista)).slice(0, 6);

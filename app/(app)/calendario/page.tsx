@@ -38,7 +38,7 @@ export default async function CalendarioPage() {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, name, avatar_url")
+    .select("id, username, name, avatar_url, ativo")
     .order("name", { ascending: true });
 
   const userLabel =

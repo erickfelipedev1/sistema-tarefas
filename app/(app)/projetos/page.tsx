@@ -63,7 +63,7 @@ export default async function ProjetosPage() {
   // card, e a lista de pessoas pra escolher os responsáveis.
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, name, avatar_url");
+    .select("id, username, name, avatar_url, ativo");
 
   return (
     <Coreografia>

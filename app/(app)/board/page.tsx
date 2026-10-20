@@ -27,7 +27,7 @@ export default async function BoardPage({ searchParams }: { searchParams: { tare
           .or(`created_by.eq.${user?.id},assigned_to.cs.{${user?.id}}`)
           .order("position", { ascending: true }),
     supabase.from("projects").select("*").order("name", { ascending: true }),
-    supabase.from("profiles").select("id, username, name, avatar_url").order("name", { ascending: true }),
+    supabase.from("profiles").select("id, username, name, avatar_url, ativo").order("name", { ascending: true }),
     // Tipo de serviço de cada cliente, pra aparecer na etiqueta da tarefa.
     pacotesDosClientes(supabase),
   ]);
