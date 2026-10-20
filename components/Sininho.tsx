@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatarRelativo } from "@/lib/format";
@@ -154,7 +155,11 @@ export default function Sininho({
         )}
       </button>
 
-      {aberto && posicao && (
+      {/* A lista vai direto no <body>: dentro do menu lateral ela ficava por baixo
+          dos cartões do quadro (o menu fixo no topo forma uma camada própria). */}
+      {aberto &&
+        posicao &&
+        createPortal(
         <div
           ref={caixa}
           role="dialog"
@@ -205,8 +210,9 @@ export default function Sininho({
               </ul>
             )}
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   );
 }
