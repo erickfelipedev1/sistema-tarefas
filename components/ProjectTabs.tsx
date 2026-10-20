@@ -7,6 +7,7 @@ import {
   BookOpenIcon,
   ClipboardListIcon,
   FileStackIcon,
+  FolderIcon,
   ImageIcon,
   MessageCircleIcon,
   ReceiptIcon,
@@ -16,6 +17,7 @@ import {
 
 const ABAS = [
   { key: "tarefas", label: "Tarefas", icon: ClipboardListIcon },
+  { key: "projetos", label: "Projetos", icon: FolderIcon },
   { key: "otimizacoes", label: "Otimizações", icon: SlidersIcon },
   { key: "posts", label: "Posts", icon: ImageIcon },
   { key: "atas", label: "Atas", icon: UsersIcon },
@@ -37,9 +39,11 @@ type AbaKey = (typeof ABAS)[number]["key"];
 // do cliente pagar essa espera.
 // "Posts" também só monta quando é aberta (consulta, tempo real e links
 // assinados dos arquivos).
+// "Projetos" (migration 0083) também só monta quando é aberta.
 // "inicial" abre a página já numa aba (?aba=posts, vindo de um aviso).
 export default function ProjectTabs({
   tarefas,
+  projetos,
   otimizacoes,
   posts,
   atas,
@@ -51,6 +55,8 @@ export default function ProjectTabs({
   inicial,
 }: {
   tarefas: ReactNode;
+  // Projetos do cliente, que agrupam as tarefas (migration 0083).
+  projetos?: ReactNode;
   otimizacoes?: ReactNode;
   posts: ReactNode;
   // Atas de reunião do cliente (migration 0082): só monta quando a aba é aberta.
@@ -63,12 +69,16 @@ export default function ProjectTabs({
   inicial?: string;
 }) {
   const abas = ABAS.filter(
-    (item) => (item.key !== "otimizacoes" || !!otimizacoes) && (item.key !== "atas" || !!atas)
+    (item) =>
+      (item.key !== "otimizacoes" || !!otimizacoes) &&
+      (item.key !== "atas" || !!atas) &&
+      (item.key !== "projetos" || !!projetos)
   );
   const [aba, setAba] = useState<AbaKey>(abas.find((item) => item.key === inicial)?.key ?? "tarefas");
   const [abriuAnalytics, setAbriuAnalytics] = useState(aba === "analytics");
   const [abriuPosts, setAbriuPosts] = useState(aba === "posts");
   const [abriuAtas, setAbriuAtas] = useState(aba === "atas");
+  const [abriuProjetos, setAbriuProjetos] = useState(aba === "projetos");
 
   return (
     <div>
@@ -84,6 +94,7 @@ export default function ProjectTabs({
                 if (item.key === "analytics") setAbriuAnalytics(true);
                 if (item.key === "posts") setAbriuPosts(true);
                 if (item.key === "atas") setAbriuAtas(true);
+                if (item.key === "projetos") setAbriuProjetos(true);
               }}
               className={`flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 ativa
@@ -99,6 +110,7 @@ export default function ProjectTabs({
       </div>
 
       <div className={aba === "tarefas" ? "" : "hidden"}>{tarefas}</div>
+      {abriuProjetos && projetos && <div className={aba === "projetos" ? "" : "hidden"}>{projetos}</div>}
       {otimizacoes && (
         <div className={aba === "otimizacoes" ? "" : "hidden"}>{otimizacoes}</div>
       )}

@@ -19,6 +19,7 @@ import { StatTile } from "./ui/StatTile";
 import { carregarResumos, formatarHoras, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
 import { carregarCatalogo, carregarLigacoes, type Etiqueta } from "@/lib/etiquetas";
 import { EtiquetaSelo } from "./EtiquetasDaTarefa";
+import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 import {
   AlertTriangleIcon,
   CalendarIcon,
@@ -28,6 +29,7 @@ import {
   ChevronRightIcon,
   ClipboardListIcon,
   ColumnsIcon,
+  FolderIcon,
   PlusIcon,
   RowsIcon,
   SparklesIcon,
@@ -143,6 +145,10 @@ export default function TaskBoard({
   const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
   const [ligacoes, setLigacoes] = useState<Record<string, string[]>>({});
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
+  // Projetos do cliente (migration 0083), só no quadro da página do cliente:
+  // o nome no cartão e o filtro ("" = todos, "nenhum" = sem projeto).
+  const [subprojetos, setSubprojetos] = useState<Subprojeto[]>([]);
+  const [filtroProjeto, setFiltroProjeto] = useState("");
   // Clicar num dos cartões de resumo filtra o quadro por ele (clicar de novo
   // desliga): tarefas abertas, pra hoje, atrasadas ou concluídas.
   const [filtroResumo, setFiltroResumo] = useState<"abertas" | "hoje" | "atrasadas" | "concluidas" | null>(null);
@@ -233,6 +239,34 @@ export default function TaskBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const etiquetaPorId = useMemo(() => new Map(catalogo.map((e) => [e.id, e])), [catalogo]);
+
+  const quadroDoCliente = !allProjects && !!projectId;
+  useEffect(() => {
+    if (!quadroDoCliente || !projectId) return;
+    let ativo = true;
+    carregarSubprojetos(supabase, projectId).then(({ lista }) => {
+      if (ativo) setSubprojetos(lista);
+    });
+    const canal = supabase
+      .channel(`subprojetos-quadro-${projectId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "subprojects" }, (payload) => {
+        setSubprojetos((atual) => {
+          if (payload.eventType === "DELETE") return atual.filter((p) => p.id !== (payload.old as Subprojeto).id);
+          const novo = payload.new as Subprojeto;
+          if (novo.project_id !== projectId) return atual;
+          return atual.some((p) => p.id === novo.id) ? atual.map((p) => (p.id === novo.id ? novo : p)) : [...atual, novo];
+        });
+      })
+      .subscribe();
+    return () => {
+      ativo = false;
+      supabase.removeChannel(canal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quadroDoCliente, projectId]);
+  const subprojetoPorId = useMemo(() => new Map(subprojetos.map((p) => [p.id, p])), [subprojetos]);
+  // Se o projeto filtrado sumiu (excluído), volta a mostrar tudo.
+  const projetoDoFiltro = filtroProjeto && filtroProjeto !== "nenhum" && !subprojetoPorId.has(filtroProjeto) ? "" : filtroProjeto;
 
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
@@ -618,6 +652,9 @@ export default function TaskBoard({
       if (filtroEtiqueta && !(ligacoes[t.id] ?? []).includes(filtroEtiqueta)) {
         return false;
       }
+      if (projetoDoFiltro === "nenhum" ? !!t.subproject_id && subprojetoPorId.has(t.subproject_id) : projetoDoFiltro && t.subproject_id !== projetoDoFiltro) {
+        return false;
+      }
       if (filtroResumo) {
         const emAberto = t.status !== "done" && t.status !== "cancelled";
         if (filtroResumo === "abertas" && !emAberto) return false;
@@ -632,7 +669,7 @@ export default function TaskBoard({
     // ou não passa pelo filtro/busca atual.
     const principaisNaTela = new Set(tasks.filter((t) => !t.parent_id && passa(t)).map((t) => t.id));
     return tasks.filter((t) => passa(t) && (!t.parent_id || !principaisNaTela.has(t.parent_id)));
-  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroResumo, hoje, ligacoes]);
+  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroResumo, hoje, ligacoes, projetoDoFiltro, subprojetoPorId]);
 
   return (
     <div>
@@ -741,6 +778,22 @@ export default function TaskBoard({
             Nova tarefa
           </Button>
           <SeletorDeVisao visao={visao} aoTrocar={escolherVisao} />
+          {subprojetos.length > 0 && (
+            <select
+              value={projetoDoFiltro}
+              onChange={(e) => setFiltroProjeto(e.target.value)}
+              aria-label="Filtrar por projeto"
+              className="h-8 max-w-[220px] rounded-lg border border-line bg-surface px-2 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+            >
+              <option value="">Todos os projetos</option>
+              {subprojetos.map((sp) => (
+                <option key={sp.id} value={sp.id}>
+                  {sp.name}
+                </option>
+              ))}
+              <option value="nenhum">Sem projeto</option>
+            </select>
+          )}
         </div>
       )}
 
@@ -758,7 +811,7 @@ export default function TaskBoard({
           ligacoes={ligacoes}
           etiquetas={etiquetaPorId}
           resumos={resumos}
-          filtrando={!!(busca || filtroResponsavel || filtroEtiqueta || filtroResumo)}
+          filtrando={!!(busca || filtroResponsavel || filtroEtiqueta || filtroResumo || projetoDoFiltro)}
           aoAbrir={abrirEditar}
           aoMudarStatus={moveTaskTo}
           aoAlternarSubtarefa={alternarSubtarefa}
@@ -935,6 +988,13 @@ export default function TaskBoard({
                         </div>
                       )}
 
+                      {task.subproject_id && subprojetoPorId.get(task.subproject_id) && (
+                        <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-medium text-ink-muted">
+                          <FolderIcon className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{subprojetoPorId.get(task.subproject_id)?.name}</span>
+                        </p>
+                      )}
+
                       {task.parent_id && (
                         <p className="mt-2 truncate text-[11px] font-medium text-brand-forte">
                           ↳ Subtarefa
@@ -1028,12 +1088,12 @@ export default function TaskBoard({
                   <EmptyState
                     icon={<SparklesIcon className="h-4 w-4" />}
                     title={
-                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo
+                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo || projetoDoFiltro
                         ? "Nada por aqui"
                         : "Tudo limpo por aqui"
                     }
                     description={
-                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo
+                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo || projetoDoFiltro
                         ? "Nenhuma tarefa bate com o filtro atual."
                         : undefined
                     }

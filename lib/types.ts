@@ -29,6 +29,8 @@ export interface Task {
   color: string | null;
   page_id: string | null;
   project_id: string | null;
+  // Projeto do cliente em que a tarefa está (migration 0083), ou nenhum.
+  subproject_id?: string | null;
   // Lista de ids de quem é responsável — pode ter mais de uma pessoa, ou
   // nenhuma (array vazio).
   assigned_to: string[];

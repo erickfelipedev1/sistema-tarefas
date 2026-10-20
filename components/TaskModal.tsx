@@ -37,6 +37,7 @@ import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
 import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes } from "@/lib/mencoes";
+import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 
 type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "horas" | "copy" | "post";
 
@@ -60,6 +61,7 @@ export default function TaskModal({
   getNextPosition,
   initialDueDate,
   initialDueTime,
+  initialSubprojectId,
   podeMudarDatas = true,
   onAbrirOutra,
   onClose,
@@ -78,6 +80,8 @@ export default function TaskModal({
   initialDueDate?: string | null;
   // Idem pro horário ("HH:MM") — ex: clicou num horário na visão Semana/Dia.
   initialDueTime?: string | null;
+  // Idem pro projeto do cliente (criando de dentro de um projeto, aba "Projetos").
+  initialSubprojectId?: string | null;
   // Por padrão qualquer pessoa muda o início e a entrega de uma tarefa já
   // criada; passe false pra deixar as datas só pra leitura.
   podeMudarDatas?: boolean;
@@ -133,6 +137,21 @@ export default function TaskModal({
   const [taskProjectId, setTaskProjectId] = useState(
     task?.project_id ?? projectId ?? ""
   );
+  // Projeto do cliente (migration 0083): só existe pra tarefa de cliente.
+  const [subprojetoId, setSubprojetoId] = useState(task?.subproject_id ?? initialSubprojectId ?? "");
+  const [subprojetos, setSubprojetos] = useState<Subprojeto[]>([]);
+  useEffect(() => {
+    let ativo = true;
+    setSubprojetos([]);
+    if (!taskProjectId) return;
+    carregarSubprojetos(supabase, taskProjectId).then(({ lista }) => {
+      if (ativo) setSubprojetos(lista);
+    });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskProjectId]);
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   // Quanto tem em cada aba (checklist, comentários...) — aparece no menu.
@@ -207,6 +226,7 @@ export default function TaskModal({
         repeat_rule: repeatRule,
         color,
         project_id: taskProjectId || null,
+        ...(taskProjectId && subprojetoId ? { subproject_id: subprojetoId } : {}),
         assigned_to: assignedTo,
         created_by_label: currentUserLabel,
       })
@@ -686,8 +706,11 @@ export default function TaskModal({
                       title={current?.parent_id ? "A subtarefa fica sempre no cliente da tarefa principal." : undefined}
                       onChange={(e) => {
                         setTaskProjectId(e.target.value);
+                        // O projeto é do cliente: trocar de cliente tira a tarefa dele.
+                        const tinhaProjeto = !!subprojetoId;
+                        setSubprojetoId("");
                         if (!isNovo)
-                          salvarCampo({ project_id: e.target.value || null });
+                          salvarCampo({ project_id: e.target.value || null, ...(tinhaProjeto ? { subproject_id: null } : {}) });
                       }}
                       className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                     >
@@ -697,6 +720,33 @@ export default function TaskModal({
                           {p.name}
                         </option>
                       ))}
+                    </select>
+                  </div>
+                )}
+
+                {taskProjectId && subprojetos.length > 0 && (
+                  <div className="min-w-0">
+                    <label htmlFor="projeto-da-tarefa" className="mb-1 block text-xs font-medium text-ink-muted">
+                      Projeto
+                    </label>
+                    <select
+                      id="projeto-da-tarefa"
+                      value={subprojetoId}
+                      onChange={(e) => {
+                        setSubprojetoId(e.target.value);
+                        if (!isNovo) salvarCampo({ subproject_id: e.target.value || null });
+                      }}
+                      className="max-w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                    >
+                      <option value="">Nenhum</option>
+                      {subprojetos
+                        .filter((sp) => sp.status !== "concluido" || sp.id === subprojetoId)
+                        .map((sp) => (
+                          <option key={sp.id} value={sp.id}>
+                            {sp.name}
+                            {sp.status === "concluido" ? " (concluído)" : ""}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 )}

@@ -109,6 +109,8 @@ export default function SubtarefasTab({
         title: titulo,
         parent_id: tarefa.id,
         project_id: tarefa.project_id,
+        // Nasce no mesmo projeto do cliente da tarefa principal (migration 0083).
+        ...(tarefa.subproject_id ? { subproject_id: tarefa.subproject_id } : {}),
         status: "todo",
         position: getNextPosition("todo"),
         start_date: hoje,

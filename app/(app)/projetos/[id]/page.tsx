@@ -14,6 +14,7 @@ import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
 import OptimizationsManager from "@/components/OptimizationsManager";
 import AtasManager from "@/components/atas/AtasManager";
+import ProjetosDoCliente from "@/components/projetos/ProjetosDoCliente";
 import PostsManager from "@/components/PostsManager";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { TipoDeServicoDoCliente } from "@/components/TipoDeServico";
@@ -226,6 +227,15 @@ export default async function ProjetoPage({
             souLider={souLider}
             transcricaoPaga={!!process.env.ASSEMBLYAI_API_KEY}
             iaLigada={!!process.env.ANTHROPIC_API_KEY}
+          />
+        }
+        projetos={
+          <ProjetosDoCliente
+            projectId={id}
+            profiles={profiles ?? []}
+            currentUserId={user?.id ?? ""}
+            currentUserLabel={userLabel}
+            souLider={souLider}
           />
         }
         tarefas={
