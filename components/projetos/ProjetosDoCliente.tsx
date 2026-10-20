@@ -158,13 +158,18 @@ export default function ProjetosDoCliente({
     setTarefas((atual) => (atual.some((x) => x.id === t.id) ? atual.map((x) => (x.id === t.id ? t : x)) : [...atual, t]));
   }
 
-  async function ligar(ids: string[], subprojetoId: string | null) {
-    if (ids.length === 0) return true;
-    const antes = tarefas;
+  async function ligar(escolhidas: string[], subprojetoId: string | null) {
+    if (escolhidas.length === 0) return true;
+    // As subtarefas acompanham a tarefa principal.
+    const ids = Array.from(
+      new Set([...escolhidas, ...tarefas.filter((t) => t.parent_id && escolhidas.includes(t.parent_id)).map((t) => t.id)])
+    );
+    const antes = new Map(tarefas.filter((t) => ids.includes(t.id)).map((t) => [t.id, t.subproject_id ?? null]));
     setTarefas((atual) => atual.map((t) => (ids.includes(t.id) ? { ...t, subproject_id: subprojetoId } : t)));
     const { error } = await supabase.from("tasks").update({ subproject_id: subprojetoId }).in("id", ids);
     if (error) {
-      setTarefas(antes);
+      // Desfaz só as que mudaram (sem perder o que chegou em tempo real).
+      setTarefas((atual) => atual.map((t) => (antes.has(t.id) ? { ...t, subproject_id: antes.get(t.id) ?? null } : t)));
       setAviso("Não deu pra mudar o projeto das tarefas. Tenta de novo.");
       return false;
     }
@@ -432,6 +437,8 @@ export default function ProjetosDoCliente({
           }}
         />
       )}
+      {/* Se o projeto aberto for excluído por outra pessoa, a tarefa aberta continua. */}
+      {modalDeTarefa}
     </div>
   );
 }

@@ -254,6 +254,14 @@ export default function TaskModal({
     if (mencoesDaDescricao.length > 0) avisarMencaoNaDescricao(tarefaFinal.id).catch(() => {});
   }
 
+  // Troca o projeto do cliente; as subtarefas acompanham a tarefa principal.
+  async function mudarProjeto(id: string | null) {
+    if (!current) return;
+    const tarefaId = current.id;
+    if (!(await salvarCampo({ subproject_id: id }))) return;
+    if (!current.parent_id) await supabase.from("tasks").update({ subproject_id: id }).eq("parent_id", tarefaId);
+  }
+
   async function salvarCampo(campos: Partial<Task>): Promise<boolean> {
     if (!current) return false;
     const antes = current;
@@ -273,6 +281,14 @@ export default function TaskModal({
           ? "Só a liderança pode alterar as datas de uma tarefa já criada."
           : "Não deu pra salvar a data. Tenta de novo."
       );
+      return false;
+    }
+
+    if (error && "subproject_id" in campos) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setSubprojetoId(antes.subproject_id ?? "");
+      setErro("Não deu pra mudar o projeto da tarefa. Tenta de novo.");
       return false;
     }
 
@@ -734,7 +750,7 @@ export default function TaskModal({
                       value={subprojetoId}
                       onChange={(e) => {
                         setSubprojetoId(e.target.value);
-                        if (!isNovo) salvarCampo({ subproject_id: e.target.value || null });
+                        if (!isNovo) mudarProjeto(e.target.value || null);
                       }}
                       className="max-w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                     >
