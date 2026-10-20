@@ -73,9 +73,12 @@ export default function AgenteEmConstrucao() {
       // Boca "processando".
       gsap.to(".ag-boca", { scaleX: 0.25, duration: 0.35, stagger: { each: 0.12, yoyo: true, repeat: -1 }, transformOrigin: "50% 50%", ease: "sine.inOut" });
 
-      // Engrenagem da obra.
-      gsap.to(".ag-engrenagem", { rotation: 360, duration: 6, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
-      gsap.to(".ag-engrenagem-2", { rotation: -360, duration: 4, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
+      // Engrenagens da obra: dão um "tranco" de um dente e param, como um
+      // mecanismo trabalhando (a grande tem 8 dentes = 45°, a pequena 6 = 60°,
+      // então giram engrenadas e o recomeço não aparece).
+      const tranco = { duration: 0.5, ease: "back.out(2)", repeat: -1, repeatDelay: 2.2, delay: 1, transformOrigin: "50% 50%" };
+      gsap.to(".ag-engrenagem", { rotation: 45, ...tranco });
+      gsap.to(".ag-engrenagem-2", { rotation: -60, ...tranco });
 
       // Faíscas acendendo uma de cada vez.
       gsap.utils.toArray<SVGElement>(".ag-faisca").forEach((f, i) => {
