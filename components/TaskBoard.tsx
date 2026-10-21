@@ -664,12 +664,67 @@ export default function TaskBoard({
       }
       return true;
     };
-    // Subtarefa aparece dentro do cartão da principal, não solta na coluna.
-    // Só fica solta quando a principal não está no quadro (é de outra pessoa)
-    // ou não passa pelo filtro/busca atual.
-    const principaisNaTela = new Set(tasks.filter((t) => !t.parent_id && passa(t)).map((t) => t.id));
-    return tasks.filter((t) => passa(t) && (!t.parent_id || !principaisNaTela.has(t.parent_id)));
-  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroResumo, hoje, ligacoes, projetoDoFiltro, subprojetoPorId]);
+    // De quem é o quadro: a pessoa do filtro de responsável ou, em "Minhas
+    // tarefas", quem está logado. Pra essa pessoa, a subtarefa dela é uma
+    // tarefa como outra qualquer (cartão próprio, com atalho pra original), e
+    // a principal em que ela só tem subtarefa (não é responsável) sai do quadro.
+    const pessoa = filtroResponsavel || (soMinhas ? currentUserId ?? "" : "");
+    const subDaPessoa = (t: Task) => !!pessoa && !!t.parent_id && t.assigned_to.includes(pessoa);
+    const soContainer = (t: Task) =>
+      !!pessoa &&
+      !t.parent_id &&
+      !t.assigned_to.includes(pessoa) &&
+      (filhas[t.id] ?? []).some((f) => f.assigned_to.includes(pessoa));
+    // Fora isso, a subtarefa aparece dentro do cartão da principal; só fica
+    // solta quando a principal não está no quadro ou não passa no filtro.
+    const principaisNaTela = new Set(tasks.filter((t) => !t.parent_id && passa(t) && !soContainer(t)).map((t) => t.id));
+    return tasks.filter(
+      (t) => passa(t) && !soContainer(t) && (!t.parent_id || subDaPessoa(t) || !principaisNaTela.has(t.parent_id))
+    );
+  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroResumo, hoje, ligacoes, projetoDoFiltro, subprojetoPorId, soMinhas, currentUserId, filhas]);
+
+  // Título da tarefa original de cada subtarefa solta no quadro (a principal
+  // pode não estar carregada aqui, se for de outra pessoa).
+  const [titulosDasPrincipais, setTitulosDasPrincipais] = useState<Record<string, string>>({});
+  const principaisQueFaltam = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          tasksVisiveis
+            .map((t) => t.parent_id)
+            .filter((id): id is string => !!id && !tasks.some((x) => x.id === id) && !(id in titulosDasPrincipais))
+        )
+      )
+        .sort()
+        .join(","),
+    [tasksVisiveis, tasks, titulosDasPrincipais]
+  );
+  useEffect(() => {
+    if (!principaisQueFaltam) return;
+    let ativo = true;
+    supabase
+      .from("tasks")
+      .select("id, title")
+      .in("id", principaisQueFaltam.split(","))
+      .then(({ data }) => {
+        if (!ativo) return;
+        const novos: Record<string, string> = {};
+        for (const id of principaisQueFaltam.split(",")) novos[id] = "";
+        for (const t of data ?? []) novos[t.id as string] = t.title as string;
+        setTitulosDasPrincipais((atual) => ({ ...atual, ...novos }));
+      });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [principaisQueFaltam]);
+
+  async function abrirOriginal(parentId: string) {
+    const carregada = tasks.find((t) => t.id === parentId);
+    if (carregada) return abrirEditar(carregada);
+    const { data } = await supabase.from("tasks").select("*").eq("id", parentId).maybeSingle();
+    if (data) abrirEditar(data as Task);
+  }
 
   return (
     <div>
@@ -975,12 +1030,23 @@ export default function TaskBoard({
                       )}
 
                       {task.parent_id && (
-                        <p className="mt-2 truncate text-[11px] font-medium text-brand-forte">
-                          ↳ Subtarefa
-                          {tasks.find((t) => t.id === task.parent_id)
-                            ? ` de ${tasks.find((t) => t.id === task.parent_id)?.title}`
-                            : ""}
-                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirOriginal(task.parent_id as string);
+                          }}
+                          title="Abrir a tarefa original"
+                          className="mt-2 flex w-full min-w-0 items-center gap-1 rounded-md bg-brand/10 px-1.5 py-1 text-left text-[11px] font-medium text-brand-forte hover:bg-brand/20"
+                        >
+                          <span className="flex-shrink-0">↳ Subtarefa de</span>
+                          <span className="min-w-0 flex-1 truncate">
+                            {tasks.find((t) => t.id === task.parent_id)?.title ||
+                              titulosDasPrincipais[task.parent_id] ||
+                              "outra tarefa"}
+                          </span>
+                          <span className="flex-shrink-0 underline">abrir original</span>
+                        </button>
                       )}
 
                       {temConteudo(resumos[task.id]) && (
