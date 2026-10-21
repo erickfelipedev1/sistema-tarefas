@@ -37,7 +37,7 @@ import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
 import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes, pessoaAtiva } from "@/lib/mencoes";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 
-type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "copy" | "post";
+type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "post";
 
 const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "detalhes", label: "Detalhes", icone: "📋" },
@@ -45,7 +45,6 @@ const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "subtarefas", label: "Subtarefas", icone: "🧩" },
   { key: "anexos", label: "Anexos", icone: "📎" },
   { key: "comentarios", label: "Comentários", icone: "💬" },
-  { key: "copy", label: "Copywrite", icone: "✍️" },
   { key: "post", label: "Post", icone: "🖼️" },
 ];
 
@@ -161,7 +160,6 @@ export default function TaskModal({
   // O que aparece ao lado de cada item do menu: contagem, ou "✓" na aba
   // Copywrite quando já tem texto.
   function contadorDoMenu(key: Aba): string | null {
-    if (key === "copy") return current?.copy_text?.trim() ? "✓" : null;
     return contadorDaAba(key, resumo);
   }
 
@@ -860,16 +858,18 @@ export default function TaskModal({
               pessoas={profiles}
             />
           )}
-          {aba === "copy" && current && (
-            <CopyTab
-              key={current.id}
-              valor={current.copy_text ?? ""}
-              onSalvar={async (texto) => {
-                await salvarCampo({ copy_text: texto.trim() || null });
-              }}
-            />
-          )}
           {aba === "post" && current && (
+            <div className="space-y-6">
+              {/* A copy da peça (antes era a aba "Copywrite"): vira a legenda do post. */}
+              <CopyTab
+                key={current.id}
+                valor={current.copy_text ?? ""}
+                linhas={8}
+                onSalvar={async (texto) => {
+                  await salvarCampo({ copy_text: texto.trim() || null });
+                }}
+              />
+              <div className="border-t border-line pt-5">
             <PostDaTarefa
               taskId={current.id}
               projectId={current.project_id}
@@ -878,6 +878,8 @@ export default function TaskModal({
               dueDate={current.due_date}
               currentUserLabel={currentUserLabel}
             />
+              </div>
+            </div>
           )}
         </div>
 
@@ -1531,7 +1533,15 @@ function TextoComMencoes({ texto, nomes }: { texto: string; nomes: string[] }) {
 
 // Aba "Copywrite": o texto da peça (legenda, roteiro, chamada) escrito e
 // revisado dentro da própria tarefa. Salva sozinho ao sair do campo.
-function CopyTab({ valor, onSalvar }: { valor: string; onSalvar: (texto: string) => Promise<void> | void }) {
+function CopyTab({
+  valor,
+  onSalvar,
+  linhas = 14,
+}: {
+  valor: string;
+  onSalvar: (texto: string) => Promise<void> | void;
+  linhas?: number;
+}) {
   const [texto, setTexto] = useState(valor);
   const [estado, setEstado] = useState<"salvo" | "salvando" | "sujo">("salvo");
   const [copiado, setCopiado] = useState(false);
@@ -1573,7 +1583,7 @@ function CopyTab({ valor, onSalvar }: { valor: string; onSalvar: (texto: string)
           setEstado("sujo");
         }}
         onBlur={salvar}
-        rows={14}
+        rows={linhas}
         maxLength={20000}
         placeholder="Escreva aqui a copy da peça: legenda, roteiro, headline, chamada..."
         className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm leading-relaxed text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"

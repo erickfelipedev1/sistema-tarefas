@@ -89,6 +89,14 @@ export default function PostDaTarefa({
   const [redes, setRedes] = useState<PostNetwork[]>(["instagram"]);
   const [data, setData] = useState(dueDate ?? "");
   const [legenda, setLegenda] = useState(copyText);
+  // A copy fica na mesma aba, logo acima: enquanto a legenda for igual à copy
+  // anterior (ninguém mexeu nela), acompanha o que é escrito na copy.
+  const copyAnterior = useRef(copyText);
+  useEffect(() => {
+    const antes = copyAnterior.current;
+    copyAnterior.current = copyText;
+    setLegenda((atual) => (atual === antes ? copyText : atual));
+  }, [copyText]);
   const [itens, setItens] = useState<ItemDeMidia[]>([]);
   const [capa, setCapa] = useState<CapaDoForm | null>(null);
   // Post que está sendo editado (null = post novo).
@@ -707,10 +715,10 @@ export default function PostDaTarefa({
             <div className="mt-1 flex items-center justify-between text-[11px] text-ink-muted">
               {copyText.trim() && legenda !== copyText ? (
                 <button type="button" onClick={() => setLegenda(copyText)} className="font-medium text-brand-forte hover:underline">
-                  Usar o texto da aba Copywrite
+                  Usar o texto da copy
                 </button>
               ) : (
-                <span>{copyText.trim() && !editando ? "Veio da aba Copywrite." : ""}</span>
+                <span>{copyText.trim() && !editando ? "Veio da copy, aqui em cima." : ""}</span>
               )}
               <span className="tabular-nums">{legenda.length.toLocaleString("pt-BR")} caracteres</span>
             </div>
