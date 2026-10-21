@@ -1,6 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { corTarefa } from "@/lib/task-colors";
 import type { Post, PostCategory, PostStatus } from "@/lib/types";
 import { CATEGORIAS, miniaturaDoItem, ORDEM_DAS_CATEGORIAS, REDES, redesValidas, STATUS_DO_POST } from "@/lib/posts";
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "../ui/icons";
@@ -96,6 +98,30 @@ export default function CalendarioDePostagem({
   const [sobre, setSobre] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // Cor de cada post: a cor escolhida na tarefa de postagem que gerou o post
+  // (tasks.color). Cinza, ou post sem tarefa, fica com o fundo neutro.
+  const [corDaTarefa, setCorDaTarefa] = useState<Record<string, string>>({});
+  const idsDasTarefas = useMemo(
+    () => Array.from(new Set(posts.map((p) => p.task_id).filter((id): id is string => !!id))).sort().join(","),
+    [posts]
+  );
+  useEffect(() => {
+    if (!idsDasTarefas) return;
+    let ativo = true;
+    (async () => {
+      const ids = idsDasTarefas.split(",");
+      const mapa: Record<string, string> = {};
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data } = await createClient().from("tasks").select("id, color").in("id", ids.slice(i, i + 100));
+        for (const t of data ?? []) if (t.color) mapa[t.id as string] = t.color as string;
+      }
+      if (ativo) setCorDaTarefa(mapa);
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, [idsDasTarefas]);
+
   const ano = ref.getFullYear();
   const mes = ref.getMonth();
   const celulas = useMemo(() => gradeDoMes(ano, mes), [ano, mes]);
@@ -141,6 +167,8 @@ export default function CalendarioDePostagem({
     const mini = miniaturaDoItem(miniatura, links);
     const url = mini?.url ?? "";
     const redes = redesValidas(post.networks).map((r) => REDES[r]).join(", ");
+    const chaveDaCor = post.task_id ? corDaTarefa[post.task_id] : undefined;
+    const cor = chaveDaCor && chaveDaCor !== "gray" ? corTarefa(chaveDaCor) : null;
     return (
       <div
         draggable
@@ -153,7 +181,10 @@ export default function CalendarioDePostagem({
           aoAbrir(post);
         }}
         title={`${mostrarCliente && post.projectName ? `${post.projectName} · ` : ""}${CATEGORIAS[post.category].rotulo} · ${redes} · ${STATUS_DO_POST[post.status].equipe}${post.caption ? `\n${post.caption.slice(0, 140)}` : ""}`}
-        className={`flex cursor-grab items-center gap-1.5 rounded-md border-l-[3px] bg-surface-hover/70 py-1 pl-1.5 pr-1.5 hover:bg-surface-hover active:cursor-grabbing ${BORDA_DO_STATUS[post.status]}`}
+        style={cor ? { backgroundColor: cor.fundo, color: cor.texto } : undefined}
+        className={`flex cursor-grab items-center gap-1.5 rounded-md border-l-[3px] py-1 pl-1.5 pr-1.5 active:cursor-grabbing ${BORDA_DO_STATUS[post.status]} ${
+          cor ? "hover:brightness-110" : "bg-surface-hover/70 hover:bg-surface-hover"
+        }`}
       >
         <span className="grid h-6 w-6 flex-shrink-0 place-items-center overflow-hidden rounded bg-black text-ink-muted">
           {url && miniatura ? (
@@ -168,10 +199,10 @@ export default function CalendarioDePostagem({
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11px] font-medium leading-tight text-ink">
+          <span className={`block truncate text-[11px] font-medium leading-tight ${cor ? "" : "text-ink"}`}>
             {mostrarCliente && post.projectName ? post.projectName : CATEGORIAS[post.category].rotulo}
           </span>
-          <span className="block truncate text-[10px] leading-tight text-ink-muted">
+          <span className={`block truncate text-[10px] leading-tight ${cor ? "opacity-80" : "text-ink-muted"}`}>
             {mostrarCliente ? CATEGORIAS[post.category].rotulo : redes}
           </span>
         </span>

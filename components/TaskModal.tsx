@@ -800,34 +800,31 @@ export default function TaskModal({
                   </div>
                 )}
 
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-ink-muted">
-                    Cor
-                  </label>
-                  <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line px-2 py-2">
-                    {CORES_TAREFA.map((cor) => (
-                      <button
-                        key={cor.key}
-                        type="button"
-                        title={cor.nome}
-                        onClick={() => {
-                          setColor(cor.key);
-                          if (!isNovo) salvarCampo({ color: cor.key });
-                        }}
-                        style={{ backgroundColor: cor.fundo }}
-                        className={`h-4 w-4 rounded-full ${
-                          color === cor.key
-                            ? "ring-2 ring-brand ring-offset-1 ring-offset-surface"
-                            : ""
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {tipo === "postagem" && current && (
                 <section className="space-y-5 rounded-xl border border-line bg-canvas/40 p-3 sm:p-4" aria-label="Postagem">
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-ink-muted">Cor no calendário de postagem</p>
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-2">
+                      {CORES_TAREFA.map((c) => (
+                        <button
+                          key={c.key}
+                          type="button"
+                          title={c.key === "gray" ? "Sem cor" : c.nome}
+                          aria-label={c.key === "gray" ? "Sem cor" : c.nome}
+                          aria-pressed={color === c.key}
+                          onClick={() => {
+                            setColor(c.key);
+                            if (!isNovo) salvarCampo({ color: c.key });
+                          }}
+                          style={{ backgroundColor: c.fundo }}
+                          className={`h-5 w-5 rounded-full ${color === c.key ? "ring-2 ring-brand ring-offset-1 ring-offset-surface" : ""}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[11px] text-ink-muted">O post desta tarefa aparece com essa cor no Calendário de postagem.</p>
+                  </div>
                   {/* A copy da peça: vira a legenda do post. */}
                   <CopyTab
                     key={current.id}
