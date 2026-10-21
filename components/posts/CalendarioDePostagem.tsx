@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { corTarefa } from "@/lib/task-colors";
+import { carregarStatusDaPostagem, textoSobre, type StatusDaPostagem } from "@/lib/status-postagem";
 import type { Post, PostCategory, PostStatus } from "@/lib/types";
 import { CATEGORIAS, miniaturaDoItem, ORDEM_DAS_CATEGORIAS, REDES, redesValidas, STATUS_DO_POST } from "@/lib/posts";
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "../ui/icons";
@@ -99,8 +99,13 @@ export default function CalendarioDePostagem({
   const [aviso, setAviso] = useState<string | null>(null);
 
   // Da tarefa que gerou cada post: o título (o nome do post aqui) e, só se ela
-  // for do tipo Postagem, a cor escolhida lá (cinza ou sem tarefa = neutro).
-  const [corDaTarefa, setCorDaTarefa] = useState<Record<string, string>>({});
+  // for do tipo Postagem, o status da postagem (migration 0086), cuja cor é a
+  // cor do post. Sem status, ou post sem tarefa: fundo neutro.
+  const [statusDaTarefa, setStatusDaTarefa] = useState<Record<string, string>>({});
+  const [catalogo, setCatalogo] = useState<Map<string, StatusDaPostagem>>(new Map());
+  useEffect(() => {
+    carregarStatusDaPostagem(createClient()).then((l) => setCatalogo(new Map(l.map((s) => [s.id, s]))));
+  }, []);
   const [tituloDaTarefa, setTituloDaTarefa] = useState<Record<string, string>>({});
   const idsDasTarefas = useMemo(
     () => Array.from(new Set(posts.map((p) => p.task_id).filter((id): id is string => !!id))).sort().join(","),
@@ -114,14 +119,14 @@ export default function CalendarioDePostagem({
       const mapa: Record<string, string> = {};
       const titulos: Record<string, string> = {};
       for (let i = 0; i < ids.length; i += 100) {
-        const { data } = await createClient().from("tasks").select("id, color, title, tipo").in("id", ids.slice(i, i + 100));
+        const { data } = await createClient().from("tasks").select("*").in("id", ids.slice(i, i + 100));
         for (const t of data ?? []) {
-          if (t.color && t.tipo === "postagem") mapa[t.id as string] = t.color as string;
+          if (t.post_status_id && t.tipo === "postagem") mapa[t.id as string] = t.post_status_id as string;
           if (t.title) titulos[t.id as string] = t.title as string;
         }
       }
       if (ativo) {
-        setCorDaTarefa(mapa);
+        setStatusDaTarefa(mapa);
         setTituloDaTarefa(titulos);
       }
     })();
@@ -175,8 +180,8 @@ export default function CalendarioDePostagem({
     const mini = miniaturaDoItem(miniatura, links);
     const url = mini?.url ?? "";
     const redes = redesValidas(post.networks).map((r) => REDES[r]).join(", ");
-    const chaveDaCor = post.task_id ? corDaTarefa[post.task_id] : undefined;
-    const cor = chaveDaCor && chaveDaCor !== "gray" ? corTarefa(chaveDaCor) : null;
+    const statusDaPeca = post.task_id ? catalogo.get(statusDaTarefa[post.task_id] ?? "") : undefined;
+    const cor = statusDaPeca ? { fundo: statusDaPeca.color, texto: textoSobre(statusDaPeca.color) } : null;
     // Título: o da tarefa de origem; sem tarefa, o começo da legenda; sem
     // legenda, o formato do post.
     const titulo =
@@ -194,7 +199,7 @@ export default function CalendarioDePostagem({
           e.stopPropagation();
           aoAbrir(post);
         }}
-        title={`${titulo}\n${mostrarCliente && post.projectName ? `${post.projectName} · ` : ""}${CATEGORIAS[post.category].rotulo} · ${redes} · ${STATUS_DO_POST[post.status].equipe}${post.caption ? `\n${post.caption.slice(0, 140)}` : ""}`}
+        title={`${titulo}${statusDaPeca ? ` · ${statusDaPeca.name}` : ""}\n${mostrarCliente && post.projectName ? `${post.projectName} · ` : ""}${CATEGORIAS[post.category].rotulo} · ${redes} · ${STATUS_DO_POST[post.status].equipe}${post.caption ? `\n${post.caption.slice(0, 140)}` : ""}`}
         style={cor ? { backgroundColor: cor.fundo, color: cor.texto } : undefined}
         className={`flex cursor-grab items-center gap-1.5 rounded-md border-l-[3px] py-1 pl-1.5 pr-1.5 active:cursor-grabbing ${BORDA_DO_STATUS[post.status]} ${
           cor ? "hover:brightness-110" : "bg-surface-hover/70 hover:bg-surface-hover"

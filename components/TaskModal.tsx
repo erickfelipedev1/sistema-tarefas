@@ -20,7 +20,6 @@ import type {
   TaskComment,
   TaskStatus,
 } from "@/lib/types";
-import { CORES_TAREFA } from "@/lib/task-colors";
 import { STATUS_OPTIONS, REPEAT_OPTIONS } from "@/lib/task-options";
 import {
   syncTaskWiki,
@@ -31,6 +30,7 @@ import {
 import { carregarResumos, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 import { avisarMencao, avisarMencaoNaDescricao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
+import StatusDaPostagemPicker from "./posts/StatusDaPostagemPicker";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
@@ -295,6 +295,13 @@ export default function TaskModal({
           ? "Só a liderança pode alterar as datas de uma tarefa já criada."
           : "Não deu pra salvar a data. Tenta de novo."
       );
+      return false;
+    }
+
+    if (error && "post_status_id" in campos) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setErro("Não deu pra mudar o status da postagem. Tenta de novo.");
       return false;
     }
 
@@ -825,27 +832,10 @@ export default function TaskModal({
 
               {tipo === "postagem" && current && (
                 <section className="space-y-5 rounded-xl border border-line bg-canvas/40 p-3 sm:p-4" aria-label="Postagem">
-                  <div>
-                    <p className="mb-1 text-xs font-medium text-ink-muted">Cor no calendário de postagem</p>
-                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-2">
-                      {CORES_TAREFA.map((c) => (
-                        <button
-                          key={c.key}
-                          type="button"
-                          title={c.key === "gray" ? "Sem cor" : c.nome}
-                          aria-label={c.key === "gray" ? "Sem cor" : c.nome}
-                          aria-pressed={color === c.key}
-                          onClick={() => {
-                            setColor(c.key);
-                            if (!isNovo) salvarCampo({ color: c.key });
-                          }}
-                          style={{ backgroundColor: c.fundo }}
-                          className={`h-5 w-5 rounded-full ${color === c.key ? "ring-2 ring-brand ring-offset-1 ring-offset-surface" : ""}`}
-                        />
-                      ))}
-                    </div>
-                    <p className="mt-1 text-[11px] text-ink-muted">O post desta tarefa aparece com essa cor no Calendário de postagem.</p>
-                  </div>
+                  <StatusDaPostagemPicker
+                    valor={current.post_status_id ?? null}
+                    aoMudar={(id) => salvarCampo({ post_status_id: id })}
+                  />
                   {/* A copy da peça: vira a legenda do post. */}
                   <CopyTab
                     key={current.id}

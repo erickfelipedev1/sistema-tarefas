@@ -32,6 +32,9 @@ export interface Task {
   // Tipo (migration 0085): na "postagem", a copy e o post do cliente aparecem
   // em Detalhes. Ausente = "geral".
   tipo?: "geral" | "postagem";
+  // Status da postagem (migration 0086): etiqueta de andamento da peça; a cor
+  // dela é a cor do post no Calendário de postagem.
+  post_status_id?: string | null;
   // Projeto do cliente em que a tarefa está (migration 0083), ou nenhum.
   subproject_id?: string | null;
   // Lista de ids de quem é responsável — pode ter mais de uma pessoa, ou
