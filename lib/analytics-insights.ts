@@ -32,15 +32,16 @@ export function porcentagem(variacao: number) {
 
 // Canais de anúncio: as quatro frases seguem sempre o mesmo roteiro (tráfego,
 // resultado, proporção de cliques, custo do resultado). "resultado" é o que o
-// anúncio busca: conversas no Meta Ads, conversões no Google Ads.
+// anúncio busca: leads no Meta Ads, conversões no Google Ads.
 interface RoteiroDeAnuncio {
   cliques: string;
   cpc: string;
   ctr: string;
   resultado: string;
   custo: string;
-  nome: [singular: string, plural: string]; // feminino nos dois canais
+  nome: [singular: string, plural: string];
   feito: [singular: string, plural: string];
+  feminino: boolean; // pra concordar: "nenhuma conversa" x "nenhum lead"
 }
 
 const ROTEIROS: Record<string, RoteiroDeAnuncio> = {
@@ -48,10 +49,12 @@ const ROTEIROS: Record<string, RoteiroDeAnuncio> = {
     cliques: "fb_ads:clicks",
     cpc: "fb_ads:cpc",
     ctr: "fb_ads:ctr",
-    resultado: "fb_ads:actions_onsite_conversion.messaging_conversation_started_7d",
-    custo: "fb_ads:spend-actions_onsite_conversion.messaging_conversation_started_7d",
-    nome: ["conversa", "conversas"],
-    feito: ["foi iniciada", "foram iniciadas"],
+    // O resultado do Meta Ads é o lead (2026-10-21), como nos cartões.
+    resultado: "fb_ads:actions_lead",
+    custo: "fb_ads:actions_cost_per_lead",
+    nome: ["lead", "leads"],
+    feito: ["foi gerado", "foram gerados"],
+    feminino: false,
   },
   google_adwords: {
     cliques: "gads:clicks",
@@ -61,6 +64,7 @@ const ROTEIROS: Record<string, RoteiroDeAnuncio> = {
     custo: "gads:cost_per_conversion",
     nome: ["conversão", "conversões"],
     feito: ["foi registrada", "foram registradas"],
+    feminino: true,
   },
 };
 
@@ -76,6 +80,7 @@ function insightsDeAnuncio(roteiro: RoteiroDeAnuncio, metricas: Map<string, Metr
   const resultado = metricas.get(roteiro.resultado);
   const custo = metricas.get(roteiro.custo);
   const [singular, plural] = roteiro.nome;
+  const f = roteiro.feminino;
 
   if (mudou(cliques)) {
     const subiu = cliques.variacao > 0;
@@ -97,7 +102,7 @@ function insightsDeAnuncio(roteiro: RoteiroDeAnuncio, metricas: Map<string, Metr
     const cada = custo && custo.valor !== null ? formatarValor(custo.valor, "moeda") : null;
     const fato =
       quantos === 0
-        ? `Nenhuma ${singular} ${roteiro.feito[0]} no período.`
+        ? `${f ? "Nenhuma" : "Nenhum"} ${singular} ${roteiro.feito[0]} no período.`
         : `${contagem} ${quantos === 1 ? roteiro.feito[0] : roteiro.feito[1]}${
             cada ? ` a ${cada}${quantos === 1 ? "" : " cada"}` : " no período"
           }.`;
@@ -117,7 +122,7 @@ function insightsDeAnuncio(roteiro: RoteiroDeAnuncio, metricas: Map<string, Metr
         tom: "bom",
         direcao: "alta",
         titulo: `${maiuscula(contagem)} no período`,
-        texto: `Não houve nenhuma no período anterior.${cada ? ` Cada uma saiu a ${cada}.` : ""}`,
+        texto: `Não houve ${f ? "nenhuma" : "nenhum"} no período anterior.${cada ? ` ${f ? "Cada uma" : "Cada um"} saiu a ${cada}.` : ""}`,
       });
     }
   }
@@ -144,7 +149,7 @@ function insightsDeAnuncio(roteiro: RoteiroDeAnuncio, metricas: Map<string, Metr
       titulo: `${custo.rotulo} ${subiu ? "subiu" : "caiu"} ${porcentagem(custo.variacao)}`,
       texto: subiu
         ? "Fique de olho para manter a eficiência nas próximas semanas."
-        : `Cada ${singular} está saindo mais barata que no período anterior.`,
+        : `Cada ${singular} está saindo mais ${f ? "barata" : "barato"} que no período anterior.`,
     });
   }
   return insights;

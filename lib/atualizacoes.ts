@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-21",
+    area: "Clientes",
+    titulo: "Analytics do Meta Ads com Leads em destaque",
+    texto: "Os cartões principais do Meta Ads agora são Leads e Custo por lead (com o gráfico de leads e os insights falando de leads). Conversas iniciadas continuam nos cartões menores, quando houver.",
+  },
+  {
+    data: "2026-10-21",
     area: "Tarefas",
     titulo: "Sua subtarefa vira tarefa no seu quadro",
     texto: "Em Minhas tarefas (e ao filtrar o quadro por responsável), a subtarefa de que você é responsável aparece como um cartão próprio, no lugar da tarefa principal. No cartão, \"abrir original\" leva pra tarefa principal.",

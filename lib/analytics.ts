@@ -274,18 +274,21 @@ interface Painel {
 }
 
 const PAINEL_POR_CANAL: Record<string, Painel> = {
+  // O resultado principal do Meta Ads é o lead (pedido do tráfego em
+  // 2026-10-21); as conversas iniciadas descem pros cartões menores e só
+  // aparecem quando houve alguma.
   facebook_ads: {
-    principais: [CONVERSAS_DO_META, CUSTO_POR_CONVERSA_DO_META, "fb_ads:spend", "fb_ads:reach"],
+    principais: ["fb_ads:actions_lead", "fb_ads:actions_cost_per_lead", "fb_ads:spend", "fb_ads:reach"],
     secundarias: [
       "fb_ads:impressions",
       "fb_ads:clicks",
       "fb_ads:instagram_profile_visits",
       "fb_ads:ctr",
       "fb_ads:cpc",
-      "fb_ads:actions_lead",
+      CONVERSAS_DO_META,
     ],
-    opcionais: ["fb_ads:actions_lead"],
-    funil: ["fb_ads:impressions", "fb_ads:clicks", "fb_ads:instagram_profile_visits", CONVERSAS_DO_META],
+    opcionais: [CONVERSAS_DO_META],
+    funil: ["fb_ads:impressions", "fb_ads:clicks", "fb_ads:instagram_profile_visits", "fb_ads:actions_lead"],
     eficiencia: [
       "fb_ads:ctr",
       "fb_ads:cpc",
@@ -510,7 +513,22 @@ const GRAFICOS_POR_CANAL: Record<string, DestaqueDeGrafico[]> = {
       nivel: true,
     },
     { campo: "cpc", metrica: "fb_ads:cpc", rotulo: "CPC por dia", formato: "moeda", nivel: true },
-    { campo: "actions:lead", metrica: "fb_ads:actions_lead", rotulo: "Leads por dia", formato: "numero" },
+    {
+      id: "dhub:leads_by_date",
+      campo: "actions:lead",
+      metrica: "fb_ads:actions_lead",
+      rotulo: "Leads por dia",
+      aba: "Leads",
+      formato: "numero",
+    },
+    {
+      id: "dhub:custo_por_lead_acumulado",
+      acumulado: ["fb_ads:spend_by_date", "dhub:leads_by_date"],
+      metrica: "fb_ads:actions_cost_per_lead",
+      rotulo: "Custo por lead acumulado no período",
+      formato: "moeda",
+      nivel: true,
+    },
     {
       id: "dhub:custo_por_conversa_acumulado",
       acumulado: ["fb_ads:spend_by_date", "dhub:conversas_by_date"],
