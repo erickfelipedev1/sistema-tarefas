@@ -25,6 +25,7 @@ import {
   ListChecksIcon,
   MessageCircleIcon,
   MoonIcon,
+  RefreshIcon,
   SendIcon,
   SparklesIcon,
   UserIcon,
@@ -32,6 +33,7 @@ import {
   SunIcon,
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
+import { CHAVE_VISTO, ULTIMA_ATUALIZACAO } from "@/lib/atualizacoes";
 import { useTheme } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import type { Project } from "@/lib/types";
@@ -49,6 +51,7 @@ const SECOES: {
       { href: "/calendario", label: "Calendário", icon: CalendarIcon },
       { href: "/wiki", label: "Wiki", icon: BookOpenIcon },
       { href: "/agente", label: "Agente de IA", icon: BotIcon },
+      { href: "/atualizacoes", label: "Atualizações", icon: RefreshIcon },
     ],
   },
   {
@@ -196,6 +199,21 @@ export default function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, verTudo, idCanal]);
 
+  // Bolinha em "Atualizações" quando tem novidade que a pessoa não abriu.
+  const [temNovidade, setTemNovidade] = useState(false);
+  useEffect(() => {
+    const conferir = () => {
+      try {
+        setTemNovidade((window.localStorage.getItem(CHAVE_VISTO) ?? "") < ULTIMA_ATUALIZACAO);
+      } catch {
+        setTemNovidade(false);
+      }
+    };
+    conferir();
+    window.addEventListener("dhub-atualizacoes-vistas", conferir);
+    return () => window.removeEventListener("dhub-atualizacoes-vistas", conferir);
+  }, []);
+
   return (
     <aside className="flex h-full min-h-screen w-64 flex-shrink-0 flex-col bg-navy text-slate-300">
       <div className="flex items-center gap-2.5 px-5 py-5">
@@ -255,6 +273,9 @@ export default function Sidebar({
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="flex-1 truncate">{item.label}</span>
+                    {item.href === "/atualizacoes" && temNovidade && !active && (
+                      <span className="rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-navy">Novo</span>
+                    )}
                     {showBadge && (
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[11px] font-semibold text-white">
                         {badgeCount > 99 ? "99+" : badgeCount}
