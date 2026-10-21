@@ -37,7 +37,7 @@ import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
 import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes, pessoaAtiva } from "@/lib/mencoes";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 
-type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "post";
+type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios";
 
 const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "detalhes", label: "Detalhes", icone: "📋" },
@@ -45,7 +45,6 @@ const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "subtarefas", label: "Subtarefas", icone: "🧩" },
   { key: "anexos", label: "Anexos", icone: "📎" },
   { key: "comentarios", label: "Comentários", icone: "💬" },
-  { key: "post", label: "Post", icone: "🖼️" },
 ];
 
 export default function TaskModal({
@@ -130,6 +129,8 @@ export default function TaskModal({
     task?.assigned_to ?? []
   );
   const [color, setColor] = useState(task?.color ?? "gray");
+  // Geral (padrão) ou Postagem: na postagem, a copy e o post ficam em Detalhes.
+  const [tipo, setTipo] = useState<"geral" | "postagem">(task?.tipo ?? "geral");
   const [taskProjectId, setTaskProjectId] = useState(
     task?.project_id ?? projectId ?? ""
   );
@@ -222,6 +223,7 @@ export default function TaskModal({
         color,
         project_id: taskProjectId || null,
         ...(taskProjectId && subprojetoId ? { subproject_id: subprojetoId } : {}),
+        ...(tipo !== "geral" ? { tipo } : {}),
         assigned_to: assignedTo,
         created_by_label: currentUserLabel,
       })
@@ -276,6 +278,14 @@ export default function TaskModal({
           ? "Só a liderança pode alterar as datas de uma tarefa já criada."
           : "Não deu pra salvar a data. Tenta de novo."
       );
+      return false;
+    }
+
+    if (error && "tipo" in campos) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setTipo(antes.tipo ?? "geral");
+      setErro("Não deu pra mudar o tipo da tarefa. Tenta de novo.");
       return false;
     }
 
@@ -418,6 +428,34 @@ export default function TaskModal({
                   placeholder="Nome da tarefa..."
                   className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 />
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-muted">Tipo</p>
+                <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Tipo da tarefa">
+                  {(
+                    [
+                      ["geral", "Geral"],
+                      ["postagem", "🖼️ Postagem"],
+                    ] as const
+                  ).map(([valor, rotulo]) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      aria-pressed={tipo === valor}
+                      onClick={() => {
+                        if (tipo === valor) return;
+                        setTipo(valor);
+                        if (!isNovo) salvarCampo({ tipo: valor });
+                      }}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        tipo === valor ? "bg-brand text-navy" : "text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -788,6 +826,33 @@ export default function TaskModal({
                 </div>
               </div>
 
+              {tipo === "postagem" && current && (
+                <section className="space-y-5 rounded-xl border border-line bg-canvas/40 p-3 sm:p-4" aria-label="Postagem">
+                  {/* A copy da peça: vira a legenda do post. */}
+                  <CopyTab
+                    key={current.id}
+                    valor={current.copy_text ?? ""}
+                    linhas={8}
+                    onSalvar={async (texto) => {
+                      await salvarCampo({ copy_text: texto.trim() || null });
+                    }}
+                  />
+                  <div className="border-t border-line pt-4">
+                    <PostDaTarefa
+                      taskId={current.id}
+                      projectId={current.project_id}
+                      projectName={projects.find((p) => p.id === current.project_id)?.name ?? "o cliente"}
+                      copyText={current.copy_text ?? ""}
+                      dueDate={current.due_date}
+                      currentUserLabel={currentUserLabel}
+                    />
+                  </div>
+                </section>
+              )}
+              {tipo === "postagem" && isNovo && (
+                <p className="text-xs text-ink-muted">A copy e o post do cliente aparecem aqui depois de criar a tarefa.</p>
+              )}
+
               {!isNovo && current?.due_date && (
                 <Link
                   href="/calendario"
@@ -857,29 +922,6 @@ export default function TaskModal({
               currentUserLabel={currentUserLabel}
               pessoas={profiles}
             />
-          )}
-          {aba === "post" && current && (
-            <div className="space-y-6">
-              {/* A copy da peça (antes era a aba "Copywrite"): vira a legenda do post. */}
-              <CopyTab
-                key={current.id}
-                valor={current.copy_text ?? ""}
-                linhas={8}
-                onSalvar={async (texto) => {
-                  await salvarCampo({ copy_text: texto.trim() || null });
-                }}
-              />
-              <div className="border-t border-line pt-5">
-            <PostDaTarefa
-              taskId={current.id}
-              projectId={current.project_id}
-              projectName={projects.find((p) => p.id === current.project_id)?.name ?? "o cliente"}
-              copyText={current.copy_text ?? ""}
-              dueDate={current.due_date}
-              currentUserLabel={currentUserLabel}
-            />
-              </div>
-            </div>
           )}
         </div>
 

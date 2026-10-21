@@ -29,6 +29,9 @@ export interface Task {
   color: string | null;
   page_id: string | null;
   project_id: string | null;
+  // Tipo (migration 0085): na "postagem", a copy e o post do cliente aparecem
+  // em Detalhes. Ausente = "geral".
+  tipo?: "geral" | "postagem";
   // Projeto do cliente em que a tarefa está (migration 0083), ou nenhum.
   subproject_id?: string | null;
   // Lista de ids de quem é responsável — pode ter mais de uma pessoa, ou
