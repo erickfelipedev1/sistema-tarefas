@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATUALIZACOES, CHAVE_VISTO, ULTIMA_ATUALIZACAO, type AreaDaAtualizacao } from "@/lib/atualizacoes";
+import PedidosDhub from "./PedidosDhub";
 
 const AREAS: AreaDaAtualizacao[] = ["Tarefas", "Posts", "Clientes", "Atas", "Mensagens", "Calendário", "Sistema"];
 
@@ -15,8 +16,16 @@ function rotuloDoDia(iso: string) {
 }
 
 // Tela "Atualizações": o que mudou no d.hub, por dia, com filtro por área.
-// O que é novo desde a última visita ganha o selo "Novo".
-export default function AtualizacoesView() {
+// O que é novo desde a última visita ganha o selo "Novo". A aba "Pedidos" é
+// onde a equipe pede alterações (migration 0088).
+export default function AtualizacoesView({
+  abaInicial,
+  pedidos,
+}: {
+  abaInicial?: "novidades" | "pedidos";
+  pedidos: React.ComponentProps<typeof PedidosDhub>;
+}) {
+  const [aba, setAba] = useState<"novidades" | "pedidos">(abaInicial ?? "novidades");
   const [area, setArea] = useState<AreaDaAtualizacao | "">("");
   const [vistoAte, setVistoAte] = useState<string | null>(null);
 
@@ -47,8 +56,42 @@ export default function AtualizacoesView() {
     return grupos;
   }, [area]);
 
+  const abas = (
+    <div data-mov="topo" className="mb-5 inline-flex rounded-lg border border-line bg-surface p-0.5" role="tablist" aria-label="Atualizações">
+      {(
+        [
+          ["novidades", "Novidades"],
+          ["pedidos", "Pedidos de alteração"],
+        ] as const
+      ).map(([valor, rotulo]) => (
+        <button
+          key={valor}
+          type="button"
+          role="tab"
+          aria-selected={aba === valor}
+          onClick={() => setAba(valor)}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            aba === valor ? "bg-brand text-navy" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          {rotulo}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (aba === "pedidos") {
+    return (
+      <div>
+        {abas}
+        <PedidosDhub {...pedidos} />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {abas}
       <div data-mov="topo" className="mb-5 flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por área">
         {(["", ...AREAS] as const).map((a) => (
           <button

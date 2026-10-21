@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-21",
+    area: "Sistema",
+    titulo: "Peça alterações no d.hub",
+    texto: "Na aba Pedidos de alteração, aqui em Atualizações, qualquer pessoa pede uma mudança no sistema. A Emilly aprova (os pedidos dela já entram aprovados) e o Erick faz. O sininho avisa cada etapa.",
+  },
+  {
+    data: "2026-10-21",
     area: "Tarefas",
     titulo: "Copy com formatação e imagem no texto",
     texto: "A Copywrite ganhou a mesma barra de formatação da descrição. Na descrição e na copy dá pra pôr imagem pelo botão 🖼, colando um print (Ctrl+V) ou arrastando o arquivo.",
