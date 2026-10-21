@@ -4,7 +4,7 @@
 // um link assinado que vale poucos minutos (app/arquivos/[bucket]/[...caminho]).
 // Como o endereço é fixo, dá pra guardar na Wiki sem expirar.
 
-export const BUCKETS_PROTEGIDOS = ["task-attachments", "drive-files", "invoices"] as const;
+export const BUCKETS_PROTEGIDOS = ["task-attachments", "drive-files", "invoices", "pedido-imagens"] as const;
 export type BucketProtegido = (typeof BUCKETS_PROTEGIDOS)[number];
 
 export function linkDoArquivo(bucket: BucketProtegido, caminho: string) {
