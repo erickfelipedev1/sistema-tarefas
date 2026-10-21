@@ -98,8 +98,8 @@ export default function CalendarioDePostagem({
   const [sobre, setSobre] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
-  // Da tarefa de postagem que gerou cada post: a cor escolhida (tasks.color;
-  // cinza ou sem tarefa = fundo neutro) e o título, que é o nome do post aqui.
+  // Da tarefa que gerou cada post: o título (o nome do post aqui) e, só se ela
+  // for do tipo Postagem, a cor escolhida lá (cinza ou sem tarefa = neutro).
   const [corDaTarefa, setCorDaTarefa] = useState<Record<string, string>>({});
   const [tituloDaTarefa, setTituloDaTarefa] = useState<Record<string, string>>({});
   const idsDasTarefas = useMemo(
@@ -114,9 +114,9 @@ export default function CalendarioDePostagem({
       const mapa: Record<string, string> = {};
       const titulos: Record<string, string> = {};
       for (let i = 0; i < ids.length; i += 100) {
-        const { data } = await createClient().from("tasks").select("id, color, title").in("id", ids.slice(i, i + 100));
+        const { data } = await createClient().from("tasks").select("id, color, title, tipo").in("id", ids.slice(i, i + 100));
         for (const t of data ?? []) {
-          if (t.color) mapa[t.id as string] = t.color as string;
+          if (t.color && t.tipo === "postagem") mapa[t.id as string] = t.color as string;
           if (t.title) titulos[t.id as string] = t.title as string;
         }
       }
