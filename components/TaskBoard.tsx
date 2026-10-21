@@ -15,7 +15,7 @@ import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { StatTile } from "./ui/StatTile";
-import { carregarResumos, formatarHoras, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
+import { carregarResumos, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
 import { carregarCatalogo, carregarLigacoes, type Etiqueta } from "@/lib/etiquetas";
 import { EtiquetaSelo } from "./EtiquetasDaTarefa";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
@@ -1257,11 +1257,6 @@ function IndicadoresTarefa({ resumo }: { resumo: ResumoTarefa }) {
       {resumo.anexos > 0 && (
         <span title="Anexos" className="inline-flex items-center gap-1 rounded-md bg-surface-hover px-1.5 py-0.5">
           📎 {resumo.anexos}
-        </span>
-      )}
-      {resumo.horas > 0 && (
-        <span title="Horas registradas" className="inline-flex items-center gap-1 rounded-md bg-surface-hover px-1.5 py-0.5">
-          ⏱️ {formatarHoras(resumo.horas)}
         </span>
       )}
     </div>

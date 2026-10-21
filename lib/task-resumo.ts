@@ -27,7 +27,7 @@ export function resumoVazio(): ResumoTarefa {
 }
 
 export function temConteudo(r: ResumoTarefa | undefined) {
-  return !!r && (r.checklistTotal > 0 || r.subtarefasTotal > 0 || r.comentarios > 0 || r.anexos > 0 || r.horas > 0);
+  return !!r && (r.checklistTotal > 0 || r.subtarefasTotal > 0 || r.comentarios > 0 || r.anexos > 0);
 }
 
 const LOTE = 100; // ids por consulta, pra URL não ficar grande demais

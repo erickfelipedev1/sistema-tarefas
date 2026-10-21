@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Profile, Task, TaskStatus } from "@/lib/types";
 import { hhmm, rotuloDeHorario, umDiaSo } from "@/lib/horarios";
-import { formatarHoras, type ResumoTarefa } from "@/lib/task-resumo";
+import type { ResumoTarefa } from "@/lib/task-resumo";
 import type { Etiqueta } from "@/lib/etiquetas";
 import { Avatar } from "./ui/Avatar";
 import { EmptyState } from "./ui/EmptyState";
@@ -13,7 +13,6 @@ import {
   CalendarIcon,
   CheckSquareIcon,
   ChevronDownIcon,
-  ClockIcon,
   MessageCircleIcon,
   MoreVerticalIcon,
   PaperclipIcon,
@@ -249,12 +248,6 @@ export default function TarefasEmLista({
                                     <PaperclipIcon className="h-3.5 w-3.5" />
                                     {resumo.anexos}
                                   </span>
-                                  {resumo.horas > 0 && (
-                                    <span className="inline-flex items-center gap-1" title="Horas registradas">
-                                      <ClockIcon className="h-3.5 w-3.5" />
-                                      {formatarHoras(resumo.horas)}
-                                    </span>
-                                  )}
                                 </>
                               )}
                               {marcas.map((et) => (

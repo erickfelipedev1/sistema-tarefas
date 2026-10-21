@@ -18,7 +18,6 @@ import type {
   Task,
   TaskAttachment,
   TaskComment,
-  TaskHourEntry,
   TaskStatus,
 } from "@/lib/types";
 import { CORES_TAREFA } from "@/lib/task-colors";
@@ -28,9 +27,8 @@ import {
   syncChecklistWiki,
   syncAnexosWiki,
   syncComentariosWiki,
-  syncHorasWiki,
 } from "@/lib/task-wiki-sync";
-import { carregarResumos, formatarHoras, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
+import { carregarResumos, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 import { avisarMencao, avisarMencaoNaDescricao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
 import MencaoInput from "./MencaoInput";
@@ -39,7 +37,7 @@ import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
 import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes, pessoaAtiva } from "@/lib/mencoes";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 
-type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "horas" | "copy" | "post";
+type Aba = "detalhes" | "checklist" | "subtarefas" | "anexos" | "comentarios" | "copy" | "post";
 
 const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "detalhes", label: "Detalhes", icone: "📋" },
@@ -47,7 +45,6 @@ const ABAS: { key: Aba; label: string; icone: string }[] = [
   { key: "subtarefas", label: "Subtarefas", icone: "🧩" },
   { key: "anexos", label: "Anexos", icone: "📎" },
   { key: "comentarios", label: "Comentários", icone: "💬" },
-  { key: "horas", label: "Horas", icone: "⏱️" },
   { key: "copy", label: "Copywrite", icone: "✍️" },
   { key: "post", label: "Post", icone: "🖼️" },
 ];
@@ -824,7 +821,7 @@ export default function TaskModal({
 
               {isNovo && (
                 <p className="text-xs text-ink-muted">
-                  Checklist, anexos, comentários e horas ficam disponíveis
+                  Checklist, anexos e comentários ficam disponíveis
                   depois de criar a tarefa.
                 </p>
               )}
@@ -879,13 +876,6 @@ export default function TaskModal({
               projectName={projects.find((p) => p.id === current.project_id)?.name ?? "o cliente"}
               copyText={current.copy_text ?? ""}
               dueDate={current.due_date}
-              currentUserLabel={currentUserLabel}
-            />
-          )}
-          {aba === "horas" && current && (
-            <HorasTab
-              taskId={current.id}
-              pageId={current.page_id}
               currentUserLabel={currentUserLabel}
             />
           )}
@@ -1539,154 +1529,6 @@ function TextoComMencoes({ texto, nomes }: { texto: string; nomes: string[] }) {
   );
 }
 
-function HorasTab({
-  taskId,
-  pageId,
-  currentUserLabel,
-}: {
-  taskId: string;
-  pageId: string | null;
-  currentUserLabel: string;
-}) {
-  const supabase = createClient();
-  const [lancamentos, setLancamentos] = useState<TaskHourEntry[]>([]);
-  const [horas, setHoras] = useState("");
-  const [nota, setNota] = useState("");
-
-  useEffect(() => {
-    let ativo = true;
-    (async () => {
-      const { data } = await supabase
-        .from("task_hours")
-        .select("*")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: false });
-      if (ativo) setLancamentos(data ?? []);
-    })();
-
-    const channel = supabase
-      .channel(`horas-${taskId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "task_hours" },
-        (payload) => {
-          setLancamentos((current) => {
-            if (payload.eventType === "INSERT") {
-              const novo = payload.new as TaskHourEntry;
-              if (novo.task_id !== taskId) return current;
-              if (current.some((h) => h.id === novo.id)) return current;
-              return [novo, ...current];
-            }
-            if (payload.eventType === "DELETE") {
-              const id = (payload.old as TaskHourEntry).id;
-              return current.filter((h) => h.id !== id);
-            }
-            return current;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      ativo = false;
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId]);
-
-  async function lancar(e: React.FormEvent) {
-    e.preventDefault();
-    const valor = parseFloat(horas.replace(",", "."));
-    if (!valor || valor <= 0) return;
-    const { data, error } = await supabase
-      .from("task_hours")
-      .insert({
-        task_id: taskId,
-        hours: valor,
-        note: nota.trim() || null,
-        created_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-    if (!error && data) {
-      const proximos = lancamentos.some((h) => h.id === data.id)
-        ? lancamentos
-        : [data, ...lancamentos];
-      setLancamentos(proximos);
-      setHoras("");
-      setNota("");
-      syncHorasWiki(supabase, pageId, proximos).catch(() => {});
-    }
-  }
-
-  async function remover(item: TaskHourEntry) {
-    const proximos = lancamentos.filter((h) => h.id !== item.id);
-    setLancamentos(proximos);
-    await supabase.from("task_hours").delete().eq("id", item.id);
-    syncHorasWiki(supabase, pageId, proximos).catch(() => {});
-  }
-
-  const total = lancamentos.reduce((soma, h) => soma + Number(h.hours), 0);
-
-  return (
-    <div>
-      <p className="mb-3 text-sm text-ink-muted">
-        Total lançado: <strong>{total.toLocaleString("pt-BR")}h</strong>
-      </p>
-      <form onSubmit={lancar} className="mb-3 flex flex-wrap gap-2">
-        <input
-          value={horas}
-          onChange={(e) => setHoras(e.target.value)}
-          placeholder="Horas (ex: 1.5)"
-          inputMode="decimal"
-          className="w-28 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
-        />
-        <input
-          value={nota}
-          onChange={(e) => setNota(e.target.value)}
-          placeholder="O que foi feito (opcional)"
-          className="min-w-[150px] flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-navy hover:bg-brand-hover"
-        >
-          Lançar
-        </button>
-      </form>
-      <div className="space-y-1">
-        {lancamentos.map((h) => (
-          <div
-            key={h.id}
-            className="flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm"
-          >
-            <div>
-              <span className="font-medium text-ink">
-                {Number(h.hours).toLocaleString("pt-BR")}h
-              </span>
-              {h.note && <span className="ml-2 text-ink-muted">— {h.note}</span>}
-              {h.created_by_label && (
-                <span className="ml-2 text-xs text-ink-muted">
-                  por {h.created_by_label}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => remover(h)}
-              className="text-xs text-ink-muted hover:text-danger"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        {lancamentos.length === 0 && (
-          <p className="text-xs text-ink-muted">Nenhum lançamento ainda.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // Aba "Copywrite": o texto da peça (legenda, roteiro, chamada) escrito e
 // revisado dentro da própria tarefa. Salva sozinho ao sair do campo.
 function CopyTab({ valor, onSalvar }: { valor: string; onSalvar: (texto: string) => Promise<void> | void }) {
@@ -1758,7 +1600,6 @@ function contadorDaAba(aba: Aba, r: ResumoTarefa): string | null {
   if (aba === "subtarefas" && r.subtarefasTotal) return `${r.subtarefasFeitas}/${r.subtarefasTotal}`;
   if (aba === "comentarios" && r.comentarios) return String(r.comentarios);
   if (aba === "anexos" && r.anexos) return String(r.anexos);
-  if (aba === "horas" && r.horas) return formatarHoras(r.horas);
   return null;
 }
 
