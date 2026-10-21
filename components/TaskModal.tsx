@@ -276,6 +276,29 @@ export default function TaskModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, isNovo]);
 
+  // Imagem colada, arrastada ou escolhida no editor (descrição e copy): vai
+  // pros anexos da tarefa no armazenamento (sem entrar na lista de Anexos) e
+  // o texto guarda o link do próprio d.hub.
+  async function enviarImagemDoEditor(arquivo: File): Promise<string | null> {
+    if (!current) {
+      setErro("Dê um nome pra tarefa antes de pôr imagem: ela é criada na hora.");
+      return null;
+    }
+    if (!arquivo.type.startsWith("image/")) return null;
+    if (arquivo.size > 10 * 1024 * 1024) {
+      setErro("Imagem grande demais (máximo 10 MB).");
+      return null;
+    }
+    const nome = arquivo.name && arquivo.name !== "image.png" ? arquivo.name : `imagem.${arquivo.type.split("/")[1] || "png"}`;
+    const caminho = `${current.id}/editor/${Date.now()}-${nomeSeguro(nome)}`;
+    const { error } = await supabase.storage.from("task-attachments").upload(caminho, arquivo, { contentType: arquivo.type });
+    if (error) {
+      setErro(`Não deu pra enviar a imagem: ${error.message}`);
+      return null;
+    }
+    return linkDoArquivo("task-attachments", caminho);
+  }
+
   async function salvarCampo(campos: Partial<Task>): Promise<boolean> {
     if (!current) return false;
     const antes = current;
@@ -294,6 +317,17 @@ export default function TaskModal({
         /liderança/i.test(error.message)
           ? "Só a liderança pode alterar as datas de uma tarefa já criada."
           : "Não deu pra salvar a data. Tenta de novo."
+      );
+      return false;
+    }
+
+    if (error && "copy_html" in campos) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setErro(
+        /copy_html/i.test(error.message)
+          ? "Não deu pra salvar a copy formatada. Confere se a migration 0087_copy_formatada.sql já foi rodada no Supabase."
+          : "Não deu pra salvar a copy. Tenta de novo."
       );
       return false;
     }
@@ -517,6 +551,7 @@ export default function TaskModal({
                 ) : (
                   <EditorDeTexto
                     pessoas={profiles}
+                    aoEnviarImagem={enviarImagemDoEditor}
                     valorHtml={descriptionHtml || textoParaHtml(description)}
                     autoFocus={editandoDescricao}
                     aoMudar={isNovo ? (html) => {
@@ -839,10 +874,14 @@ export default function TaskModal({
                   {/* A copy da peça: vira a legenda do post. */}
                   <CopyTab
                     key={current.id}
-                    valor={current.copy_text ?? ""}
-                    linhas={8}
-                    onSalvar={async (texto) => {
-                      await salvarCampo({ copy_text: texto.trim() || null });
+                    valorHtml={current.copy_html || textoParaHtml(current.copy_text ?? "")}
+                    aoEnviarImagem={enviarImagemDoEditor}
+                    onSalvar={async (html, texto) => {
+                      if (html.length > LIMITE_DO_HTML) {
+                        setErro("A copy está grande demais pra salvar. Encurte um pouco o texto.");
+                        return false;
+                      }
+                      return salvarCampo({ copy_html: html || null, copy_text: texto.trim() || null });
                     }}
                   />
                   <div className="border-t border-line pt-4">
@@ -1584,26 +1623,20 @@ function TextoComMencoes({ texto, nomes }: { texto: string; nomes: string[] }) {
 // Aba "Copywrite": o texto da peça (legenda, roteiro, chamada) escrito e
 // revisado dentro da própria tarefa. Salva sozinho ao sair do campo.
 function CopyTab({
-  valor,
+  valorHtml,
   onSalvar,
-  linhas = 14,
+  aoEnviarImagem,
 }: {
-  valor: string;
-  onSalvar: (texto: string) => Promise<void> | void;
-  linhas?: number;
+  valorHtml: string;
+  // Devolve se gravou.
+  onSalvar: (html: string, texto: string) => Promise<boolean> | boolean;
+  aoEnviarImagem?: (arquivo: File) => Promise<string | null>;
 }) {
-  const [texto, setTexto] = useState(valor);
   const [estado, setEstado] = useState<"salvo" | "salvando" | "sujo">("salvo");
   const [copiado, setCopiado] = useState(false);
-  const ultimoSalvo = useRef(valor);
-
-  async function salvar() {
-    if (texto === ultimoSalvo.current) return;
-    setEstado("salvando");
-    await onSalvar(texto);
-    ultimoSalvo.current = texto;
-    setEstado("salvo");
-  }
+  // O texto puro só existe no navegador (htmlParaTexto usa o DOM).
+  const [texto, setTexto] = useState("");
+  useEffect(() => setTexto(htmlParaTexto(valorHtml)), [valorHtml]);
 
   async function copiar() {
     try {
@@ -1618,25 +1651,29 @@ function CopyTab({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <label htmlFor="copy-da-tarefa" className="block text-xs font-medium text-ink-muted">
-          Copywrite
-        </label>
+        <p className="text-xs font-medium text-ink-muted">Copywrite</p>
         <span className="text-[11px] text-ink-muted">
           {estado === "salvando" ? "Salvando..." : estado === "sujo" ? "Alterações não salvas" : "Salvo"}
         </span>
       </div>
-      <textarea
-        id="copy-da-tarefa"
-        value={texto}
-        onChange={(e) => {
-          setTexto(e.target.value);
+      <EditorDeTexto
+        valorHtml={valorHtml}
+        rotulo="Copywrite"
+        placeholder="Escreva aqui a copy da peça: legenda, roteiro, headline, chamada..."
+        aoEnviarImagem={aoEnviarImagem}
+        aoMudar={(h) => {
+          setTexto(htmlParaTexto(h));
           setEstado("sujo");
         }}
-        onBlur={salvar}
-        rows={linhas}
-        maxLength={20000}
-        placeholder="Escreva aqui a copy da peça: legenda, roteiro, headline, chamada..."
-        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm leading-relaxed text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+        aoSair={async (h, mudou) => {
+          if (!mudou) {
+            setEstado("salvo");
+            return;
+          }
+          setEstado("salvando");
+          const gravou = await onSalvar(h, htmlParaTexto(h));
+          setEstado(gravou ? "salvo" : "sujo");
+        }}
       />
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-[11px] tabular-nums text-ink-muted">

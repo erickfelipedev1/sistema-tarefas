@@ -1,3 +1,8 @@
+// Tem algo pra guardar: texto ou imagem.
+export function htmlTemConteudo(el: { textContent: string | null; querySelector: (s: string) => unknown }): boolean {
+  return !!el.textContent?.trim() || !!el.querySelector("img");
+}
+
 // Texto formatado da descrição da tarefa (migration 0075): negrito, cor, lista,
 // alinhamento... guardado como HTML em tasks.description_html, ao lado do texto
 // puro em tasks.description (que o resto do sistema, o MCP e a Wiki continuam
@@ -26,12 +31,16 @@ const TAGS_DE_BLOCO = new Set(["P", "DIV", "UL", "OL", "LI", "BLOCKQUOTE"]);
 // Some com o elemento inteiro (não só a marca): nada disso vira texto.
 const DESCARTAR = new Set([
   "SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "SVG", "MATH", "LINK", "META", "TEMPLATE", "NOSCRIPT",
-  "FORM", "INPUT", "BUTTON", "TEXTAREA", "SELECT", "IMG", "VIDEO", "AUDIO", "CANVAS", "TITLE", "HEAD",
+  "FORM", "INPUT", "BUTTON", "TEXTAREA", "SELECT", "VIDEO", "AUDIO", "CANVAS", "TITLE", "HEAD",
 ]);
 
 const COR = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\))$/i;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LINK_NO_TEXTO = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi;
+// Imagem no texto: só as enviadas pelo editor, guardadas nos anexos da tarefa
+// e servidas pelo próprio d.hub (/arquivos/..., com login). Nada de endereço
+// de fora.
+const IMAGEM_PERMITIDA = /^\/arquivos\/task-attachments\/[A-Za-z0-9._~%\/-]+$/;
 
 export function escaparHtml(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -134,6 +143,18 @@ function copiar(origem: Node, destino: Node, doc: Document, dentroDeLink: boolea
 
     if (tag === "BR") {
       destino.appendChild(doc.createElement("br"));
+      return;
+    }
+
+    if (tag === "IMG") {
+      const src = (el.getAttribute("src") ?? "").trim();
+      if (IMAGEM_PERMITIDA.test(src) && !src.includes("..")) {
+        const img = doc.createElement("img");
+        img.setAttribute("src", src);
+        img.setAttribute("alt", (el.getAttribute("alt") ?? "").slice(0, 120));
+        img.setAttribute("loading", "lazy");
+        destino.appendChild(img);
+      }
       return;
     }
 

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { CORES_TAREFA } from "@/lib/task-colors";
 import { comOpcaoTodos, MENCAO_TODOS, nomeParaMencao, pessoaAtiva, semAcento, type PessoaMencionavel } from "@/lib/mencoes";
-import { FONTES_DO_TEXTO, LIMITE_DO_HTML, TAMANHOS_DO_TEXTO, sanitizarHtml } from "@/lib/texto-rico";
+import { FONTES_DO_TEXTO, LIMITE_DO_HTML, TAMANHOS_DO_TEXTO, htmlTemConteudo, sanitizarHtml } from "@/lib/texto-rico";
 
 // Cores sentinela: aplicadas e logo trocadas por "sem cor" (é assim que a
 // opção "Automática" tira a cor do trecho, já que o navegador não tem comando
@@ -31,6 +31,8 @@ export default function EditorDeTexto({
   autoFocus = false,
   placeholder = "Detalhes da tarefa...",
   pessoas = [],
+  aoEnviarImagem,
+  rotulo = "Descrição da tarefa",
 }: {
   valorHtml: string;
   aoMudar?: (html: string) => void;
@@ -41,6 +43,11 @@ export default function EditorDeTexto({
   placeholder?: string;
   // A equipe: digitar "@" abre a lista pra mencionar alguém.
   pessoas?: readonly PessoaMencionavel[];
+  // Envia uma imagem e devolve o endereço dela (ou null se não deu). Com isso,
+  // aparece o botão de imagem, e colar/arrastar imagem também funciona.
+  aoEnviarImagem?: (arquivo: File) => Promise<string | null>;
+  // Nome da caixa pra leitor de tela.
+  rotulo?: string;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const barra = useRef<HTMLDivElement>(null);
@@ -55,6 +62,12 @@ export default function EditorDeTexto({
   const [busca, setBusca] = useState<{ no: Text; inicio: number; fim: number; termo: string } | null>(null);
   const [opcao, setOpcao] = useState(0);
   const [lugar, setLugar] = useState<React.CSSProperties | null>(null);
+  // Imagem: onde estava o cursor (a janela de escolher arquivo tira o foco) e
+  // se a saída do editor deve ser ignorada enquanto a pessoa escolhe.
+  const seletorDeImagem = useRef<HTMLInputElement>(null);
+  const cursorGuardado = useRef<Range | null>(null);
+  const escolhendoImagem = useRef(false);
+  const [enviandoImagem, setEnviandoImagem] = useState(0);
 
   // Põe o conteúdo uma vez; depois o navegador cuida da caixa.
   useEffect(() => {
@@ -63,8 +76,8 @@ export default function EditorDeTexto({
     el.innerHTML = sanitizarHtml(valorHtml, false);
     // A menção é um bloco só: apagar leva o nome inteiro.
     el.querySelectorAll("[data-mencao]").forEach((m) => m.setAttribute("contenteditable", "false"));
-    inicial.current = el.textContent?.trim() ? sanitizarHtml(el.innerHTML, false) : "";
-    setVazio(!el.textContent?.trim());
+    inicial.current = htmlTemConteudo(el) ? sanitizarHtml(el.innerHTML, false) : "";
+    setVazio(!htmlTemConteudo(el));
     if (autoFocus) {
       el.focus();
       const sel = window.getSelection();
@@ -79,14 +92,14 @@ export default function EditorDeTexto({
   const lerHtml = useCallback(() => {
     const el = caixa.current;
     if (!el) return "";
-    // Caixa sem texto vira vazio (não sobra <div><br></div>).
-    return el.textContent?.trim() ? sanitizarHtml(el.innerHTML, false) : "";
+    // Caixa sem texto nem imagem vira vazio (não sobra <div><br></div>).
+    return htmlTemConteudo(el) ? sanitizarHtml(el.innerHTML, false) : "";
   }, []);
 
   const avisarMudanca = useCallback(() => {
     const el = caixa.current;
     if (!el) return;
-    setVazio(!el.textContent?.trim());
+    setVazio(!htmlTemConteudo(el));
     const html = lerHtml();
     setAviso(html.length > LIMITE_DO_HTML ? "O texto está grande demais: encurte um pouco pra conseguir salvar." : null);
     aoMudar?.(html);
@@ -291,9 +304,66 @@ export default function EditorDeTexto({
     }
   }
 
-  // Colar traz texto puro: nada de HTML de fora (Word, sites) entrando na descrição.
+  function guardarCursor() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && caixa.current?.contains(sel.anchorNode)) cursorGuardado.current = sel.getRangeAt(0).cloneRange();
+  }
+
+  function voltarAoCursor() {
+    const el = caixa.current;
+    if (!el) return;
+    el.focus();
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    if (cursorGuardado.current && el.contains(cursorGuardado.current.startContainer)) {
+      sel.addRange(cursorGuardado.current);
+    } else {
+      sel.selectAllChildren(el);
+      sel.collapseToEnd();
+    }
+  }
+
+  // A janela de escolher imagem fechou sem escolher: volta pro texto.
+  useEffect(() => {
+    const entrada = seletorDeImagem.current;
+    if (!entrada) return;
+    const aoCancelar = () => {
+      escolhendoImagem.current = false;
+      voltarAoCursor();
+    };
+    entrada.addEventListener("cancel", aoCancelar);
+    return () => entrada.removeEventListener("cancel", aoCancelar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!aoEnviarImagem]);
+
+  // Envia as imagens e põe cada uma onde estava o cursor.
+  async function inserirImagens(arquivos: File[]) {
+    if (!aoEnviarImagem) return;
+    const imagens = arquivos.filter((a) => a.type.startsWith("image/"));
+    if (imagens.length === 0) return;
+    guardarCursor();
+    setEnviandoImagem((n) => n + imagens.length);
+    for (const arquivo of imagens) {
+      const url = await aoEnviarImagem(arquivo);
+      setEnviandoImagem((n) => n - 1);
+      if (!url) continue;
+      voltarAoCursor();
+      document.execCommand("insertHTML", false, `<img src="${url.replace(/"/g, "&quot;")}" alt=""><br>`);
+      guardarCursor();
+      avisarMudanca();
+    }
+  }
+
+  // Colar traz texto puro: nada de HTML de fora (Word, sites) entrando na
+  // descrição. Imagem colada (print) é enviada e entra no texto.
   function colar(e: React.ClipboardEvent<HTMLDivElement>) {
     e.preventDefault();
+    const imagens = Array.from(e.clipboardData.files ?? []).filter((a) => a.type.startsWith("image/"));
+    if (imagens.length > 0 && aoEnviarImagem) {
+      inserirImagens(imagens);
+      return;
+    }
     const texto = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, texto);
     avisarMudanca();
@@ -430,6 +500,36 @@ export default function EditorDeTexto({
           <Icone d="M4 6h16M4 10h16M4 14h16M4 18h16" />
         </Botao>
 
+        {aoEnviarImagem && (
+          <>
+            <Separador />
+            <Botao
+              titulo="Inserir imagem"
+              aoClicar={() => {
+                guardarCursor();
+                escolhendoImagem.current = true;
+                seletorDeImagem.current?.click();
+              }}
+            >
+              <Icone d="M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01" />
+            </Botao>
+            <input
+              ref={seletorDeImagem}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                const arquivos = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                escolhendoImagem.current = false;
+                if (arquivos.length > 0) inserirImagens(arquivos);
+                else voltarAoCursor();
+              }}
+            />
+          </>
+        )}
+
         <Separador />
         <Botao titulo="Desfazer (Ctrl+Z)" aoClicar={() => comando("undo")}>
           <Icone d="M9 7 5 11l4 4M5 11h8a5 5 0 0 1 0 10h-2" />
@@ -449,11 +549,30 @@ export default function EditorDeTexto({
           suppressContentEditableWarning
           role="textbox"
           aria-multiline="true"
-          aria-label="Descrição da tarefa"
+          aria-label={rotulo}
           onInput={aoDigitar}
           onKeyDown={aoApertar}
           onPaste={colar}
+          onDragOver={(e) => {
+            if (aoEnviarImagem && Array.from(e.dataTransfer.items).some((i) => i.kind === "file")) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            const arquivos = Array.from(e.dataTransfer.files ?? []).filter((a) => a.type.startsWith("image/"));
+            if (!aoEnviarImagem || arquivos.length === 0) return;
+            e.preventDefault();
+            // A imagem entra onde foi solta.
+            const doc = document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null };
+            const ponto = doc.caretRangeFromPoint?.(e.clientX, e.clientY);
+            if (ponto && caixa.current?.contains(ponto.startContainer)) {
+              const sel = window.getSelection();
+              sel?.removeAllRanges();
+              sel?.addRange(ponto);
+            }
+            inserirImagens(arquivos);
+          }}
           onBlur={() => {
+            // Abriu a janela de escolher a imagem: não é sair do editor.
+            if (escolhendoImagem.current || enviandoImagem > 0) return;
             setBusca(null);
             const html = lerHtml();
             aoSair?.(html, html !== inicial.current);
@@ -461,6 +580,11 @@ export default function EditorDeTexto({
           className="texto-rico max-h-72 min-h-[7rem] overflow-y-auto break-words px-3 py-2 text-sm text-ink focus:outline-none"
         />
       </div>
+      {enviandoImagem > 0 && (
+        <p className="border-t border-line px-3 py-1.5 text-xs text-ink-muted" role="status">
+          Enviando imagem...
+        </p>
+      )}
       {aviso && <p className="border-t border-line px-3 py-1.5 text-xs text-danger">{aviso}</p>}
       {busca && sugestoes.length > 0 && lugar && (
         <ul

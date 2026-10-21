@@ -13,6 +13,9 @@ export interface Task {
   description_mentions?: string[];
   // Texto da aba "Copywrite" (migration 0061): a copy da peça.
   copy_text?: string | null;
+  // A copy formatada (migration 0087): HTML limpo do editor. O texto puro da
+  // mesma copy fica em "copy_text". Vazio = copy só em texto.
+  copy_html?: string | null;
   // Subtarefa (migration 0067): id da tarefa principal. Uma subtarefa é uma
   // tarefa completa; só existe um nível.
   parent_id?: string | null;
