@@ -181,20 +181,23 @@ export default function TaskModal({
     };
   }, []);
 
+  // A tarefa nasce assim que a pessoa dá o nome (ao sair do campo, no Enter
+  // ou depois de uma pausa digitando); o resto vai salvando sozinho depois.
+  const criandoRef = useRef(false);
   async function criar() {
     if (!title.trim()) {
       setErro("Dá um nome pra tarefa antes de criar.");
       return;
     }
-    if (!startDate || !dueDate) {
-      setErro("Toda tarefa precisa de período: preencha o início e a entrega.");
-      return;
-    }
-    if (startDate > dueDate) {
+    if (criandoRef.current || current) return;
+    // Sem período escolhido: começa e entrega hoje (dá pra mudar depois).
+    const inicio = startDate || hojeLocal;
+    const entrega = dueDate || (inicio > hojeLocal ? inicio : hojeLocal);
+    if (inicio > entrega) {
       setErro("O início não pode ser depois da entrega.");
       return;
     }
-    const erroHora = erroDeHorario(startDate, dueDate, startTime, dueTime);
+    const erroHora = erroDeHorario(inicio, entrega, startTime, dueTime);
     if (erroHora) {
       setErro(erroHora);
       return;
@@ -203,6 +206,9 @@ export default function TaskModal({
       setErro("A descrição está grande demais pra salvar. Encurte um pouco o texto.");
       return;
     }
+    criandoRef.current = true;
+    setStartDate(inicio);
+    setDueDate(entrega);
     setSaving(true);
     setErro(null);
 
@@ -215,8 +221,8 @@ export default function TaskModal({
         ...(mencoesDaDescricao.length > 0 ? { description_mentions: mencoesDaDescricao } : {}),
         status,
         position: getNextPosition(status),
-        start_date: startDate || null,
-        due_date: dueDate || null,
+        start_date: inicio,
+        due_date: entrega,
         ...(startTime ? { start_time: startTime } : {}),
         due_time: dueTime || null,
         repeat_rule: repeatRule,
@@ -232,6 +238,7 @@ export default function TaskModal({
 
     setSaving(false);
     if (error || !data) {
+      criandoRef.current = false;
       setErro(
         error?.message.includes("start_date")
           ? "Pra criar tarefa com período, rode a migration 0040_tarefa_periodo.sql no Supabase."
@@ -258,6 +265,16 @@ export default function TaskModal({
     if (!(await salvarCampo({ subproject_id: id }))) return;
     if (!current.parent_id) await supabase.from("tasks").update({ subproject_id: id }).eq("parent_id", tarefaId);
   }
+
+  // Parou de digitar o nome de uma tarefa nova: cria (1,5 s depois).
+  useEffect(() => {
+    if (!isNovo || !title.trim()) return;
+    const espera = window.setTimeout(() => {
+      criar();
+    }, 1500);
+    return () => window.clearTimeout(espera);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, isNovo]);
 
   async function salvarCampo(campos: Partial<Task>): Promise<boolean> {
     if (!current) return false;
@@ -419,12 +436,16 @@ export default function TaskModal({
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  onBlur={() =>
-                    !isNovo &&
-                    title.trim() &&
-                    title.trim() !== current?.title &&
-                    salvarCampo({ title: title.trim() })
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  onBlur={() => {
+                    if (isNovo) {
+                      if (title.trim()) criar();
+                      return;
+                    }
+                    if (title.trim() && title.trim() !== current?.title) salvarCampo({ title: title.trim() });
+                  }}
                   placeholder="Nome da tarefa..."
                   className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                 />
@@ -881,8 +902,8 @@ export default function TaskModal({
 
               {isNovo && (
                 <p className="text-xs text-ink-muted">
-                  Checklist, anexos e comentários ficam disponíveis
-                  depois de criar a tarefa.
+                  A tarefa é criada sozinha assim que você dá o nome. Checklist,
+                  anexos e comentários ficam disponíveis logo depois.
                 </p>
               )}
             </div>
