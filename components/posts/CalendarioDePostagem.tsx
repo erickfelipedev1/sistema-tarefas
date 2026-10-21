@@ -98,9 +98,10 @@ export default function CalendarioDePostagem({
   const [sobre, setSobre] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
-  // Cor de cada post: a cor escolhida na tarefa de postagem que gerou o post
-  // (tasks.color). Cinza, ou post sem tarefa, fica com o fundo neutro.
+  // Da tarefa de postagem que gerou cada post: a cor escolhida (tasks.color;
+  // cinza ou sem tarefa = fundo neutro) e o título, que é o nome do post aqui.
   const [corDaTarefa, setCorDaTarefa] = useState<Record<string, string>>({});
+  const [tituloDaTarefa, setTituloDaTarefa] = useState<Record<string, string>>({});
   const idsDasTarefas = useMemo(
     () => Array.from(new Set(posts.map((p) => p.task_id).filter((id): id is string => !!id))).sort().join(","),
     [posts]
@@ -111,11 +112,18 @@ export default function CalendarioDePostagem({
     (async () => {
       const ids = idsDasTarefas.split(",");
       const mapa: Record<string, string> = {};
+      const titulos: Record<string, string> = {};
       for (let i = 0; i < ids.length; i += 100) {
-        const { data } = await createClient().from("tasks").select("id, color").in("id", ids.slice(i, i + 100));
-        for (const t of data ?? []) if (t.color) mapa[t.id as string] = t.color as string;
+        const { data } = await createClient().from("tasks").select("id, color, title").in("id", ids.slice(i, i + 100));
+        for (const t of data ?? []) {
+          if (t.color) mapa[t.id as string] = t.color as string;
+          if (t.title) titulos[t.id as string] = t.title as string;
+        }
       }
-      if (ativo) setCorDaTarefa(mapa);
+      if (ativo) {
+        setCorDaTarefa(mapa);
+        setTituloDaTarefa(titulos);
+      }
     })();
     return () => {
       ativo = false;
@@ -169,6 +177,12 @@ export default function CalendarioDePostagem({
     const redes = redesValidas(post.networks).map((r) => REDES[r]).join(", ");
     const chaveDaCor = post.task_id ? corDaTarefa[post.task_id] : undefined;
     const cor = chaveDaCor && chaveDaCor !== "gray" ? corTarefa(chaveDaCor) : null;
+    // Título: o da tarefa de origem; sem tarefa, o começo da legenda; sem
+    // legenda, o formato do post.
+    const titulo =
+      (post.task_id && tituloDaTarefa[post.task_id]) ||
+      (post.caption ?? "").split("\n")[0].trim().slice(0, 80) ||
+      CATEGORIAS[post.category].rotulo;
     return (
       <div
         draggable
@@ -180,7 +194,7 @@ export default function CalendarioDePostagem({
           e.stopPropagation();
           aoAbrir(post);
         }}
-        title={`${mostrarCliente && post.projectName ? `${post.projectName} · ` : ""}${CATEGORIAS[post.category].rotulo} · ${redes} · ${STATUS_DO_POST[post.status].equipe}${post.caption ? `\n${post.caption.slice(0, 140)}` : ""}`}
+        title={`${titulo}\n${mostrarCliente && post.projectName ? `${post.projectName} · ` : ""}${CATEGORIAS[post.category].rotulo} · ${redes} · ${STATUS_DO_POST[post.status].equipe}${post.caption ? `\n${post.caption.slice(0, 140)}` : ""}`}
         style={cor ? { backgroundColor: cor.fundo, color: cor.texto } : undefined}
         className={`flex cursor-grab items-center gap-1.5 rounded-md border-l-[3px] py-1 pl-1.5 pr-1.5 active:cursor-grabbing ${BORDA_DO_STATUS[post.status]} ${
           cor ? "hover:brightness-110" : "bg-surface-hover/70 hover:bg-surface-hover"
@@ -200,10 +214,12 @@ export default function CalendarioDePostagem({
         </span>
         <span className="min-w-0 flex-1">
           <span className={`block truncate text-[11px] font-medium leading-tight ${cor ? "" : "text-ink"}`}>
-            {mostrarCliente && post.projectName ? post.projectName : CATEGORIAS[post.category].rotulo}
+            {titulo}
           </span>
           <span className={`block truncate text-[10px] leading-tight ${cor ? "opacity-80" : "text-ink-muted"}`}>
-            {mostrarCliente ? CATEGORIAS[post.category].rotulo : redes}
+            {mostrarCliente && post.projectName
+              ? `${post.projectName} · ${CATEGORIAS[post.category].rotulo}`
+              : CATEGORIAS[post.category].rotulo}
           </span>
         </span>
       </div>
