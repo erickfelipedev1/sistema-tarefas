@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-22",
+    area: "Sistema",
+    titulo: "Bolinha de dúvidas",
+    texto: "No canto de baixo, à direita, a bolinha ? responde dúvidas sobre o d.hub: escreva do seu jeito (\"como reordeno o checklist?\") e ela mostra a resposta. Se não achar, leva pro chat com o Erick ou pra um pedido de alteração.",
+  },
+  {
+    data: "2026-10-22",
     area: "Tarefas",
     titulo: "Pré-visualização dos anexos e Baixar todos",
     texto: "Clique num anexo da tarefa pra ver ali mesmo: imagem, vídeo, áudio, PDF e texto abrem numa janela, com setas pra passar de um pro outro. Fotos e vídeos ganharam miniatura na lista, e o botão \"Baixar todos\" baixa todos os anexos de uma vez.",
