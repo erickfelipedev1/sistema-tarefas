@@ -20,6 +20,16 @@ const CORES_DE_DESTAQUE = [
 
 type Ativos = Record<string, boolean>;
 
+// Um apontamento do corretor (/api/corretor): onde está no texto da caixa
+// (textContent), o trecho, a explicação e as sugestões.
+export interface Apontamento {
+  offset: number;
+  length: number;
+  trecho: string;
+  mensagem: string;
+  sugestoes: string[];
+}
+
 // Editor de texto da descrição da tarefa: uma barra de formatação (fonte,
 // tamanho, negrito, itálico, sublinhado, tachado, índice, cor, destaque,
 // listas, recuo, alinhamento e desfazer) em cima de uma caixa editável. O
@@ -33,6 +43,7 @@ export default function EditorDeTexto({
   pessoas = [],
   aoEnviarImagem,
   rotulo = "Descrição da tarefa",
+  comCorretor = false,
 }: {
   valorHtml: string;
   aoMudar?: (html: string) => void;
@@ -48,6 +59,8 @@ export default function EditorDeTexto({
   aoEnviarImagem?: (arquivo: File) => Promise<string | null>;
   // Nome da caixa pra leitor de tela.
   rotulo?: string;
+  // Botão "Revisar" (ortografia e gramática em português).
+  comCorretor?: boolean;
 }) {
   const caixa = useRef<HTMLDivElement>(null);
   const barra = useRef<HTMLDivElement>(null);
@@ -68,6 +81,13 @@ export default function EditorDeTexto({
   const cursorGuardado = useRef<Range | null>(null);
   const escolhendoImagem = useRef(false);
   const [enviandoImagem, setEnviandoImagem] = useState(0);
+  // Corretor: os apontamentos da última revisão (posições no texto da caixa).
+  const [revisao, setRevisao] = useState<
+    | null
+    | { estado: "revisando" }
+    | { estado: "erro"; mensagem: string }
+    | { estado: "pronto"; itens: Apontamento[] }
+  >(null);
 
   // Põe o conteúdo uma vez; depois o navegador cuida da caixa.
   useEffect(() => {
@@ -284,6 +304,8 @@ export default function EditorDeTexto({
   }
 
   function aoApertar(e: React.KeyboardEvent<HTMLDivElement>) {
+    // Terminou de digitar um endereço: vira link antes da quebra de linha.
+    if (e.key === "Enter" && !busca) linkificar();
     if (!busca) return;
     if (e.key === "Escape") {
       e.preventDefault();
@@ -322,6 +344,103 @@ export default function EditorDeTexto({
       sel.selectAllChildren(el);
       sel.collapseToEnd();
     }
+  }
+
+  // Endereço digitado ou colado vira link (azul) na hora, sem esperar salvar.
+  function linkificar(forcar = false) {
+    const el = caixa.current;
+    if (!el) return;
+    const sel = window.getSelection();
+    const cursor = sel && sel.rangeCount > 0 ? { no: sel.anchorNode, offset: sel.anchorOffset } : null;
+    const andarilho = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nos: Text[] = [];
+    while (andarilho.nextNode()) nos.push(andarilho.currentNode as Text);
+    while (nos.length > 0) {
+      const no = nos.shift() as Text;
+      if (no.parentElement?.closest("a, [data-mencao]")) continue;
+      const texto = no.textContent ?? "";
+      const achou = /(?:https?:\/\/|www\.)[^\s<>"']+/i.exec(texto);
+      if (!achou) continue;
+      const url = achou[0].replace(/[).,;:!?\]}]+$/, "");
+      // Só depois que a pessoa terminou o endereço (espaço, quebra ou fim do texto fora do cursor).
+      const fim = achou.index + url.length;
+      const terminou = forcar || fim < texto.length || cursor?.no !== no;
+      if (!terminou || !url) continue;
+      const depois = no.splitText(achou.index);
+      const resto = depois.splitText(url.length);
+      const a = document.createElement("a");
+      a.href = url.toLowerCase().startsWith("www.") ? `https://${url}` : url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = url;
+      depois.replaceWith(a);
+      nos.push(resto); // pode ter outro endereço no resto
+      // O cursor estava depois do endereço: continua no mesmo lugar.
+      if (cursor && cursor.no === no && sel) {
+        const posicao = Math.max(0, cursor.offset - fim);
+        sel.removeAllRanges();
+        const r = document.createRange();
+        r.setStart(resto, Math.min(posicao, resto.length));
+        r.collapse(true);
+        sel.addRange(r);
+      }
+    }
+  }
+
+  async function revisar() {
+    const el = caixa.current;
+    if (!el) return;
+    const texto = el.textContent ?? "";
+    if (!texto.trim()) return setRevisao({ estado: "erro", mensagem: "Escreva algo antes de revisar." });
+    setRevisao({ estado: "revisando" });
+    try {
+      const resposta = await fetch("/api/corretor", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ texto }),
+      });
+      const dados = (await resposta.json()) as { itens?: Apontamento[]; erro?: string };
+      if (!resposta.ok || !dados.itens) throw new Error(dados.erro || "Não deu pra revisar agora.");
+      setRevisao({ estado: "pronto", itens: dados.itens });
+    } catch (e) {
+      setRevisao({ estado: "erro", mensagem: e instanceof Error ? e.message : "Não deu pra revisar agora." });
+    }
+  }
+
+  // Troca o trecho apontado pela sugestão escolhida (só se o trecho ainda
+  // estiver lá, dentro de um mesmo pedaço de texto).
+  function aplicar(item: Apontamento, sugestao: string) {
+    const el = caixa.current;
+    if (!el || revisao?.estado !== "pronto") return;
+    const andarilho = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let corrido = 0;
+    let aplicou = false;
+    while (andarilho.nextNode()) {
+      const no = andarilho.currentNode as Text;
+      const tamanho = no.length;
+      if (item.offset >= corrido && item.offset + item.length <= corrido + tamanho) {
+        const local = item.offset - corrido;
+        if ((no.textContent ?? "").slice(local, local + item.length) === item.trecho) {
+          no.replaceData(local, item.length, sugestao);
+          aplicou = true;
+        }
+        break;
+      }
+      corrido += tamanho;
+    }
+    const delta = sugestao.length - item.length;
+    setRevisao({
+      estado: "pronto",
+      itens: revisao.itens
+        .filter((i) => i !== item)
+        .map((i) => (aplicou && i.offset > item.offset ? { ...i, offset: i.offset + delta } : i)),
+    });
+    if (aplicou) avisarMudanca();
+  }
+
+  function ignorar(item: Apontamento) {
+    if (revisao?.estado !== "pronto") return;
+    setRevisao({ estado: "pronto", itens: revisao.itens.filter((i) => i !== item) });
   }
 
   // A janela de escolher imagem fechou sem escolher: volta pro texto.
@@ -366,6 +485,7 @@ export default function EditorDeTexto({
     }
     const texto = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, texto);
+    linkificar(true);
     avisarMudanca();
   }
 
@@ -530,6 +650,15 @@ export default function EditorDeTexto({
           </>
         )}
 
+        {comCorretor && (
+          <>
+            <Separador />
+            <Botao titulo="Revisar ortografia e gramática" aoClicar={revisar}>
+              <span className="text-[11px] font-semibold">ABC✓</span>
+            </Botao>
+          </>
+        )}
+
         <Separador />
         <Botao titulo="Desfazer (Ctrl+Z)" aoClicar={() => comando("undo")}>
           <Icone d="M9 7 5 11l4 4M5 11h8a5 5 0 0 1 0 10h-2" />
@@ -550,6 +679,11 @@ export default function EditorDeTexto({
           role="textbox"
           aria-multiline="true"
           aria-label={rotulo}
+          spellCheck
+          lang="pt-BR"
+          onKeyUp={(e) => {
+            if (e.key === " " && !busca) linkificar();
+          }}
           onInput={aoDigitar}
           onKeyDown={aoApertar}
           onPaste={colar}
@@ -573,6 +707,7 @@ export default function EditorDeTexto({
           onBlur={() => {
             // Abriu a janela de escolher a imagem: não é sair do editor.
             if (escolhendoImagem.current || enviandoImagem > 0) return;
+            linkificar(true);
             setBusca(null);
             const html = lerHtml();
             aoSair?.(html, html !== inicial.current);
@@ -580,6 +715,51 @@ export default function EditorDeTexto({
           className="texto-rico max-h-72 min-h-[7rem] overflow-y-auto break-words px-3 py-2 text-sm text-ink focus:outline-none"
         />
       </div>
+      {revisao && (
+        <div className="border-t border-line bg-canvas/60 px-3 py-2 text-xs" onMouseDown={(e) => e.preventDefault()}>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="font-medium text-ink">
+              {revisao.estado === "revisando"
+                ? "Revisando..."
+                : revisao.estado === "erro"
+                  ? revisao.mensagem
+                  : revisao.itens.length === 0
+                    ? "Nada a corrigir ✓"
+                    : `${revisao.itens.length} ${revisao.itens.length === 1 ? "sugestão" : "sugestões"}`}
+            </span>
+            <button type="button" onClick={() => setRevisao(null)} className="text-ink-muted hover:text-ink">
+              Fechar
+            </button>
+          </div>
+          {revisao.estado === "pronto" && revisao.itens.length > 0 && (
+            <ul className="max-h-48 space-y-1.5 overflow-y-auto">
+              {revisao.itens.map((item) => (
+                <li key={`${item.offset}-${item.trecho}`} className="rounded-md border border-line bg-surface px-2 py-1.5">
+                  <p className="text-ink">
+                    <span className="rounded bg-danger-light px-1 font-medium text-danger line-through">{item.trecho}</span>
+                    <span className="ml-1.5 text-ink-muted">{item.mensagem}</span>
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {item.sugestoes.slice(0, 4).map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => aplicar(item, sug)}
+                        className="rounded-md bg-brand-light px-2 py-0.5 font-medium text-brand-forte hover:bg-brand/30"
+                      >
+                        {sug || "(apagar)"}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => ignorar(item)} className="rounded-md px-2 py-0.5 text-ink-muted hover:text-ink">
+                      Ignorar
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {enviandoImagem > 0 && (
         <p className="border-t border-line px-3 py-1.5 text-xs text-ink-muted" role="status">
           Enviando imagem...

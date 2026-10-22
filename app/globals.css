@@ -318,7 +318,7 @@
   margin: 0.25rem 0;
 }
 .texto-rico a {
-  color: rgb(var(--color-brand-forte));
+  color: rgb(var(--color-cal));
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;

@@ -66,6 +66,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["anexo", "baixar", "download", "ver arquivo", "pré-visualização", "baixar todos"],
   },
   {
+    pergunta: "Tem corretor na descrição e na copy?",
+    resposta:
+      "Tem. A palavra errada fica sublinhada em vermelho (clique com o botão direito pra ver a correção). E o botão ABC✓ na barra do editor revisa ortografia e gramática e mostra sugestões: clique na sugestão pra trocar, ou em Ignorar. Link colado ou digitado vira link azul sozinho.",
+    palavras: ["corretor", "ortografia", "gramática", "revisar", "erro de português", "link", "hiperlink", "azul"],
+  },
+  {
     pergunta: "Como menciono alguém?",
     resposta:
       "Digite @ na descrição, nos comentários, no chat ou na resposta ao cliente e escolha a pessoa (ou @Todos). Quem é citado recebe aviso no sininho e no celular.",

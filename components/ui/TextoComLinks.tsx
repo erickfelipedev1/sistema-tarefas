@@ -8,7 +8,7 @@ const LINK = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
 const PONTUACAO_FINAL = /[.,;:!?)\]}]+$/;
 
 // corDoLink: troca a cor padrão (ex: "text-current" dentro do balão verde do chat).
-export function TextoComLinks({ texto, corDoLink = "text-brand-forte" }: { texto: string; corDoLink?: string }) {
+export function TextoComLinks({ texto, corDoLink = "text-cal" }: { texto: string; corDoLink?: string }) {
   const partes = texto.split(LINK);
   return (
     <>

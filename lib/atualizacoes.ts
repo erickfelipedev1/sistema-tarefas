@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-22",
+    area: "Tarefas",
+    titulo: "Corretor e links azuis na descrição e na copy",
+    texto: "A descrição e a copy sublinham em vermelho as palavras erradas (clique com o botão direito pra ver a correção) e ganharam o botão ABC✓, que revisa ortografia e gramática e mostra sugestões pra clicar. Link colado ou digitado vira link azul na hora.",
+  },
+  {
+    data: "2026-10-22",
     area: "Posts",
     titulo: "O cliente baixa o post pelo portal",
     texto: "No portal do cliente, cada post ganhou o bloco \"Baixar o post\": baixar cada imagem/vídeo e a capa, \"Baixar todos\" e copiar a legenda.",

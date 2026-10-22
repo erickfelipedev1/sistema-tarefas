@@ -159,7 +159,13 @@ function copiar(origem: Node, destino: Node, doc: Document, dentroDeLink: boolea
     }
 
     if (tag === "A") {
-      const href = (el.getAttribute("href") ?? "").trim();
+      let href = (el.getAttribute("href") ?? "").trim();
+      // Link digitado no editor: se o texto do link é um endereço, o destino é
+      // ele (corrigir o endereço digitado corrige o link junto).
+      const textoDoLink = (el.textContent ?? "").trim();
+      if (/^(?:https?:\/\/|www\.)[^\s<>"']+$/i.test(textoDoLink)) {
+        href = textoDoLink.toLowerCase().startsWith("www.") ? `https://${textoDoLink}` : textoDoLink;
+      }
       if (/^(https?:\/\/|mailto:|tel:)/i.test(href)) {
         const a = doc.createElement("a");
         a.setAttribute("href", href);

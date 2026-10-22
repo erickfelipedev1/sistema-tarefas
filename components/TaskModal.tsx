@@ -554,6 +554,7 @@ export default function TaskModal({
                   <EditorDeTexto
                     pessoas={profiles}
                     aoEnviarImagem={enviarImagemDoEditor}
+                    comCorretor
                     valorHtml={descriptionHtml || textoParaHtml(description)}
                     autoFocus={editandoDescricao}
                     aoMudar={isNovo ? (html) => {
@@ -1886,6 +1887,7 @@ function CopyTab({
       <EditorDeTexto
         valorHtml={valorHtml}
         rotulo="Copywrite"
+        comCorretor
         placeholder="Escreva aqui a copy da peça: legenda, roteiro, headline, chamada..."
         aoEnviarImagem={aoEnviarImagem}
         aoMudar={(h) => {
