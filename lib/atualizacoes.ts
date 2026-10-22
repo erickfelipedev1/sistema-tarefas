@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-22",
+    area: "Posts",
+    titulo: "O cliente baixa o post pelo portal",
+    texto: "No portal do cliente, cada post ganhou o bloco \"Baixar o post\": baixar cada imagem/vídeo e a capa, \"Baixar todos\" e copiar a legenda.",
+  },
+  {
+    data: "2026-10-22",
     area: "Sistema",
     titulo: "Bolinha de dúvidas",
     texto: "No canto de baixo, à direita, a bolinha ? responde dúvidas sobre o d.hub: escreva do seu jeito (\"como reordeno o checklist?\") e ela mostra a resposta. Se não achar, leva pro chat com o Erick ou pra um pedido de alteração.",

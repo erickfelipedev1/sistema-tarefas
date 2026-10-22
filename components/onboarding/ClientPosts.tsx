@@ -6,6 +6,7 @@ import { formatarDataBR, formatarRelativo } from "@/lib/format";
 import { CATEGORIAS, REDES, redesValidas, rotuloDoStatus, STATUS_DO_POST } from "@/lib/posts";
 import type { PostNetwork, PublicPost } from "@/lib/types";
 import PostPreview from "../posts/PostPreview";
+import BaixarDoPortal from "./BaixarDoPortal";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -188,6 +189,7 @@ function PostDoCliente({
             conta={projectName}
             data={post.scheduled_date ? formatarDataBR(post.scheduled_date) : null}
           />
+          <BaixarDoPortal post={post} />
         </div>
 
         <div className="min-w-0">
