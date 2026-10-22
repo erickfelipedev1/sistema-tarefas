@@ -14,8 +14,8 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-22",
     area: "Tarefas",
-    titulo: "Pré-visualização dos anexos",
-    texto: "Clique num anexo da tarefa pra ver ali mesmo: imagem, vídeo, áudio, PDF e texto abrem numa janela, com setas pra passar de um pro outro. As imagens ganharam miniatura na lista.",
+    titulo: "Pré-visualização dos anexos e Baixar todos",
+    texto: "Clique num anexo da tarefa pra ver ali mesmo: imagem, vídeo, áudio, PDF e texto abrem numa janela, com setas pra passar de um pro outro. Fotos e vídeos ganharam miniatura na lista, e o botão \"Baixar todos\" baixa todos os anexos de uma vez.",
   },
   {
     data: "2026-10-22",

@@ -32,6 +32,7 @@ import { avisarMencao, avisarMencaoNaDescricao, avisarTarefaAtribuida } from "@/
 import PostDaTarefa from "./posts/PostDaTarefa";
 import StatusDaPostagemPicker from "./posts/StatusDaPostagemPicker";
 import VisualizadorDeArquivos, { tipoDoArquivoPeloNome } from "./VisualizadorDeArquivos";
+import BaixarTodosOsAnexos from "./BaixarTodosOsAnexos";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
@@ -1437,6 +1438,13 @@ function AnexosTab({
           className="block w-full text-sm text-ink-muted"
         />
       </label>
+      {anexos.length > 1 && (
+        <div className="mb-2 flex justify-end">
+          <BaixarTodosOsAnexos
+            anexos={anexos.map((a) => ({ nome: a.file_name, url: linkParaBaixar("task-attachments", a.file_path, a.file_name) }))}
+          />
+        </div>
+      )}
       <div className="space-y-1">
         {anexos.map((a, indice) => (
           <div
