@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-10-22",
+    area: "Tarefas",
+    titulo: "Reordenar o checklist",
+    texto: "Os itens do checklist agora mudam de ordem: arraste pelo ⠿ ou use as setas ↑↓ ao lado de cada item. Pedido da Mariana.",
+  },
+  {
     data: "2026-10-21",
     area: "Clientes",
     titulo: "Analytics do Meta Ads com Leads em destaque",

@@ -1064,7 +1064,8 @@ function ChecklistTab({
             if (payload.eventType === "UPDATE") {
               const at = payload.new as ChecklistItem;
               if (at.task_id !== taskId) return current;
-              return current.map((i) => (i.id === at.id ? at : i));
+              // Outra pessoa pode ter reordenado: mantém na ordem das posições.
+              return current.map((i) => (i.id === at.id ? at : i)).sort((a, b) => a.position - b.position);
             }
             if (payload.eventType === "DELETE") {
               const id = (payload.old as ChecklistItem).id;
@@ -1114,6 +1115,49 @@ function ChecklistTab({
     syncChecklistWiki(supabase, pageId, proximos).catch(() => {});
   }
 
+  // Reordenar (pedido da Mariana, 2026-10-21): arrastar o item ou usar as
+  // setas. As posições viram 1, 2, 3... e só o que mudou é gravado.
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+
+  async function reordenar(novaOrdem: ChecklistItem[]) {
+    const antes = items;
+    const proximos = novaOrdem.map((i, indice) => ({ ...i, position: indice + 1 }));
+    const mudaram = proximos.filter((i) => antes.find((a) => a.id === i.id)?.position !== i.position);
+    setItems(proximos);
+    if (mudaram.length === 0) return;
+    const resultados = await Promise.all(
+      mudaram.map((i) => supabase.from("task_checklist_items").update({ position: i.position }).eq("id", i.id))
+    );
+    if (resultados.some((r) => r.error)) {
+      setItems(antes);
+      return;
+    }
+    syncChecklistWiki(supabase, pageId, proximos).catch(() => {});
+  }
+
+  function mover(item: ChecklistItem, passo: -1 | 1) {
+    const i = items.findIndex((x) => x.id === item.id);
+    const j = i + passo;
+    if (i < 0 || j < 0 || j >= items.length) return;
+    const nova = [...items];
+    [nova[i], nova[j]] = [nova[j], nova[i]];
+    reordenar(nova);
+  }
+
+  function soltarAntesDe(alvoId: string) {
+    const origem = arrastando;
+    setArrastando(null);
+    setSobre(null);
+    if (!origem || origem === alvoId) return;
+    const item = items.find((x) => x.id === origem);
+    if (!item) return;
+    const sem = items.filter((x) => x.id !== origem);
+    const indice = sem.findIndex((x) => x.id === alvoId);
+    sem.splice(indice < 0 ? sem.length : indice, 0, item);
+    reordenar(sem);
+  }
+
   async function remover(item: ChecklistItem) {
     const proximos = items.filter((i) => i.id !== item.id);
     setItems(proximos);
@@ -1131,11 +1175,39 @@ function ChecklistTab({
         </p>
       )}
       <div className="space-y-1">
-        {items.map((item) => (
+        {items.map((item, indice) => (
           <div
             key={item.id}
-            className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-surface-hover"
+            draggable
+            onDragStart={(e) => {
+              setArrastando(item.id);
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", item.id);
+            }}
+            onDragEnd={() => {
+              setArrastando(null);
+              setSobre(null);
+            }}
+            onDragOver={(e) => {
+              if (!arrastando) return;
+              e.preventDefault();
+              if (sobre !== item.id) setSobre(item.id);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              soltarAntesDe(item.id);
+            }}
+            className={`group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-surface-hover ${
+              arrastando === item.id ? "opacity-40" : ""
+            } ${sobre === item.id && arrastando !== item.id ? "shadow-[inset_0_2px_0_0_rgb(var(--color-brand))]" : ""}`}
           >
+            <span
+              className="cursor-grab select-none px-0.5 text-xs leading-none text-ink-muted active:cursor-grabbing"
+              title="Arraste pra mudar a ordem"
+              aria-hidden="true"
+            >
+              ⠿
+            </span>
             <input
               type="checkbox"
               checked={item.done}
@@ -1148,6 +1220,28 @@ function ChecklistTab({
             >
               {item.title}
             </span>
+            <span className="flex flex-shrink-0 items-center sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+              <button
+                type="button"
+                onClick={() => mover(item, -1)}
+                disabled={indice === 0}
+                aria-label={`Subir "${item.title}"`}
+                title="Subir"
+                className="flex h-7 w-7 items-center justify-center rounded text-xs text-ink-muted hover:bg-surface hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => mover(item, 1)}
+                disabled={indice === items.length - 1}
+                aria-label={`Descer "${item.title}"`}
+                title="Descer"
+                className="flex h-7 w-7 items-center justify-center rounded text-xs text-ink-muted hover:bg-surface hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+              >
+                ↓
+              </button>
+            </span>
             <button
               onClick={() => remover(item)}
               className="text-xs text-ink-muted hover:text-danger"
@@ -1156,6 +1250,20 @@ function ChecklistTab({
             </button>
           </div>
         ))}
+        {/* Soltar no fim da lista. */}
+        {arrastando && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (sobre !== "fim") setSobre("fim");
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              soltarAntesDe("fim");
+            }}
+            className={`h-6 rounded-md border border-dashed ${sobre === "fim" ? "border-brand" : "border-transparent"}`}
+          />
+        )}
         {!carregando && items.length === 0 && (
           <p className="text-xs text-ink-muted">Nenhum item ainda.</p>
         )}
