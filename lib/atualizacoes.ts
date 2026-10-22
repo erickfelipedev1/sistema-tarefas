@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-22",
     area: "Tarefas",
+    titulo: "Pré-visualização dos anexos",
+    texto: "Clique num anexo da tarefa pra ver ali mesmo: imagem, vídeo, áudio, PDF e texto abrem numa janela, com setas pra passar de um pro outro. As imagens ganharam miniatura na lista.",
+  },
+  {
+    data: "2026-10-22",
+    area: "Tarefas",
     titulo: "Reordenar o checklist",
     texto: "Os itens do checklist agora mudam de ordem: arraste pelo ⠿ ou use as setas ↑↓ ao lado de cada item. Pedido da Mariana.",
   },

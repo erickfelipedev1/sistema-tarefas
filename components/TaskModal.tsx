@@ -31,6 +31,7 @@ import { carregarResumos, resumoVazio, type ResumoTarefa } from "@/lib/task-resu
 import { avisarMencao, avisarMencaoNaDescricao, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
 import StatusDaPostagemPicker from "./posts/StatusDaPostagemPicker";
+import VisualizadorDeArquivos, { tipoDoArquivoPeloNome } from "./VisualizadorDeArquivos";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
@@ -1390,6 +1391,9 @@ function AnexosTab({
     return linkDoArquivo("task-attachments", caminho);
   }
 
+  // Pré-visualização: clicar no anexo abre aqui dentro (setas passam pro próximo).
+  const [vendo, setVendo] = useState<number | null>(null);
+
   return (
     <div>
       <label className="mb-3 block">
@@ -1404,19 +1408,32 @@ function AnexosTab({
         />
       </label>
       <div className="space-y-1">
-        {anexos.map((a) => (
+        {anexos.map((a, indice) => (
           <div
             key={a.id}
             className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2"
           >
-            <a
-              href={urlPublica(a.file_path)}
-              target="_blank"
-              rel="noreferrer"
-              className="truncate text-sm text-ink hover:underline"
+            <button
+              type="button"
+              onClick={() => setVendo(indice)}
+              title="Visualizar"
+              className="flex min-w-0 items-center gap-2 text-left text-sm text-ink hover:underline"
             >
-              📎 {a.file_name}
-            </a>
+              {tipoDoArquivoPeloNome(a.file_name) === "imagem" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={urlPublica(a.file_path)}
+                  alt=""
+                  loading="lazy"
+                  className="h-9 w-9 flex-shrink-0 rounded border border-line bg-canvas object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded border border-line bg-canvas text-[10px] font-semibold uppercase text-ink-muted">
+                  {(a.file_name.split(".").pop() ?? "").slice(0, 4) || "📎"}
+                </span>
+              )}
+              <span className="truncate">{a.file_name}</span>
+            </button>
             <div className="flex flex-shrink-0 items-center gap-3">
               <a
                 href={linkParaBaixar("task-attachments", a.file_path, a.file_name)}
@@ -1442,6 +1459,17 @@ function AnexosTab({
           <p className="text-xs text-ink-muted">Nenhum anexo ainda.</p>
         )}
       </div>
+      {vendo !== null && anexos.length > 0 && (
+        <VisualizadorDeArquivos
+          arquivos={anexos.map((a) => ({
+            nome: a.file_name,
+            url: urlPublica(a.file_path),
+            urlBaixar: linkParaBaixar("task-attachments", a.file_path, a.file_name),
+          }))}
+          inicial={Math.min(vendo, anexos.length - 1)}
+          aoFechar={() => setVendo(null)}
+        />
+      )}
     </div>
   );
 }
