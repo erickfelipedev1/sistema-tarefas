@@ -1394,6 +1394,36 @@ function AnexosTab({
   // Pré-visualização: clicar no anexo abre aqui dentro (setas passam pro próximo).
   const [vendo, setVendo] = useState<number | null>(null);
 
+  // Miniaturas das imagens: os links assinados de todas saem num pedido só
+  // (em vez de cada miniatura passar pela rota /arquivos), direto do
+  // armazenamento. O plano do Supabase não gera versão reduzida: é a foto.
+  const [miniaturas, setMiniaturas] = useState<Record<string, string>>({});
+  const [falhas, setFalhas] = useState<Set<string>>(new Set());
+  const caminhosDasImagens = anexos
+    .filter((a) => tipoDoArquivoPeloNome(a.file_name) === "imagem")
+    .map((a) => a.file_path)
+    .sort()
+    .join("|");
+  useEffect(() => {
+    const faltam = caminhosDasImagens.split("|").filter((c) => c && !(c in miniaturas));
+    if (faltam.length === 0) return;
+    let ativo = true;
+    supabase.storage
+      .from("task-attachments")
+      .createSignedUrls(faltam, 3600)
+      .then(({ data }) => {
+        if (!ativo) return;
+        const novos: Record<string, string> = {};
+        for (const c of faltam) novos[c] = "";
+        for (const d of data ?? []) if (d.path && d.signedUrl) novos[d.path] = d.signedUrl;
+        setMiniaturas((atual) => ({ ...atual, ...novos }));
+      });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caminhosDasImagens]);
+
   return (
     <div>
       <label className="mb-3 block">
@@ -1419,14 +1449,21 @@ function AnexosTab({
               title="Visualizar"
               className="flex min-w-0 items-center gap-2 text-left text-sm text-ink hover:underline"
             >
-              {tipoDoArquivoPeloNome(a.file_name) === "imagem" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={urlPublica(a.file_path)}
-                  alt=""
-                  loading="lazy"
-                  className="h-9 w-9 flex-shrink-0 rounded border border-line bg-canvas object-cover"
-                />
+              {tipoDoArquivoPeloNome(a.file_name) === "imagem" && !falhas.has(a.file_path) && miniaturas[a.file_path] !== "" ? (
+                <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded border border-line bg-canvas">
+                  {miniaturas[a.file_path] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={miniaturas[a.file_path]}
+                      alt=""
+                      decoding="async"
+                      onError={() => setFalhas((atual) => new Set(atual).add(a.file_path))}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 animate-pulse bg-surface-hover" aria-hidden="true" />
+                  )}
+                </span>
               ) : (
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded border border-line bg-canvas text-[10px] font-semibold uppercase text-ink-muted">
                   {(a.file_name.split(".").pop() ?? "").slice(0, 4) || "📎"}
