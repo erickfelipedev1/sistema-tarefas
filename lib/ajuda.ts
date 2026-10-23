@@ -87,7 +87,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Dá pra aumentar ou diminuir o calendário?",
     resposta:
-      "Dá: use o − e o + ao lado de Mês | Semana | Dia. No Mês muda quantas tarefas aparecem por dia; na Semana e no Dia, a altura de cada hora. Fica salvo no seu navegador.",
+      "Dá. No Mês, arraste a borda de baixo de uma semana pra cima ou pra baixo (dois cliques na borda voltam ao normal). O − e o + ao lado de Mês | Semana | Dia mudam todas as semanas de uma vez e a altura das horas na Semana e no Dia. Fica salvo no seu navegador.",
     palavras: ["calendário", "aumentar", "diminuir", "tamanho", "zoom", "maior", "menor", "+ mais"],
     link: { rotulo: "Abrir o Calendário", href: "/calendario" },
   },

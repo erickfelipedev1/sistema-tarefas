@@ -14,8 +14,8 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
     area: "Calendário",
-    titulo: "Calendário maior ou menor",
-    texto: "Ao lado de Mês | Semana | Dia, os botões − e + mudam o tamanho do calendário: no Mês cabem mais (ou menos) tarefas por dia antes do \"+N mais\"; na Semana e no Dia, cada hora fica mais alta. A escolha fica salva no seu navegador.",
+    titulo: "Calendário maior ou menor, semana por semana",
+    texto: "No Mês, arraste a borda de baixo de cada semana pra deixá-la mais alta (mostra mais tarefas por dia) ou mais baixa; dois cliques na borda voltam ao normal. Os botões − e +, ao lado de Mês | Semana | Dia, mudam todas de uma vez (e a altura das horas na Semana e no Dia). Fica salvo no seu navegador.",
   },
   {
     data: "2026-10-23",

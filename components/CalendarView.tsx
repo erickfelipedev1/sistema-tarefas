@@ -51,6 +51,10 @@ const TAMANHOS = [
 ] as const;
 const TAMANHO_PADRAO = 1;
 const CHAVE_DO_TAMANHO = "dhub-calendario-tamanho";
+// Altura de cada semana do Mês arrastada à mão (quantas faixas de tarefa
+// mostrar), por semana (data do primeiro dia). Fica no navegador.
+const CHAVE_DAS_LINHAS = "dhub-calendario-linhas";
+const MAX_FAIXAS_ARRASTADAS = 20;
 const ESPACO_ENTRE_FAIXAS = 4; // px
 const TOPO_DAS_FAIXAS = 36; // px: onde acaba o número do dia
 
@@ -336,7 +340,61 @@ export default function CalendarView({
       // Sem acesso ao armazenamento: fica o tamanho padrão.
     }
   }, []);
+  // Semanas com altura escolhida arrastando a borda de baixo.
+  const [linhasDaSemana, setLinhasDaSemana] = useState<Record<string, number>>({});
+  useEffect(() => {
+    try {
+      const bruto = window.localStorage.getItem(CHAVE_DAS_LINHAS);
+      const lido = bruto ? (JSON.parse(bruto) as Record<string, number>) : {};
+      if (lido && typeof lido === "object") setLinhasDaSemana(lido);
+    } catch {
+      // Sem acesso ao armazenamento: todas no tamanho geral.
+    }
+  }, []);
+  function guardarLinhas(proximas: Record<string, number>) {
+    try {
+      // Só as 60 semanas mais recentes, pra não crescer sem fim.
+      const chaves = Object.keys(proximas).sort().slice(-60);
+      window.localStorage.setItem(CHAVE_DAS_LINHAS, JSON.stringify(Object.fromEntries(chaves.map((k) => [k, proximas[k]]))));
+    } catch {
+      // Só não fica lembrado.
+    }
+  }
+  const arraste = useRef<{ chave: string; y: number; linhas: number } | null>(null);
+  function comecarArraste(e: React.PointerEvent<HTMLDivElement>, chave: string, linhasAtuais: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    arraste.current = { chave, y: e.clientY, linhas: linhasAtuais };
+  }
+  function moverArraste(e: React.PointerEvent<HTMLDivElement>) {
+    const a = arraste.current;
+    if (!a) return;
+    const passo = TAMANHOS[nivel].faixa + ESPACO_ENTRE_FAIXAS;
+    const linhas = Math.min(MAX_FAIXAS_ARRASTADAS, Math.max(1, a.linhas + Math.round((e.clientY - a.y) / passo)));
+    setLinhasDaSemana((atual) => (atual[a.chave] === linhas ? atual : { ...atual, [a.chave]: linhas }));
+  }
+  function soltarArraste() {
+    if (!arraste.current) return;
+    arraste.current = null;
+    setLinhasDaSemana((atual) => {
+      guardarLinhas(atual);
+      return atual;
+    });
+  }
+  function voltarLinhaAoPadrao(chave: string) {
+    setLinhasDaSemana((atual) => {
+      const proximas = { ...atual };
+      delete proximas[chave];
+      guardarLinhas(proximas);
+      return proximas;
+    });
+  }
+
   function mudarTamanho(passo: -1 | 1) {
+    // O − / + vale pra todas as semanas: tira os ajustes feitos à mão.
+    setLinhasDaSemana({});
+    guardarLinhas({});
     setNivel((n) => {
       const novo = Math.min(TAMANHOS.length - 1, Math.max(0, n + passo));
       try {
@@ -355,10 +413,17 @@ export default function CalendarView({
     const lista = [];
     for (let i = 0; i < celulas.length; i += 7) {
       const dias = celulas.slice(i, i + 7);
-      lista.push({ dias, ...montarSemana(dias.map((d) => dateKey(d.date)), tarefasVisiveis, tamanho.faixas) });
+      const chave = dateKey(dias[0].date);
+      const escolhidas = linhasDaSemana[chave];
+      lista.push({
+        dias,
+        chave,
+        escolhidas,
+        ...montarSemana(dias.map((d) => dateKey(d.date)), tarefasVisiveis, escolhidas ?? tamanho.faixas),
+      });
     }
     return lista;
-  }, [celulas, tarefasVisiveis, tamanho.faixas]);
+  }, [celulas, tarefasVisiveis, tamanho.faixas, linhasDaSemana]);
 
   const tasksPorDia = useMemo(() => {
     const mapa: Record<string, Task[]> = {};
@@ -629,15 +694,17 @@ export default function CalendarView({
               </div>
 
               {semanas.map((semana, si) => {
+                // Semana arrastada: fica da altura escolhida, mesmo sem tarefas.
+                const linhasNaTela = semana.escolhidas ?? semana.faixas;
                 const altura = Math.max(
-                  100,
+                  semana.escolhidas !== undefined ? 0 : 100,
                   TOPO_DAS_FAIXAS +
-                    semana.faixas * (ALTURA_FAIXA + ESPACO_ENTRE_FAIXAS) +
+                    linhasNaTela * (ALTURA_FAIXA + ESPACO_ENTRE_FAIXAS) +
                     (semana.ocultos.some((n) => n > 0) ? 20 : 0) +
                     6
                 );
                 return (
-                  <div key={si} className="relative grid grid-cols-7 border-t border-line">
+                  <div key={si} className="group/semana relative grid grid-cols-7 border-t border-line">
                     {semana.dias.map(({ date, noMesAtual }, ci) => {
                       const key = dateKey(date);
                       const ehHoje = key === hojeKey;
@@ -718,6 +785,32 @@ export default function CalendarView({
                           onExcluir={(e) => handleDeleteTask(e, seg.task)}
                         />
                       ))}
+                    </div>
+
+                    {/* Alça: arrastar a borda de baixo muda a altura desta semana;
+                        dois cliques voltam ao tamanho geral. */}
+                    <div
+                      role="separator"
+                      aria-orientation="horizontal"
+                      aria-label="Arraste pra mudar a altura desta semana"
+                      title="Arraste pra aumentar ou diminuir esta semana (dois cliques: volta ao tamanho geral)"
+                      onPointerDown={(e) => comecarArraste(e, semana.chave, linhasNaTela)}
+                      onPointerMove={moverArraste}
+                      onPointerUp={soltarArraste}
+                      onPointerCancel={soltarArraste}
+                      onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        voltarLinhaAoPadrao(semana.chave);
+                      }}
+                      className="absolute inset-x-0 -bottom-1 z-20 flex h-2.5 cursor-row-resize touch-none items-center justify-center"
+                    >
+                      <span
+                        className={`h-1 w-10 rounded-full transition-opacity ${
+                          semana.escolhidas !== undefined ? "bg-cal opacity-70" : "bg-ink-muted/40 opacity-0 group-hover/semana:opacity-100"
+                        }`}
+                        aria-hidden="true"
+                      />
                     </div>
                   </div>
                 );
