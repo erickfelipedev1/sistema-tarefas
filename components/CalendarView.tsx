@@ -228,6 +228,8 @@ export default function CalendarView({
   const [busca, setBusca] = useState("");
   // Líderes (verTudo): de quem ver o calendário. "" = todo mundo.
   const [pessoaFiltro, setPessoaFiltro] = useState("");
+  // Cliente ("" = todos, "geral" = sem cliente); combina com o de pessoa.
+  const [clienteFiltro, setClienteFiltro] = useState("");
 
   const hoje = new Date();
   const [visao, setVisao] = useState<Visao>("mes");
@@ -310,9 +312,10 @@ export default function CalendarView({
       ) {
         return false;
       }
+      if (clienteFiltro === "geral" ? !!t.project_id : clienteFiltro && t.project_id !== clienteFiltro) return false;
       return true;
     });
-  }, [tasks, busca, pessoaFiltro]);
+  }, [tasks, busca, pessoaFiltro, clienteFiltro]);
 
   // Visão Mês: as barras de cada semana.
   const semanas = useMemo(() => {
@@ -451,12 +454,28 @@ export default function CalendarView({
                 <option value="">Todo mundo</option>
                 {currentUserId && <option value={currentUserId}>Eu</option>}
                 {profiles
-                  .filter((p) => p.id !== currentUserId)
+                  .filter((p) => p.id !== currentUserId && (p.ativo !== false || p.id === pessoaFiltro))
                   .map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name || p.username || "Sem nome"}
                     </option>
                   ))}
+              </select>
+            )}
+            {projects.length > 0 && (
+              <select
+                value={clienteFiltro}
+                onChange={(e) => setClienteFiltro(e.target.value)}
+                aria-label="Filtrar por cliente"
+                className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none sm:w-52"
+              >
+                <option value="">Todos os clientes</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+                <option value="geral">Sem cliente</option>
               </select>
             )}
             <SearchInput

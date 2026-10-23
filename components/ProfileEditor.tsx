@@ -10,6 +10,7 @@ import TrocarSenha from "./TrocarSenha";
 
 const MAX_NAME = 50;
 const MAX_CARGO = 60;
+const MAX_DESCRICAO = 500;
 const MAX_FOTO_MB = 5;
 
 const campoClasse =
@@ -24,6 +25,8 @@ export default function ProfileEditor({
   initialAvatarUrl,
   initialCargo,
   cargoDisponivel,
+  initialDescricao = "",
+  descricaoDisponivel = false,
 }: {
   userId: string;
   username: string | null;
@@ -31,6 +34,9 @@ export default function ProfileEditor({
   initialAvatarUrl: string | null;
   initialCargo: string;
   cargoDisponivel: boolean;
+  // O que a pessoa faz na equipe (migration 0090).
+  initialDescricao?: string;
+  descricaoDisponivel?: boolean;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -38,8 +44,9 @@ export default function ProfileEditor({
 
   const [name, setName] = useState(initialName);
   const [cargo, setCargo] = useState(initialCargo);
-  const [salvos, setSalvos] = useState({ name: initialName.trim(), cargo: initialCargo.trim() });
-  const mudou = name.trim() !== salvos.name || cargo.trim() !== salvos.cargo;
+  const [descricao, setDescricao] = useState(initialDescricao);
+  const [salvos, setSalvos] = useState({ name: initialName.trim(), cargo: initialCargo.trim(), descricao: initialDescricao.trim() });
+  const mudou = name.trim() !== salvos.name || cargo.trim() !== salvos.cargo || descricao.trim() !== salvos.descricao;
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -50,6 +57,7 @@ export default function ProfileEditor({
     name?: string;
     avatar_url?: string | null;
     cargo?: string | null;
+    descricao?: string | null;
   }) {
     const { error } = await supabase.from("profiles").update(campos).eq("id", userId);
     if (error) {
@@ -117,10 +125,11 @@ export default function ProfileEditor({
     setErro(null);
     setSucesso(null);
     setSalvando(true);
-    const campos: { name: string; cargo?: string | null } = { name: nome };
+    const campos: { name: string; cargo?: string | null; descricao?: string | null } = { name: nome };
     if (cargoDisponivel) campos.cargo = cargo.trim() || null;
+    if (descricaoDisponivel) campos.descricao = descricao.trim() || null;
     if (await salvarPerfil(campos)) {
-      setSalvos({ name: nome, cargo: cargo.trim() });
+      setSalvos({ name: nome, cargo: cargo.trim(), descricao: descricao.trim() });
       setSucesso("Dados atualizados.");
     }
     setSalvando(false);
@@ -177,7 +186,7 @@ export default function ProfileEditor({
             </div>
             <div>
               <label htmlFor="cargo" className="mb-1.5 block text-xs font-medium text-ink-muted">
-                Cargo
+                Função
               </label>
               <input
                 id="cargo"
@@ -190,6 +199,22 @@ export default function ProfileEditor({
               />
             </div>
           </div>
+          {descricaoDisponivel && (
+            <div className="mt-3">
+              <label htmlFor="descricao" className="mb-1.5 block text-xs font-medium text-ink-muted">
+                Descrição <span className="font-normal">(o que você faz na equipe)</span>
+              </label>
+              <textarea
+                id="descricao"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value.slice(0, MAX_DESCRICAO))}
+                maxLength={MAX_DESCRICAO}
+                rows={3}
+                placeholder="Ex: Cuido das artes e dos reels dos clientes; me chame pra ajuste de layout."
+                className={campoClasse}
+              />
+            </div>
+          )}
           {!cargoDisponivel && (
             <p className="mt-2 text-xs text-warning">
               O campo Cargo fica disponível depois de rodar a migration 0034_profile_cargo.sql no

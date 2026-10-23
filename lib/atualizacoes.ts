@@ -12,6 +12,30 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-10-23",
+    area: "Tarefas",
+    titulo: "Duplicar tarefa",
+    texto: "No rodapé da tarefa, o botão Duplicar cria uma cópia com descrição, copy, datas, responsáveis, checklist (desmarcado) e etiquetas, e já abre a cópia.",
+  },
+  {
+    data: "2026-10-23",
+    area: "Clientes",
+    titulo: "Busca nas tarefas do cliente",
+    texto: "O quadro de tarefas dentro de cada cliente ganhou a caixa de busca.",
+  },
+  {
+    data: "2026-10-23",
+    area: "Calendário",
+    titulo: "Filtrar o calendário por cliente",
+    texto: "O calendário filtra por cliente (ou Sem cliente). Pra liderança, dá pra combinar com o filtro de pessoa: as tarefas de alguém num cliente.",
+  },
+  {
+    data: "2026-10-23",
+    area: "Sistema",
+    titulo: "Função e descrição de cada pessoa",
+    texto: "Em Meu perfil, cada um coloca a função e uma descrição do que faz. A seção Equipe mostra a de todo mundo, e a liderança pode editar.",
+  },
+  {
     data: "2026-10-22",
     area: "Tarefas",
     titulo: "Corretor e links azuis na descrição e na copy",

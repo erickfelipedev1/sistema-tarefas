@@ -833,6 +833,12 @@ export default function TaskBoard({
             Nova tarefa
           </Button>
           <SeletorDeVisao visao={visao} aoTrocar={escolherVisao} />
+          <SearchInput
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar tarefas..."
+            className="w-full sm:w-56"
+          />
           {subprojetos.length > 0 && (
             <select
               value={projetoDoFiltro}

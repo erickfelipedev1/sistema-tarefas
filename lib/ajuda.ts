@@ -72,6 +72,25 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["corretor", "ortografia", "gramática", "revisar", "erro de português", "link", "hiperlink", "azul"],
   },
   {
+    pergunta: "Dá pra duplicar uma tarefa?",
+    resposta:
+      "Dá: abra a tarefa e clique em Duplicar, no rodapé de Detalhes. A cópia leva descrição, copy, datas, responsáveis, checklist (desmarcado) e etiquetas, e abre na hora pra você ajustar. Comentários, anexos e o post não vão junto.",
+    palavras: ["duplicar", "copiar tarefa", "cópia", "repetir tarefa", "clonar"],
+  },
+  {
+    pergunta: "Como filtro o calendário por cliente ou pessoa?",
+    resposta:
+      "No topo do Calendário, escolha o cliente (ou Sem cliente). Quem é da liderança também escolhe a pessoa, e os dois filtros funcionam juntos.",
+    palavras: ["calendário", "filtro", "filtrar", "cliente", "responsável", "pessoa"],
+    link: { rotulo: "Abrir o Calendário", href: "/calendario" },
+  },
+  {
+    pergunta: "Onde vejo o que cada pessoa da equipe faz?",
+    resposta: "Em Meu perfil, na seção Equipe: a função e a descrição de cada um. A sua você edita em Dados; a liderança edita a de todos.",
+    palavras: ["equipe", "função", "cargo", "descrição", "quem faz", "perfil"],
+    link: { rotulo: "Abrir Meu perfil", href: "/conta/perfil" },
+  },
+  {
     pergunta: "Como menciono alguém?",
     resposta:
       "Digite @ na descrição, nos comentários, no chat ou na resposta ao cliente e escolha a pessoa (ou @Todos). Quem é citado recebe aviso no sininho e no celular.",

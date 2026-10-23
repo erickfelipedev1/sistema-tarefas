@@ -1,7 +1,7 @@
 "use client";
 
 import { linkDoArquivo, linkParaBaixar } from "@/lib/arquivos";
-import { DownloadIcon } from "@/components/ui/icons";
+import { CopyIcon, DownloadIcon } from "@/components/ui/icons";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import EditorDeTexto from "@/components/EditorDeTexto";
 import { erroDeHorario } from "@/lib/horarios";
@@ -399,6 +399,65 @@ export default function TaskModal({
     const proximos = assignedTo.filter((a) => a !== id);
     setAssignedTo(proximos);
     if (!isNovo) salvarCampo({ assigned_to: proximos });
+  }
+
+  // Duplicar (pedido da Emilly, 2026-10-22): uma tarefa nova igual a esta,
+  // com o checklist (desmarcado) e as etiquetas. Não leva comentários,
+  // anexos, horas nem o post; menções da descrição não avisam de novo.
+  const [duplicando, setDuplicando] = useState(false);
+  async function duplicar() {
+    if (!current || duplicando) return;
+    setDuplicando(true);
+    setErro(null);
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({
+        title: `${current.title} (cópia)`.slice(0, 500),
+        description: current.description,
+        description_html: current.description_html ?? null,
+        description_mentions: [],
+        copy_text: current.copy_text ?? null,
+        copy_html: current.copy_html ?? null,
+        status: "todo",
+        position: getNextPosition("todo"),
+        start_date: current.start_date ?? null,
+        due_date: current.due_date,
+        start_time: current.start_time ?? null,
+        due_time: current.due_time,
+        repeat_rule: current.repeat_rule,
+        color: current.color,
+        project_id: current.project_id,
+        subproject_id: current.subproject_id ?? null,
+        parent_id: current.parent_id ?? null,
+        tipo: current.tipo ?? "geral",
+        assigned_to: current.assigned_to,
+        created_by_label: currentUserLabel,
+      })
+      .select()
+      .single();
+    if (error || !data) {
+      setDuplicando(false);
+      setErro(`Não deu pra duplicar a tarefa: ${error?.message ?? "erro desconhecido"}`);
+      return;
+    }
+    const nova = data as Task;
+    const [{ data: itens }, { data: etiquetas }] = await Promise.all([
+      supabase.from("task_checklist_items").select("title, position").eq("task_id", current.id),
+      supabase.from("task_label_links").select("label_id").eq("task_id", current.id),
+    ]);
+    await Promise.all([
+      (itens ?? []).length
+        ? supabase.from("task_checklist_items").insert((itens ?? []).map((i) => ({ task_id: nova.id, title: i.title, position: i.position, done: false })))
+        : Promise.resolve(),
+      (etiquetas ?? []).length
+        ? supabase.from("task_label_links").insert((etiquetas ?? []).map((l) => ({ task_id: nova.id, label_id: l.label_id })))
+        : Promise.resolve(),
+    ]);
+    setDuplicando(false);
+    onCreated(nova);
+    if (nova.assigned_to.length > 0) avisarTarefaAtribuida(nova.id).catch(() => {});
+    // Abre a cópia pra já ajustar o que precisar.
+    if (onAbrirOutra) onAbrirOutra(nova);
   }
 
   async function excluirTarefa() {
@@ -922,13 +981,25 @@ export default function TaskModal({
                     {saving ? "Criando..." : "Criar tarefa"}
                   </button>
                 ) : (
-                  <button
-                    onClick={excluirTarefa}
-                    title="Excluir tarefa"
-                    className="text-sm text-ink-muted hover:text-danger"
-                  >
-                    🗑️
-                  </button>
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={duplicar}
+                      disabled={duplicando}
+                      title="Criar uma cópia desta tarefa"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-hover disabled:opacity-60"
+                    >
+                      <CopyIcon className="h-3.5 w-3.5" />
+                      {duplicando ? "Duplicando..." : "Duplicar"}
+                    </button>
+                    <button
+                      onClick={excluirTarefa}
+                      title="Excluir tarefa"
+                      className="text-sm text-ink-muted hover:text-danger"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 )}
               </div>
 
