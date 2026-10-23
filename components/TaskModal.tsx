@@ -1414,42 +1414,56 @@ function AnexosTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
-  async function enviarArquivo(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    if (!arquivo) return;
+  // Vários de uma vez (escolhendo na janela ou arrastando pra área): um
+  // atrás do outro, com o progresso. Limite do Supabase: 50 MB por arquivo.
+  const LIMITE_MB = 50;
+  const [progresso, setProgresso] = useState<string | null>(null);
+  const [sobreArea, setSobreArea] = useState(false);
+  async function enviarArquivos(arquivos: File[]) {
+    if (arquivos.length === 0 || enviando) return;
     setEnviando(true);
-    const caminho = `${taskId}/${Date.now()}-${nomeSeguro(arquivo.name)}`;
-    const { error: erroUpload } = await supabase.storage
-      .from("task-attachments")
-      .upload(caminho, arquivo);
-
-    if (erroUpload) {
-      window.alert(`Não consegui enviar o arquivo: ${erroUpload.message}`);
-      setEnviando(false);
-      e.target.value = "";
-      return;
+    const grandes: string[] = [];
+    const falhas: string[] = [];
+    let atuais = anexos;
+    for (let i = 0; i < arquivos.length; i++) {
+      const arquivo = arquivos[i];
+      setProgresso(arquivos.length > 1 ? `Enviando ${i + 1} de ${arquivos.length}...` : "Enviando...");
+      if (arquivo.size > LIMITE_MB * 1024 * 1024) {
+        grandes.push(arquivo.name);
+        continue;
+      }
+      const caminho = `${taskId}/${Date.now()}-${i}-${nomeSeguro(arquivo.name)}`;
+      const { error: erroUpload } = await supabase.storage.from("task-attachments").upload(caminho, arquivo);
+      if (erroUpload) {
+        falhas.push(arquivo.name);
+        continue;
+      }
+      const { data, error } = await supabase
+        .from("task_attachments")
+        .insert({ task_id: taskId, file_name: arquivo.name, file_path: caminho, uploaded_by_label: currentUserLabel })
+        .select()
+        .single();
+      if (error || !data) {
+        falhas.push(arquivo.name);
+        continue;
+      }
+      atuais = atuais.some((a) => a.id === data.id) ? atuais : [data, ...atuais];
+      setAnexos(atuais);
     }
-
-    const { data, error } = await supabase
-      .from("task_attachments")
-      .insert({
-        task_id: taskId,
-        file_name: arquivo.name,
-        file_path: caminho,
-        uploaded_by_label: currentUserLabel,
-      })
-      .select()
-      .single();
-
     setEnviando(false);
+    setProgresso(null);
+    syncAnexosWiki(supabase, pageId, atuais).catch(() => {});
+    const avisos = [
+      grandes.length ? `Passam de ${LIMITE_MB} MB e não foram: ${grandes.join(", ")}. Arquivo grande: mande pelo Google Drive e cole o link nos comentários.` : "",
+      falhas.length ? `Não deu pra enviar: ${falhas.join(", ")}. Tente de novo.` : "",
+    ].filter(Boolean);
+    if (avisos.length) window.alert(avisos.join("\n\n"));
+  }
+
+  async function enviarArquivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivos = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!error && data) {
-      const proximos = anexos.some((a) => a.id === data.id)
-        ? anexos
-        : [data, ...anexos];
-      setAnexos(proximos);
-      syncAnexosWiki(supabase, pageId, proximos).catch(() => {});
-    }
+    await enviarArquivos(arquivos);
   }
 
   async function remover(anexo: TaskAttachment) {
@@ -1499,16 +1513,28 @@ function AnexosTab({
 
   return (
     <div>
-      <label className="mb-3 block">
-        <span className="mb-1 block text-xs font-medium text-ink-muted">
-          {enviando ? "Enviando..." : "Anexar arquivo"}
+      <label
+        onDragOver={(e) => {
+          if (Array.from(e.dataTransfer.items).some((i) => i.kind === "file")) {
+            e.preventDefault();
+            setSobreArea(true);
+          }
+        }}
+        onDragLeave={() => setSobreArea(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setSobreArea(false);
+          enviarArquivos(Array.from(e.dataTransfer.files ?? []));
+        }}
+        className={`mb-3 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+          sobreArea ? "border-brand bg-brand/10" : "border-line hover:border-brand/50 hover:bg-surface-hover/40"
+        } ${enviando ? "pointer-events-none opacity-70" : ""}`}
+      >
+        <span className="text-sm font-medium text-ink">
+          {progresso ?? (sobreArea ? "Solte os arquivos aqui" : "Anexar arquivos")}
         </span>
-        <input
-          type="file"
-          onChange={enviarArquivo}
-          disabled={enviando}
-          className="block w-full text-sm text-ink-muted"
-        />
+        <span className="text-xs text-ink-muted">Clique pra escolher (dá pra marcar vários) ou arraste pra cá · até {LIMITE_MB} MB cada</span>
+        <input type="file" multiple onChange={enviarArquivo} disabled={enviando} className="sr-only" />
       </label>
       {anexos.length > 1 && (
         <div className="mb-2 flex justify-end">

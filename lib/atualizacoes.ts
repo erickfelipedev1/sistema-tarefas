@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
+    area: "Tarefas",
+    titulo: "Vários anexos de uma vez",
+    texto: "Na aba Anexos, escolha vários arquivos de uma vez ou arraste todos pra área de anexar. Até 50 MB cada.",
+  },
+  {
+    data: "2026-10-23",
     area: "Calendário",
     titulo: "Calendário maior ou menor, semana por semana",
     texto: "No Mês, arraste a borda de baixo de cada semana pra deixá-la mais alta (mostra mais tarefas por dia) ou mais baixa; dois cliques na borda voltam ao normal. Os botões − e +, ao lado de Mês | Semana | Dia, mudam todas de uma vez (e a altura das horas na Semana e no Dia). Fica salvo no seu navegador.",

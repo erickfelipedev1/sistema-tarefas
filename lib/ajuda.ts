@@ -60,6 +60,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["imagem", "print", "foto na descrição", "colar imagem", "ctrl+v"],
   },
   {
+    pergunta: "Como anexo arquivos? Dá pra mandar vários?",
+    resposta:
+      "Na aba Anexos da tarefa, clique na área \"Anexar arquivos\" e marque quantos quiser, ou arraste os arquivos pra lá. Cada um pode ter até 50 MB; arquivo maior, mande pelo Google Drive e cole o link nos comentários.",
+    palavras: ["anexar", "anexo", "subir arquivo", "enviar arquivo", "vários arquivos", "upload", "arrastar"],
+  },
+  {
     pergunta: "Como vejo ou baixo os anexos?",
     resposta:
       "Na aba Anexos da tarefa, clique no arquivo pra ver ali mesmo (imagem, vídeo, áudio, PDF). As setas passam de um pro outro. \"Baixar\" baixa um, e \"Baixar todos\" baixa tudo (no computador o navegador pode pedir pra permitir vários downloads).",
