@@ -311,11 +311,12 @@ export default function CalendarView({
 
   const celulas = useMemo(() => buildGrid(ano, mes), [ano, mes]);
 
-  // O que passa pela busca e pelo filtro de pessoa (e tem prazo).
+  // O que passa pela busca e pelo filtro de pessoa (e tem prazo). Subtarefa
+  // não entra: a tarefa principal já está aqui.
   const tarefasVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return tasks.filter((t) => {
-      if (!t.due_date) return false;
+      if (!t.due_date || t.parent_id) return false;
       if (termo && !t.title.toLowerCase().includes(termo)) return false;
       // Pessoa escolhida: é responsável, ou criou e não tem responsável.
       if (

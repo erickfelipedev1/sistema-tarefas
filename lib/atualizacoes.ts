@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
+    area: "Calendário",
+    titulo: "Subtarefas não aparecem mais no calendário",
+    texto: "O calendário mostra só as tarefas principais. As subtarefas continuam na tarefa, no quadro e na lista de quem é responsável, mas não aparecem mais repetidas nas datas.",
+  },
+  {
+    data: "2026-10-23",
     area: "Tarefas",
     titulo: "Tarefa nova entra na ordem de vencimento",
     texto: "Pedido da Mariana: quando uma tarefa com data de vencimento é criada, ela entra na coluna no lugar certo (antes das que vencem depois ou não têm data), em vez de ir pro fim. As outras descem uma posição; a ordem que você arrumou à mão continua. Sem vencimento, vai pro fim como antes.",
