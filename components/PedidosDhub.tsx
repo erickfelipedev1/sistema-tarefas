@@ -349,6 +349,7 @@ export default function PedidosDhub({
                       aoRecusar={() => recusar(p)}
                       aoReabrir={() => mudar(p, { status: "aguardando" })}
                       aoMudarAndamento={(s) => mudar(p, { status: s })}
+                      aoMudarDescricao={(d) => mudar(p, { descricao: d })}
                       aoApagar={() => apagar(p)}
                     />
                   ))}
@@ -371,6 +372,7 @@ function CartaoDoPedido({
   aoRecusar,
   aoReabrir,
   aoMudarAndamento,
+  aoMudarDescricao,
   aoApagar,
 }: {
   pedido: Pedido;
@@ -381,6 +383,7 @@ function CartaoDoPedido({
   aoRecusar: () => void;
   aoReabrir: () => void;
   aoMudarAndamento: (s: StatusDoPedido) => void;
+  aoMudarDescricao: (descricao: string) => void;
   aoApagar: () => void;
 }) {
   const status = STATUS[p.status];
@@ -392,7 +395,9 @@ function CartaoDoPedido({
         <h3 className="min-w-0 flex-1 break-words text-sm font-semibold text-ink">{p.titulo}</h3>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.classe}`}>{status.rotulo}</span>
       </div>
-      {p.descricao && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink-muted">{p.descricao}</p>}
+      {p.descricao && (
+        <DescricaoDoPedido texto={p.descricao} podeRiscar={executa || aprova} aoMudar={aoMudarDescricao} />
+      )}
       {(p.imagens ?? []).length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {(p.imagens ?? []).map((caminho) => (
@@ -471,5 +476,65 @@ function CartaoDoPedido({
         )}
       </div>
     </article>
+  );
+}
+
+// Linha feita = entre ~~ ~~ (migration 0091). Quem faz ou quem aprova clica
+// pra riscar/desriscar; o resto só vê.
+const FEITA = /^\s*~~([\s\S]*)~~\s*$/;
+
+function DescricaoDoPedido({
+  texto,
+  podeRiscar,
+  aoMudar,
+}: {
+  texto: string;
+  podeRiscar: boolean;
+  aoMudar: (descricao: string) => void;
+}) {
+  const linhas = texto.split("\n");
+  const temItens = linhas.filter((l) => l.trim()).length > 1;
+  if (!temItens && !FEITA.test(texto)) {
+    return <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink-muted">{texto}</p>;
+  }
+
+  function alternar(indice: number) {
+    const novas = linhas.map((l, i) => {
+      if (i !== indice) return l;
+      const feita = FEITA.exec(l);
+      return feita ? feita[1] : `~~${l}~~`;
+    });
+    aoMudar(novas.join("\n"));
+  }
+
+  return (
+    <ul className="mt-1 space-y-0.5">
+      {linhas.map((l, i) => {
+        if (!l.trim()) return <li key={i} className="h-2" aria-hidden="true" />;
+        const feita = FEITA.exec(l);
+        const conteudo = feita ? feita[1] : l;
+        const classe = `whitespace-pre-wrap break-words text-sm ${feita ? "text-ink-muted/70 line-through" : "text-ink-muted"}`;
+        return (
+          <li key={i}>
+            {podeRiscar ? (
+              <button
+                type="button"
+                onClick={() => alternar(i)}
+                title={feita ? "Desmarcar (ainda não foi feito)" : "Marcar como feito"}
+                className={`flex w-full items-start gap-1.5 rounded px-1 text-left hover:bg-surface-hover ${classe}`}
+              >
+                <span className={`mt-0.5 flex-shrink-0 text-xs ${feita ? "text-success" : "text-ink-muted/50"}`}>{feita ? "✓" : "○"}</span>
+                <span className="min-w-0 flex-1">{conteudo}</span>
+              </button>
+            ) : (
+              <p className={`flex items-start gap-1.5 px-1 ${classe}`}>
+                {feita && <span className="mt-0.5 flex-shrink-0 text-xs text-success">✓</span>}
+                <span className="min-w-0 flex-1">{conteudo}</span>
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
