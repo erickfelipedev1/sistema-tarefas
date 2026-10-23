@@ -1,12 +1,15 @@
 "use client";
 
-import { linkDoArquivo, linkParaBaixar } from "@/lib/arquivos";
+import { linkDoArquivo } from "@/lib/arquivos";
 import { CopyIcon, DownloadIcon } from "@/components/ui/icons";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import EditorDeTexto from "@/components/EditorDeTexto";
 import { erroDeHorario } from "@/lib/horarios";
 import { LIMITE_DO_HTML, htmlParaTexto, idsDeMencoes, sanitizarHtml, textoParaHtml } from "@/lib/texto-rico";
 import { nomeSeguro } from "@/lib/nome-arquivo";
+import { embedDoAnexo, idDoDriveDoAnexo, linkDoAnexo, linkParaBaixarAnexo, miniaturaDoAnexoNoDrive, PREFIXO_DO_DRIVE } from "@/lib/anexos";
+import { enviarAnexoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
+import { descartarAnexoDoDrive } from "@/lib/actions/drive";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -1415,28 +1418,39 @@ function AnexosTab({
   }, [taskId]);
 
   // Vários de uma vez (escolhendo na janela ou arrastando pra área): um
-  // atrás do outro, com o progresso. Limite do Supabase: 50 MB por arquivo.
-  const LIMITE_MB = 50;
+  // atrás do outro, com o progresso. O Supabase aceita até 50 MB por arquivo;
+  // passou de LIMITE_DO_SUPABASE vai pro Google Drive do d.hub (link aberto
+  // pra quem tiver) e o anexo guarda "drive:<código>".
+  const LIMITE_MB = Math.round(LIMITE_DO_SUPABASE / 1024 / 1024);
   const [progresso, setProgresso] = useState<string | null>(null);
   const [sobreArea, setSobreArea] = useState(false);
   async function enviarArquivos(arquivos: File[]) {
     if (arquivos.length === 0 || enviando) return;
     setEnviando(true);
-    const grandes: string[] = [];
+    const semDrive: string[] = [];
     const falhas: string[] = [];
     let atuais = anexos;
     for (let i = 0; i < arquivos.length; i++) {
       const arquivo = arquivos[i];
-      setProgresso(arquivos.length > 1 ? `Enviando ${i + 1} de ${arquivos.length}...` : "Enviando...");
-      if (arquivo.size > LIMITE_MB * 1024 * 1024) {
-        grandes.push(arquivo.name);
-        continue;
-      }
-      const caminho = `${taskId}/${Date.now()}-${i}-${nomeSeguro(arquivo.name)}`;
-      const { error: erroUpload } = await supabase.storage.from("task-attachments").upload(caminho, arquivo);
-      if (erroUpload) {
-        falhas.push(arquivo.name);
-        continue;
+      const quantos = arquivos.length > 1 ? ` ${i + 1} de ${arquivos.length}` : "";
+      setProgresso(`Enviando${quantos}...`);
+      let caminho: string;
+      if (arquivo.size > LIMITE_DO_SUPABASE) {
+        const r = await enviarAnexoParaODrive(arquivo, (f) =>
+          setProgresso(`Enviando${quantos} pro Google Drive... ${Math.round(f * 100)}%`)
+        );
+        if ("erro" in r) {
+          (r.naoConfigurado ? semDrive : falhas).push(arquivo.name);
+          continue;
+        }
+        caminho = `${PREFIXO_DO_DRIVE}${r.id}`;
+      } else {
+        caminho = `${taskId}/${Date.now()}-${i}-${nomeSeguro(arquivo.name)}`;
+        const { error: erroUpload } = await supabase.storage.from("task-attachments").upload(caminho, arquivo);
+        if (erroUpload) {
+          falhas.push(arquivo.name);
+          continue;
+        }
       }
       const { data, error } = await supabase
         .from("task_attachments")
@@ -1444,6 +1458,10 @@ function AnexosTab({
         .select()
         .single();
       if (error || !data) {
+        // Não ficou registrado: não deixa o arquivo órfão no Drive.
+        const idNoDrive = idDoDriveDoAnexo(caminho);
+        if (idNoDrive) descartarAnexoDoDrive(idNoDrive).catch(() => {});
+        else supabase.storage.from("task-attachments").remove([caminho]).catch(() => {});
         falhas.push(arquivo.name);
         continue;
       }
@@ -1454,7 +1472,9 @@ function AnexosTab({
     setProgresso(null);
     syncAnexosWiki(supabase, pageId, atuais).catch(() => {});
     const avisos = [
-      grandes.length ? `Passam de ${LIMITE_MB} MB e não foram: ${grandes.join(", ")}. Arquivo grande: mande pelo Google Drive e cole o link nos comentários.` : "",
+      semDrive.length
+        ? `Passam de ${LIMITE_MB} MB e o Google Drive do d.hub não está ligado, então não foram: ${semDrive.join(", ")}. Mande pelo Drive e cole o link nos comentários.`
+        : "",
       falhas.length ? `Não deu pra enviar: ${falhas.join(", ")}. Tente de novo.` : "",
     ].filter(Boolean);
     if (avisos.length) window.alert(avisos.join("\n\n"));
@@ -1469,13 +1489,11 @@ function AnexosTab({
   async function remover(anexo: TaskAttachment) {
     const proximos = anexos.filter((a) => a.id !== anexo.id);
     setAnexos(proximos);
-    await supabase.storage.from("task-attachments").remove([anexo.file_path]);
+    const idNoDrive = idDoDriveDoAnexo(anexo.file_path);
+    if (idNoDrive) await descartarAnexoDoDrive(idNoDrive).catch(() => {});
+    else await supabase.storage.from("task-attachments").remove([anexo.file_path]);
     await supabase.from("task_attachments").delete().eq("id", anexo.id);
     syncAnexosWiki(supabase, pageId, proximos).catch(() => {});
-  }
-
-  function urlPublica(caminho: string) {
-    return linkDoArquivo("task-attachments", caminho);
   }
 
   // Pré-visualização: clicar no anexo abre aqui dentro (setas passam pro próximo).
@@ -1486,8 +1504,9 @@ function AnexosTab({
   // armazenamento. O plano do Supabase não gera versão reduzida: é a foto.
   const [miniaturas, setMiniaturas] = useState<Record<string, string>>({});
   const [falhas, setFalhas] = useState<Set<string>>(new Set());
+  // (Os do Drive têm miniatura do próprio Drive.)
   const caminhosDasImagens = anexos
-    .filter((a) => ["imagem", "video"].includes(tipoDoArquivoPeloNome(a.file_name)))
+    .filter((a) => !idDoDriveDoAnexo(a.file_path) && ["imagem", "video"].includes(tipoDoArquivoPeloNome(a.file_name)))
     .map((a) => a.file_path)
     .sort()
     .join("|");
@@ -1533,13 +1552,19 @@ function AnexosTab({
         <span className="text-sm font-medium text-ink">
           {progresso ?? (sobreArea ? "Solte os arquivos aqui" : "Anexar arquivos")}
         </span>
-        <span className="text-xs text-ink-muted">Clique pra escolher (dá pra marcar vários) ou arraste pra cá · até {LIMITE_MB} MB cada</span>
+        <span className="text-xs text-ink-muted">
+          Clique pra escolher (dá pra marcar vários) ou arraste pra cá · acima de {LIMITE_MB} MB vai pro Google Drive
+        </span>
         <input type="file" multiple onChange={enviarArquivo} disabled={enviando} className="sr-only" />
       </label>
       {anexos.length > 1 && (
         <div className="mb-2 flex justify-end">
           <BaixarTodosOsAnexos
-            anexos={anexos.map((a) => ({ nome: a.file_name, url: linkParaBaixar("task-attachments", a.file_path, a.file_name) }))}
+            anexos={anexos.map((a) => ({
+              nome: a.file_name,
+              url: linkParaBaixarAnexo(a.file_path, a.file_name),
+              noDrive: !!idDoDriveDoAnexo(a.file_path),
+            }))}
           />
         </div>
       )}
@@ -1555,7 +1580,12 @@ function AnexosTab({
               title="Visualizar"
               className="flex min-w-0 items-center gap-2 text-left text-sm text-ink hover:underline"
             >
-              {tipoDoArquivoPeloNome(a.file_name) === "imagem" && !falhas.has(a.file_path) && miniaturas[a.file_path] !== "" ? (
+              {idDoDriveDoAnexo(a.file_path) ? (
+                <MiniaturaDoDrive
+                  url={miniaturaDoAnexoNoDrive(a.file_path) ?? ""}
+                  extensao={(a.file_name.split(".").pop() ?? "").slice(0, 4)}
+                />
+              ) : tipoDoArquivoPeloNome(a.file_name) === "imagem" && !falhas.has(a.file_path) && miniaturas[a.file_path] !== "" ? (
                 <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded border border-line bg-canvas">
                   {miniaturas[a.file_path] ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -1584,8 +1614,11 @@ function AnexosTab({
             </button>
             <div className="flex flex-shrink-0 items-center gap-3">
               <a
-                href={linkParaBaixar("task-attachments", a.file_path, a.file_name)}
+                href={linkParaBaixarAnexo(a.file_path, a.file_name)}
                 download={a.file_name}
+                // Do Drive abre em outra aba (arquivo grande: o Drive pede pra confirmar).
+                target={idDoDriveDoAnexo(a.file_path) ? "_blank" : undefined}
+                rel={idDoDriveDoAnexo(a.file_path) ? "noopener noreferrer" : undefined}
                 title={`Baixar ${a.file_name}`}
                 aria-label={`Baixar ${a.file_name}`}
                 className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink"
@@ -1611,14 +1644,43 @@ function AnexosTab({
         <VisualizadorDeArquivos
           arquivos={anexos.map((a) => ({
             nome: a.file_name,
-            url: urlPublica(a.file_path),
-            urlBaixar: linkParaBaixar("task-attachments", a.file_path, a.file_name),
+            url: linkDoAnexo(a.file_path),
+            urlBaixar: linkParaBaixarAnexo(a.file_path, a.file_name),
+            embed: embedDoAnexo(a.file_path) ?? undefined,
           }))}
           inicial={Math.min(vendo, anexos.length - 1)}
           aoFechar={() => setVendo(null)}
         />
       )}
     </div>
+  );
+}
+
+// Anexo guardado no Google Drive: a miniatura vem do Drive (imagem, vídeo,
+// PDF...). Sem miniatura lá, fica a extensão com o selo do Drive.
+function MiniaturaDoDrive({ url, extensao }: { url: string; extensao: string }) {
+  const [falhou, setFalhou] = useState(false);
+  return (
+    <span
+      className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded border border-line bg-canvas text-[10px] font-semibold uppercase text-ink-muted"
+      title="Guardado no Google Drive"
+    >
+      {extensao || "📎"}
+      {url && !falhou && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFalhou(true)}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      <span className="absolute bottom-0 right-0 rounded-tl bg-white/90 px-0.5 text-[8px] font-bold leading-tight text-[#1a73e8]" aria-hidden="true">
+        D
+      </span>
+    </span>
   );
 }
 

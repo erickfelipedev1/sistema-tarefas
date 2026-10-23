@@ -120,7 +120,7 @@ export async function abrirSessaoDeEnvio(opcoes: {
 // Só mexe em arquivo que o d.hub criou: tem a marca, é vídeo e não está na
 // lixeira. (Com o escopo drive.file o app nem enxerga o resto do Drive; a marca
 // é a segunda trava.)
-async function conferirArquivoDoDhub(id: string, cabecalho: Record<string, string>) {
+async function conferirArquivoDoDhub(id: string, cabecalho: Record<string, string>, soVideo = true) {
   const arquivo = await fetch(
     `${API}/files/${encodeURIComponent(id)}?fields=id,mimeType,trashed,appProperties&supportsAllDrives=true`,
     { headers: cabecalho, cache: "no-store" }
@@ -133,18 +133,19 @@ async function conferirArquivoDoDhub(id: string, cabecalho: Record<string, strin
   if (
     !arquivo.ok ||
     dados.trashed ||
-    !dados.mimeType?.startsWith("video/") ||
+    (soVideo && !dados.mimeType?.startsWith("video/")) ||
     dados.appProperties?.origem !== MARCA.origem
   ) {
-    throw new Error("Esse arquivo não é um vídeo enviado pelo d.hub.");
+    throw new Error(soVideo ? "Esse arquivo não é um vídeo enviado pelo d.hub." : "Esse arquivo não foi enviado pelo d.hub.");
   }
 }
 
 // Joga o vídeo na lixeira do Drive (envio que não chegou a virar post).
-export async function descartarArquivo(id: string): Promise<void> {
+// "soVideo" = false pros anexos grandes das tarefas (qualquer tipo de arquivo).
+export async function descartarArquivo(id: string, soVideo = true): Promise<void> {
   const token = await tokenDoDrive();
   const cabecalho = { Authorization: `Bearer ${token}` };
-  await conferirArquivoDoDhub(id, cabecalho);
+  await conferirArquivoDoDhub(id, cabecalho, soVideo);
   const resposta = await fetch(`${API}/files/${encodeURIComponent(id)}?supportsAllDrives=true`, {
     method: "PATCH",
     headers: { ...cabecalho, "Content-Type": "application/json" },
@@ -156,10 +157,10 @@ export async function descartarArquivo(id: string): Promise<void> {
 
 // Depois do envio: libera pra "qualquer pessoa com o link" poder assistir (o
 // preview do post e o portal do cliente tocam sem login).
-export async function liberarArquivo(id: string): Promise<void> {
+export async function liberarArquivo(id: string, soVideo = true): Promise<void> {
   const token = await tokenDoDrive();
   const cabecalho = { Authorization: `Bearer ${token}` };
-  await conferirArquivoDoDhub(id, cabecalho);
+  await conferirArquivoDoDhub(id, cabecalho, soVideo);
   const permissao = await fetch(`${API}/files/${encodeURIComponent(id)}/permissions?supportsAllDrives=true`, {
     method: "POST",
     headers: { ...cabecalho, "Content-Type": "application/json" },

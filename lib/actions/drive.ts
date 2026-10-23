@@ -89,3 +89,56 @@ export async function descartarVideoDoDrive(id: string): Promise<void> {
     // Melhor esforço: o arquivo fica na pasta "d.hub - videos dos posts".
   }
 }
+
+// Anexo grande de tarefa (passa do limite do Supabase): qualquer tipo de
+// arquivo vai pro Drive, na mesma pasta, liberado pra quem tem o link.
+export async function iniciarEnvioDeAnexoParaODrive(nome: string, tamanho: number, tipoMime: string): Promise<SessaoDeEnvio> {
+  if (!(await logado())) return { erro: "Sessão expirada. Entre de novo." };
+  if (!driveConfigurado()) {
+    return { erro: "O Google Drive ainda não foi configurado no d.hub.", naoConfigurado: true };
+  }
+  if (!Number.isInteger(tamanho) || tamanho < 1 || tamanho > TAMANHO_MAXIMO) {
+    return { erro: "O arquivo passa do tamanho máximo aceito (5 GB)." };
+  }
+  const tipo = typeof tipoMime === "string" && /^[\w.+-]+\/[\w.+-]+$/.test(tipoMime) ? tipoMime.toLowerCase() : "application/octet-stream";
+  const limpo = String(nome ?? "arquivo")
+    .replace(/[\u0000-\u001f\u007f/\\]/g, " ")
+    .trim()
+    .slice(0, 150);
+  const cabecalhos = await headers();
+  const host = cabecalhos.get("host") ?? "";
+  const origem = cabecalhos.get("origin") ?? `https://${host}`;
+  try {
+    if (new URL(origem).host !== host) return { erro: "Origem do pedido não confere." };
+  } catch {
+    return { erro: "Origem do pedido inválida." };
+  }
+  try {
+    const url = await abrirSessaoDeEnvio({ nome: limpo || "arquivo", tipoMime: tipo, tamanho, origem });
+    return { url };
+  } catch (e) {
+    return { erro: e instanceof Error ? e.message : "Não deu pra abrir o envio pro Drive." };
+  }
+}
+
+export async function liberarAnexoDoDrive(id: string): Promise<{ id: string } | { erro: string }> {
+  if (!(await logado())) return { erro: "Sessão expirada. Entre de novo." };
+  if (typeof id !== "string" || !ID_DO_DRIVE.test(id)) return { erro: "Código do arquivo inválido." };
+  try {
+    await liberarArquivo(id, false);
+    return { id };
+  } catch (e) {
+    return { erro: e instanceof Error ? e.message : "Não deu pra liberar o arquivo no Drive." };
+  }
+}
+
+// Anexo do Drive removido da tarefa (ou envio que não virou anexo): vai pra lixeira do Drive.
+export async function descartarAnexoDoDrive(id: string): Promise<void> {
+  if (!(await logado())) return;
+  if (typeof id !== "string" || !ID_DO_DRIVE.test(id)) return;
+  try {
+    await descartarArquivo(id, false);
+  } catch {
+    // Melhor esforço.
+  }
+}

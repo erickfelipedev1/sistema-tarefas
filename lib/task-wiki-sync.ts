@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { linkDoArquivo } from "@/lib/arquivos";
+import { linkDoAnexo } from "@/lib/anexos";
 import type {
   ChecklistItem,
   Profile,
@@ -156,7 +156,7 @@ export function buildAnexosBlocks(
         content: [
           {
             type: "link",
-            href: linkDoArquivo("task-attachments", anexo.file_path),
+            href: linkDoAnexo(anexo.file_path),
             content: [{ type: "text", text: `📎 ${anexo.file_name}`, styles: {} }],
           },
         ],

@@ -62,13 +62,13 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como anexo arquivos? Dá pra mandar vários?",
     resposta:
-      "Na aba Anexos da tarefa, clique na área \"Anexar arquivos\" e marque quantos quiser, ou arraste os arquivos pra lá. Cada um pode ter até 50 MB; arquivo maior, mande pelo Google Drive e cole o link nos comentários.",
-    palavras: ["anexar", "anexo", "subir arquivo", "enviar arquivo", "vários arquivos", "upload", "arrastar"],
+      "Na aba Anexos da tarefa, clique na área \"Anexar arquivos\" e marque quantos quiser, ou arraste os arquivos pra lá. Arquivo acima de 45 MB vai sozinho pro Google Drive do d.hub e aparece na lista como os outros (com o selo D).",
+    palavras: ["anexar", "anexo", "subir arquivo", "enviar arquivo", "vários arquivos", "upload", "arrastar", "arquivo grande", "drive"],
   },
   {
     pergunta: "Como vejo ou baixo os anexos?",
     resposta:
-      "Na aba Anexos da tarefa, clique no arquivo pra ver ali mesmo (imagem, vídeo, áudio, PDF). As setas passam de um pro outro. \"Baixar\" baixa um, e \"Baixar todos\" baixa tudo (no computador o navegador pode pedir pra permitir vários downloads).",
+      "Na aba Anexos da tarefa, clique no arquivo pra ver ali mesmo (imagem, vídeo, áudio, PDF). As setas passam de um pro outro. \"Baixar\" baixa um, e \"Baixar todos\" baixa tudo (no computador o navegador pode pedir pra permitir vários downloads). Os que estão no Google Drive ficam fora do \"Baixar todos\": baixe pelo Baixar de cada um, que abre o Drive em outra aba.",
     palavras: ["anexo", "baixar", "download", "ver arquivo", "pré-visualização", "baixar todos"],
   },
   {

@@ -10,6 +10,8 @@ export interface ArquivoParaVer {
   url: string;
   // Endereço que baixa com o nome original.
   urlBaixar: string;
+  // Arquivo de fora (Google Drive): mostra o visualizador do próprio serviço.
+  embed?: string;
 }
 
 export type TipoDeVisualizacao = "imagem" | "video" | "audio" | "pdf" | "texto" | "outro";
@@ -72,6 +74,8 @@ export default function VisualizadorDeArquivos({
       <a
         href={atual.urlBaixar}
         download={atual.nome}
+        target={atual.embed ? "_blank" : undefined}
+        rel={atual.embed ? "noopener noreferrer" : undefined}
         className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-navy hover:bg-brand-hover"
       >
         <DownloadIcon className="h-4 w-4" />
@@ -81,7 +85,18 @@ export default function VisualizadorDeArquivos({
   );
 
   let conteudo: React.ReactNode = semPrevia;
-  if (!falhou) {
+  if (atual.embed) {
+    conteudo = (
+      <iframe
+        key={atual.embed}
+        src={atual.embed}
+        title={atual.nome}
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        className="h-full w-full rounded-lg bg-black"
+      />
+    );
+  } else if (!falhou) {
     if (tipo === "imagem") {
       // eslint-disable-next-line @next/next/no-img-element
       conteudo = <img src={atual.url} alt={atual.nome} onError={() => setFalhou(true)} className="max-h-full max-w-full object-contain" />;
@@ -115,6 +130,8 @@ export default function VisualizadorDeArquivos({
         <a
           href={atual.urlBaixar}
           download={atual.nome}
+          target={atual.embed ? "_blank" : undefined}
+          rel={atual.embed ? "noopener noreferrer" : undefined}
           title="Baixar"
           aria-label="Baixar"
           className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"

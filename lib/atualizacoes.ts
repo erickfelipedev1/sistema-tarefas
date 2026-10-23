@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
     area: "Tarefas",
+    titulo: "Anexo grande vai sozinho pro Google Drive",
+    texto: "Arquivo acima de 45 MB anexado na tarefa agora sobe automaticamente pro Google Drive do d.hub (com a barra de progresso) e aparece na lista como os outros, com o selo D. Dá pra ver ali mesmo e baixar; remover o anexo manda o arquivo pra lixeira do Drive.",
+  },
+  {
+    data: "2026-10-23",
+    area: "Tarefas",
     titulo: "Vários anexos de uma vez",
     texto: "Na aba Anexos, escolha vários arquivos de uma vez ou arraste todos pra área de anexar. Até 50 MB cada.",
   },

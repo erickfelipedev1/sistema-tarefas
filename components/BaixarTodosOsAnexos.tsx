@@ -8,6 +8,9 @@ export interface AnexoParaBaixar {
   nome: string;
   // Link que já baixa com o nome original (/arquivos/...?baixar=nome).
   url: string;
+  // Guardado no Google Drive (arquivo grande): o navegador não deixa baixar
+  // vários de lá em sequência nem ler pelo d.hub; fica com o Baixar de cada um.
+  noDrive?: boolean;
 }
 
 function ehToque() {
@@ -19,10 +22,12 @@ function ehToque() {
 // tarefa pode ter centenas de MB em vídeo); o navegador pode pedir pra
 // permitir vários downloads. No celular abre o menu de compartilhar com todos
 // (Salvar imagens / Salvar no Arquivos), que precisa ter os arquivos em mãos.
-export default function BaixarTodosOsAnexos({ anexos }: { anexos: AnexoParaBaixar[] }) {
+export default function BaixarTodosOsAnexos({ anexos: todos }: { anexos: AnexoParaBaixar[] }) {
   const [progresso, setProgresso] = useState<string | null>(null);
   const [prontos, setProntos] = useState<File[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const anexos = todos.filter((a) => !a.noDrive);
+  const noDrive = todos.length - anexos.length;
   if (anexos.length < 2) return null;
 
   async function noComputador() {
@@ -78,6 +83,11 @@ export default function BaixarTodosOsAnexos({ anexos }: { anexos: AnexoParaBaixa
         <DownloadIcon className="h-3.5 w-3.5" />
         {progresso ?? (prontos ? `Salvar no celular (${prontos.length})` : `Baixar todos (${anexos.length})`)}
       </button>
+      {noDrive > 0 && (
+        <span className="text-xs text-ink-muted">
+          {noDrive === 1 ? "1 está no Google Drive: baixe pelo Baixar dele." : `${noDrive} estão no Google Drive: baixe pelo Baixar de cada um.`}
+        </span>
+      )}
       {erro && <span className="text-xs text-danger">{erro}</span>}
     </div>
   );

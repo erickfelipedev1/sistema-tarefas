@@ -1,6 +1,13 @@
 "use client";
 
-import { descartarVideoDoDrive, iniciarEnvioParaODrive, liberarVideoDoDrive } from "@/lib/actions/drive";
+import {
+  descartarAnexoDoDrive,
+  descartarVideoDoDrive,
+  iniciarEnvioDeAnexoParaODrive,
+  iniciarEnvioParaODrive,
+  liberarAnexoDoDrive,
+  liberarVideoDoDrive,
+} from "@/lib/actions/drive";
 
 // Vídeo acima disso vai pro Google Drive em vez do Supabase (o limite de
 // upload do plano gratuito do Supabase é 50 MB por arquivo).
@@ -69,8 +76,31 @@ export async function enviarVideoParaODrive(
   }
 }
 
-async function enviar(arquivo: File, aoProgresso: (fracao: number) => void): Promise<ResultadoDoEnvio> {
-  const sessao = await iniciarEnvioParaODrive(arquivo.name, arquivo.size, arquivo.type || "video/mp4");
+// Anexo grande de tarefa (qualquer tipo de arquivo): mesmo envio, mesma pasta.
+export async function enviarAnexoParaODrive(
+  arquivo: File,
+  aoProgresso: (fracao: number) => void
+): Promise<ResultadoDoEnvio> {
+  try {
+    return await enviar(arquivo, aoProgresso, "anexo");
+  } catch {
+    return { erro: "Não deu pra enviar o arquivo pro Drive agora. Confira a conexão e tente de novo." };
+  }
+}
+
+async function enviar(
+  arquivo: File,
+  aoProgresso: (fracao: number) => void,
+  modo: "video" | "anexo" = "video"
+): Promise<ResultadoDoEnvio> {
+  const iniciar = modo === "anexo" ? iniciarEnvioDeAnexoParaODrive : iniciarEnvioParaODrive;
+  const liberar = modo === "anexo" ? liberarAnexoDoDrive : liberarVideoDoDrive;
+  const descartar = modo === "anexo" ? descartarAnexoDoDrive : descartarVideoDoDrive;
+  const sessao = await iniciar(
+    arquivo.name,
+    arquivo.size,
+    arquivo.type || (modo === "anexo" ? "application/octet-stream" : "video/mp4")
+  );
   if (!("url" in sessao)) return { erro: sessao.erro, naoConfigurado: sessao.naoConfigurado };
 
   const total = arquivo.size;
@@ -129,7 +159,7 @@ async function enviar(arquivo: File, aoProgresso: (fracao: number) => void): Pro
   let ultimoErro = "Não deu pra liberar o vídeo no Drive.";
   for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
     try {
-      const liberado = await liberarVideoDoDrive(idDoArquivo);
+      const liberado = await liberar(idDoArquivo);
       if ("id" in liberado) return { id: liberado.id };
       ultimoErro = liberado.erro;
     } catch {
@@ -138,6 +168,6 @@ async function enviar(arquivo: File, aoProgresso: (fracao: number) => void): Pro
     if (tentativa < TENTATIVAS) await esperar(1500 * tentativa);
   }
   // Não liberou: não deixa o arquivo pesado parado, privado e sem dono.
-  await descartarVideoDoDrive(idDoArquivo).catch(() => undefined);
+  await descartar(idDoArquivo).catch(() => undefined);
   return { erro: ultimoErro };
 }
