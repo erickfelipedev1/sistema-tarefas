@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
+    area: "Tarefas",
+    titulo: "Anexar várias fotos e vídeos no celular",
+    texto: "Na aba Anexos, no celular, ganhou o botão \"Escolher fotos e vídeos (vários)\": abre a galeria e você marca quantos quiser de uma vez. Pra outros tipos de arquivo, o botão de cima continua; lá, segure o dedo num arquivo pra marcar vários.",
+  },
+  {
+    data: "2026-10-23",
     area: "Calendário",
     titulo: "Subtarefas não aparecem mais no calendário",
     texto: "O calendário mostra só as tarefas principais. As subtarefas continuam na tarefa, no quadro e na lista de quem é responsável, mas não aparecem mais repetidas nas datas.",

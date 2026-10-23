@@ -1557,6 +1557,16 @@ function AnexosTab({
         </span>
         <input type="file" multiple onChange={enviarArquivo} disabled={enviando} className="sr-only" />
       </label>
+      {/* No celular, o seletor de "arquivos" só marca vários segurando o dedo num
+          item. Este abre a galeria de fotos e vídeos, que tem marcação direta. */}
+      <label
+        className={`mb-3 hidden cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface-hover [@media(pointer:coarse)]:flex ${
+          enviando ? "pointer-events-none opacity-70" : ""
+        }`}
+      >
+        Escolher fotos e vídeos (vários)
+        <input type="file" multiple accept="image/*,video/*" onChange={enviarArquivo} disabled={enviando} className="sr-only" />
+      </label>
       {anexos.length > 1 && (
         <div className="mb-2 flex justify-end">
           <BaixarTodosOsAnexos
