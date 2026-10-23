@@ -85,6 +85,13 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     link: { rotulo: "Abrir o Calendário", href: "/calendario" },
   },
   {
+    pergunta: "Dá pra aumentar ou diminuir o calendário?",
+    resposta:
+      "Dá: use o − e o + ao lado de Mês | Semana | Dia. No Mês muda quantas tarefas aparecem por dia; na Semana e no Dia, a altura de cada hora. Fica salvo no seu navegador.",
+    palavras: ["calendário", "aumentar", "diminuir", "tamanho", "zoom", "maior", "menor", "+ mais"],
+    link: { rotulo: "Abrir o Calendário", href: "/calendario" },
+  },
+  {
     pergunta: "Onde vejo o que cada pessoa da equipe faz?",
     resposta: "Em Meu perfil, na seção Equipe: a função e a descrição de cada um. A sua você edita em Dados; a liderança edita a de todos.",
     palavras: ["equipe", "função", "cargo", "descrição", "quem faz", "perfil"],

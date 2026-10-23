@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
+    area: "Calendário",
+    titulo: "Calendário maior ou menor",
+    texto: "Ao lado de Mês | Semana | Dia, os botões − e + mudam o tamanho do calendário: no Mês cabem mais (ou menos) tarefas por dia antes do \"+N mais\"; na Semana e no Dia, cada hora fica mais alta. A escolha fica salva no seu navegador.",
+  },
+  {
+    data: "2026-10-23",
     area: "Tarefas",
     titulo: "Duplicar tarefa",
     texto: "No rodapé da tarefa, o botão Duplicar cria uma cópia com descrição, copy, datas, responsáveis, checklist (desmarcado) e etiquetas, e já abre a cópia.",

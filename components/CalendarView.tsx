@@ -39,15 +39,24 @@ const DIAS_SEMANA_LONGO = [
 
 // Visão Mês: quantas faixas (linhas de barras) cabem por semana antes de
 // resumir o resto em "+N mais" — evita que uma semana lotada estoure a altura.
-const MAX_FAIXAS = 4;
-const ALTURA_FAIXA = 24; // px
+// Tamanho do calendário (botões − / +, guardado no navegador): no Mês, quantas
+// tarefas cabem por dia antes do "+N mais" e a altura de cada barra; na
+// Semana/Dia, a altura de cada hora.
+const TAMANHOS = [
+  { faixas: 2, faixa: 20, hora: 36 },
+  { faixas: 4, faixa: 24, hora: 56 },
+  { faixas: 6, faixa: 26, hora: 72 },
+  { faixas: 9, faixa: 28, hora: 96 },
+  { faixas: 14, faixa: 28, hora: 128 },
+] as const;
+const TAMANHO_PADRAO = 1;
+const CHAVE_DO_TAMANHO = "dhub-calendario-tamanho";
 const ESPACO_ENTRE_FAIXAS = 4; // px
 const TOPO_DAS_FAIXAS = 36; // px: onde acaba o número do dia
 
 // Visões Semana e Dia: uma linha por hora. Abre rolada até as 7h.
 const HORAS = Array.from({ length: 24 }, (_, h) => h);
 const HORA_INICIAL_VISIVEL = 7;
-const ALTURA_HORA = 56; // px
 
 type Visao = "mes" | "semana" | "dia";
 
@@ -141,8 +150,8 @@ type Segmento = {
 // Visão Mês, uma semana: cada tarefa vira UMA barra contínua por cima dos
 // dias do período dela (e não um bloco repetido por dia), na mesma faixa
 // (linha) do começo ao fim da semana, como no Google Agenda. Quem passa de
-// MAX_FAIXAS entra no "+N mais" dos dias que ocuparia.
-function montarSemana(chaves: string[], tarefas: Task[]) {
+// maxFaixas entra no "+N mais" dos dias que ocuparia.
+function montarSemana(chaves: string[], tarefas: Task[], maxFaixas: number) {
   const inicio = chaves[0];
   const fim = chaves[6];
   const brutos: Omit<Segmento, "faixa">[] = [];
@@ -179,7 +188,7 @@ function montarSemana(chaves: string[], tarefas: Task[]) {
     for (let c = b.col0; c <= b.col1; c++) ocupados[c] += 1;
     let faixa = fimDaFaixa.findIndex((f) => f < b.col0);
     if (faixa === -1) faixa = fimDaFaixa.length;
-    if (faixa >= MAX_FAIXAS) {
+    if (faixa >= maxFaixas) {
       for (let c = b.col0; c <= b.col1; c++) ocultos[c] += 1;
       continue;
     }
@@ -317,15 +326,39 @@ export default function CalendarView({
     });
   }, [tasks, busca, pessoaFiltro, clienteFiltro]);
 
+  const [nivel, setNivel] = useState(TAMANHO_PADRAO);
+  useEffect(() => {
+    try {
+      const bruto = window.localStorage.getItem(CHAVE_DO_TAMANHO);
+      const salvo = bruto === null ? NaN : Number(bruto);
+      if (Number.isInteger(salvo) && salvo >= 0 && salvo < TAMANHOS.length) setNivel(salvo);
+    } catch {
+      // Sem acesso ao armazenamento: fica o tamanho padrão.
+    }
+  }, []);
+  function mudarTamanho(passo: -1 | 1) {
+    setNivel((n) => {
+      const novo = Math.min(TAMANHOS.length - 1, Math.max(0, n + passo));
+      try {
+        window.localStorage.setItem(CHAVE_DO_TAMANHO, String(novo));
+      } catch {
+        // Só não fica lembrado.
+      }
+      return novo;
+    });
+  }
+  const tamanho = TAMANHOS[nivel];
+  const ALTURA_FAIXA = tamanho.faixa;
+
   // Visão Mês: as barras de cada semana.
   const semanas = useMemo(() => {
     const lista = [];
     for (let i = 0; i < celulas.length; i += 7) {
       const dias = celulas.slice(i, i + 7);
-      lista.push({ dias, ...montarSemana(dias.map((d) => dateKey(d.date)), tarefasVisiveis) });
+      lista.push({ dias, ...montarSemana(dias.map((d) => dateKey(d.date)), tarefasVisiveis, tamanho.faixas) });
     }
     return lista;
-  }, [celulas, tarefasVisiveis]);
+  }, [celulas, tarefasVisiveis, tamanho.faixas]);
 
   const tasksPorDia = useMemo(() => {
     const mapa: Record<string, Task[]> = {};
@@ -549,6 +582,35 @@ export default function CalendarView({
                 </button>
               ))}
             </div>
+            <div
+              className="flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5"
+              role="group"
+              aria-label="Tamanho do calendário"
+            >
+              <button
+                type="button"
+                onClick={() => mudarTamanho(-1)}
+                disabled={nivel === 0}
+                aria-label="Diminuir o calendário"
+                title="Diminuir"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-ink-muted hover:bg-surface-hover hover:text-ink disabled:opacity-30"
+              >
+                −
+              </button>
+              <span className="px-1 text-[11px] tabular-nums text-ink-muted" aria-live="polite">
+                {nivel + 1}/{TAMANHOS.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => mudarTamanho(1)}
+                disabled={nivel === TAMANHOS.length - 1}
+                aria-label="Aumentar o calendário"
+                title="Aumentar"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-ink-muted hover:bg-surface-hover hover:text-ink disabled:opacity-30"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
@@ -668,6 +730,7 @@ export default function CalendarView({
             tasksPorDia={tasksPorDia}
             hojeKey={hojeKey}
             detalhado={visao === "dia"}
+            alturaHora={tamanho.hora}
             projetos={projects}
             onCriar={abrirCriar}
             onAbrir={abrirEditar}
@@ -842,6 +905,7 @@ function GradeHoras({
   tasksPorDia,
   hojeKey,
   detalhado,
+  alturaHora: ALTURA_HORA,
   projetos,
   onCriar,
   onAbrir,
@@ -852,6 +916,7 @@ function GradeHoras({
   tasksPorDia: Record<string, Task[]>;
   hojeKey: string;
   detalhado: boolean;
+  alturaHora: number;
   projetos: Project[];
   onCriar: (dia: string, hora?: number | null) => void;
   onAbrir: (t: Task) => void;
