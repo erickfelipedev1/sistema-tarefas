@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-23",
     area: "Tarefas",
+    titulo: "Tarefa nova entra na ordem de vencimento",
+    texto: "Pedido da Mariana: quando uma tarefa com data de vencimento é criada, ela entra na coluna no lugar certo (antes das que vencem depois ou não têm data), em vez de ir pro fim. As outras descem uma posição; a ordem que você arrumou à mão continua. Sem vencimento, vai pro fim como antes.",
+  },
+  {
+    data: "2026-10-23",
+    area: "Tarefas",
     titulo: "Anexo grande vai sozinho pro Google Drive",
     texto: "Arquivo acima de 45 MB anexado na tarefa agora sobe automaticamente pro Google Drive do d.hub (com a barra de progresso) e aparece na lista como os outros, com o selo D. Dá pra ver ali mesmo e baixar; remover o anexo manda o arquivo pra lixeira do Drive.",
   },

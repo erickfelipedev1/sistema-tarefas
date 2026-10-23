@@ -49,6 +49,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["subtarefa", "sub", "dividir tarefa", "tarefa filha"],
   },
   {
+    pergunta: "Em que ordem as tarefas entram na coluna do quadro?",
+    resposta:
+      "Tarefa nova com data de vencimento entra no lugar certo da coluna: antes das que vencem depois ou não têm data. As outras descem uma posição, e a ordem que você arrumou arrastando continua. Tarefa sem vencimento vai pro fim da coluna.",
+    palavras: ["ordem", "vencimento", "coluna", "quadro", "posição", "tarefa nova", "organizar", "prazo"],
+  },
+  {
     pergunta: "Dá pra mudar a ordem do checklist?",
     resposta: "Dá: arraste o item pela alça ⠿ ou use as setas ↑↓ ao lado dele (no computador elas aparecem ao passar o mouse).",
     palavras: ["checklist", "ordem", "reordenar", "mover item", "passos"],
