@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "./ui/Button";
+import { CampoDeSenha } from "@/components/ui/CampoDeSenha";
 
 const MIN_SENHA = 6; // mínimo do Supabase Auth
 
@@ -82,9 +83,8 @@ export default function TrocarSenha() {
           <label htmlFor="senha-atual" className="mb-1.5 block text-xs font-medium text-ink-muted">
             Senha atual
           </label>
-          <input
+          <CampoDeSenha
             id="senha-atual"
-            type="password"
             autoComplete="current-password"
             required
             value={atual}
@@ -96,9 +96,8 @@ export default function TrocarSenha() {
           <label htmlFor="senha-nova" className="mb-1.5 block text-xs font-medium text-ink-muted">
             Nova senha
           </label>
-          <input
+          <CampoDeSenha
             id="senha-nova"
-            type="password"
             autoComplete="new-password"
             required
             minLength={MIN_SENHA}
@@ -111,9 +110,8 @@ export default function TrocarSenha() {
           <label htmlFor="senha-confirma" className="mb-1.5 block text-xs font-medium text-ink-muted">
             Confirmar nova senha
           </label>
-          <input
+          <CampoDeSenha
             id="senha-confirma"
-            type="password"
             autoComplete="new-password"
             required
             value={confirmacao}

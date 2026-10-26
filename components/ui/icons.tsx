@@ -403,6 +403,16 @@ export const EyeIcon = createIcon(
   </>
 );
 
+export const EyeOffIcon = createIcon(
+  "EyeOffIcon",
+  <>
+    <path d="M9.9 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.6 3.4" />
+    <path d="M6.3 7.3C3.9 9 2.5 12 2.5 12S6 18.5 12 18.5c1.4 0 2.7-.3 3.8-.8" />
+    <path d="M9.9 9.9a2.75 2.75 0 0 0 3.9 3.9" />
+    <path d="M3.5 3.5l17 17" />
+  </>
+);
+
 export const LayersIcon = createIcon(
   "LayersIcon",
   <>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { CampoDeSenha } from "@/components/ui/CampoDeSenha";
 import { entrarCliente } from "../actions";
 
 const campoClasse =
@@ -45,9 +46,8 @@ export default function ClientLoginForm({ usuarioInicial }: { usuarioInicial: st
         <label htmlFor="senha" className="mb-1.5 block text-xs font-medium text-ink-muted">
           Senha
         </label>
-        <input
+        <CampoDeSenha
           id="senha"
-          type="password"
           required
           autoComplete="current-password"
           autoFocus={!!usuarioInicial}

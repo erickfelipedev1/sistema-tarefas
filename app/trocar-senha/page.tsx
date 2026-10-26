@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/ui/Logo";
+import { CampoDeSenha } from "@/components/ui/CampoDeSenha";
 import { criarSenhaNova } from "./actions";
 
 const campoClasse =
@@ -54,9 +55,8 @@ export default function TrocarSenhaPage() {
             <label htmlFor="senha" className="mb-1 block text-sm font-medium text-slate-700">
               Nova senha
             </label>
-            <input
+            <CampoDeSenha
               id="senha"
-              type="password"
               autoComplete="new-password"
               required
               minLength={6}
@@ -70,9 +70,8 @@ export default function TrocarSenhaPage() {
             <label htmlFor="confirmacao" className="mb-1 block text-sm font-medium text-slate-700">
               Confirmar nova senha
             </label>
-            <input
+            <CampoDeSenha
               id="confirmacao"
-              type="password"
               autoComplete="new-password"
               required
               value={confirmacao}

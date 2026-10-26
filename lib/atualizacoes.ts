@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-10-26",
+    area: "Sistema",
+    titulo: "Olho pra ver a senha",
+    texto: "Pedido da Mariana: os campos de senha (login, login do cliente, trocar senha e criar senha nova) ganharam um olho à direita. Clique nele pra ver o que está digitando e clique de novo pra esconder.",
+  },
+  {
     data: "2026-10-23",
     area: "Tarefas",
     titulo: "Anexar várias fotos e vídeos no celular",

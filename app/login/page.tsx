@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/ui/Logo";
+import { CampoDeSenha } from "@/components/ui/CampoDeSenha";
 
 // O Supabase Auth exige um e-mail por baixo dos panos, então cada username
 // vira um e-mail interno falso (ex: "erick" -> "erick@sistema-tarefas.app").
@@ -103,8 +104,7 @@ export default function LoginPage() {
             <label className="mb-1 block text-sm font-medium text-slate-700">
               Senha
             </label>
-            <input
-              type="password"
+            <CampoDeSenha
               required
               minLength={6}
               value={password}
