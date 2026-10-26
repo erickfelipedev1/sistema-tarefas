@@ -17,6 +17,7 @@ import { SearchInput } from "./ui/SearchInput";
 import { StatTile } from "./ui/StatTile";
 import { carregarResumos, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
 import { carregarCatalogo, carregarLigacoes, type Etiqueta } from "@/lib/etiquetas";
+import { carregarClientesExtras } from "@/lib/clientes-extras";
 import { EtiquetaSelo } from "./EtiquetasDaTarefa";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 import {
@@ -145,6 +146,13 @@ export default function TaskBoard({
   const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
   const [ligacoes, setLigacoes] = useState<Record<string, string[]>>({});
   const [filtroEtiqueta, setFiltroEtiqueta] = useState("");
+  // Clientes extras de cada tarefa (migration 0093); o ref serve ao tempo real,
+  // que decide se uma tarefa de outro cliente ainda pertence a este quadro.
+  const [extras, setExtras] = useState<Record<string, string[]>>({});
+  const extrasRef = useRef(extras);
+  extrasRef.current = extras;
+  // Filtro de cliente (quadro principal): "" = todos, "nenhum" = sem cliente.
+  const [filtroCliente, setFiltroCliente] = useState("");
   // Projetos do cliente (migration 0083), só no quadro da página do cliente:
   // o nome no cartão e o filtro ("" = todos, "nenhum" = sem projeto).
   const [subprojetos, setSubprojetos] = useState<Subprojeto[]>([]);
@@ -185,6 +193,9 @@ export default function TaskBoard({
     });
     carregarLigacoes(supabase, idsDasTarefas.split(",")).then((m) => {
       if (ativo) setLigacoes(m);
+    });
+    carregarClientesExtras(supabase, idsDasTarefas.split(",")).then((m) => {
+      if (ativo) setExtras(m);
     });
     return () => {
       ativo = false;
@@ -332,8 +343,9 @@ export default function TaskBoard({
             }
             if (payload.eventType === "UPDATE") {
               const atualizado = payload.new as Task;
+              const eExtraDesteCliente = !!projectId && !!extrasRef.current[atualizado.id]?.includes(projectId);
               if (
-                (!allProjects && (atualizado.project_id ?? null) !== projectId) ||
+                (!allProjects && (atualizado.project_id ?? null) !== projectId && !eExtraDesteCliente) ||
                 !minha(atualizado)
               ) {
                 // Se a tarefa foi movida pra outro projeto, ou deixou de ser
@@ -410,6 +422,13 @@ export default function TaskBoard({
       carregarResumos(supabase, Array.from(ids)).then((m) => setResumos((atual) => ({ ...atual, ...m })));
       carregarLigacoes(supabase, Array.from(ids)).then((m) =>
         setLigacoes((atual) => {
+          const proximo = { ...atual };
+          for (const id of ids) proximo[id] = m[id] ?? [];
+          return proximo;
+        })
+      );
+      carregarClientesExtras(supabase, Array.from(ids)).then((m) =>
+        setExtras((atual) => {
           const proximo = { ...atual };
           for (const id of ids) proximo[id] = m[id] ?? [];
           return proximo;
@@ -634,6 +653,12 @@ export default function TaskBoard({
 
   // Quem já foi responsável por alguma tarefa aqui — usado pra montar o
   // filtro, em vez de listar todo mundo do sistema.
+  // Clientes que têm tarefa neste quadro (pro filtro de cliente).
+  const clientesNoQuadro = useMemo(() => {
+    const ids = new Set(tasks.flatMap((t) => [t.project_id, ...(extras[t.id] ?? [])]).filter((id): id is string => !!id));
+    return projects.filter((p) => ids.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks, projects, extras]);
+
   const responsaveisNoQuadro = useMemo(() => {
     const ids = new Set(tasks.flatMap((t) => t.assigned_to));
     return Array.from(ids)
@@ -650,6 +675,13 @@ export default function TaskBoard({
         return false;
       }
       if (filtroEtiqueta && !(ligacoes[t.id] ?? []).includes(filtroEtiqueta)) {
+        return false;
+      }
+      if (
+        filtroCliente === "nenhum"
+          ? !!t.project_id || (extras[t.id]?.length ?? 0) > 0
+          : filtroCliente && t.project_id !== filtroCliente && !extras[t.id]?.includes(filtroCliente)
+      ) {
         return false;
       }
       if (projetoDoFiltro === "nenhum" ? !!t.subproject_id && subprojetoPorId.has(t.subproject_id) : projetoDoFiltro && t.subproject_id !== projetoDoFiltro) {
@@ -681,7 +713,7 @@ export default function TaskBoard({
     return tasks.filter(
       (t) => passa(t) && !soContainer(t) && (!t.parent_id || subDaPessoa(t) || !principaisNaTela.has(t.parent_id))
     );
-  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroResumo, hoje, ligacoes, projetoDoFiltro, subprojetoPorId, soMinhas, currentUserId, filhas]);
+  }, [tasks, busca, filtroResponsavel, filtroEtiqueta, filtroCliente, extras, filtroResumo, hoje, ligacoes, projetoDoFiltro, subprojetoPorId, soMinhas, currentUserId, filhas]);
 
   // Título da tarefa original de cada subtarefa solta no quadro (a principal
   // pode não estar carregada aqui, se for de outra pessoa).
@@ -756,6 +788,22 @@ export default function TaskBoard({
                     </option>
                   ))}
                 </select>
+                {clientesNoQuadro.length > 0 && (
+                  <select
+                    value={filtroCliente}
+                    onChange={(e) => setFiltroCliente(e.target.value)}
+                    aria-label="Filtrar por cliente"
+                    className="h-10 max-w-[220px] rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                  >
+                    <option value="">Todos os clientes</option>
+                    {clientesNoQuadro.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                    <option value="nenhum">Sem cliente</option>
+                  </select>
+                )}
                 {catalogo.length > 0 && (
                   <select
                     value={filtroEtiqueta}
@@ -872,7 +920,7 @@ export default function TaskBoard({
           ligacoes={ligacoes}
           etiquetas={etiquetaPorId}
           resumos={resumos}
-          filtrando={!!(busca || filtroResponsavel || filtroEtiqueta || filtroResumo || projetoDoFiltro)}
+          filtrando={!!(busca || filtroResponsavel || filtroEtiqueta || filtroCliente || filtroResumo || projetoDoFiltro)}
           aoAbrir={abrirEditar}
           aoMudarStatus={moveTaskTo}
           aoAlternarSubtarefa={alternarSubtarefa}
@@ -973,6 +1021,14 @@ export default function TaskBoard({
                             </Link>
                           ) : (
                             "Sem cliente"
+                          )}
+                          {(extras[task.id]?.length ?? 0) > 0 && (
+                            <span
+                              className="ml-1 rounded-full bg-black/15 px-1.5 py-px text-[9px] font-semibold normal-case"
+                              title={`Também: ${(extras[task.id] ?? []).map((id) => clientesPorId.get(id)?.name ?? "Cliente").join(", ")}`}
+                            >
+                              +{extras[task.id].length}
+                            </span>
                           )}
                         </span>
                         <button
@@ -1137,12 +1193,12 @@ export default function TaskBoard({
                   <EmptyState
                     icon={<SparklesIcon className="h-4 w-4" />}
                     title={
-                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo || projetoDoFiltro
+                      busca || filtroResponsavel || filtroEtiqueta || filtroCliente || filtroResumo || projetoDoFiltro
                         ? "Nada por aqui"
                         : "Tudo limpo por aqui"
                     }
                     description={
-                      busca || filtroResponsavel || filtroEtiqueta || filtroResumo || projetoDoFiltro
+                      busca || filtroResponsavel || filtroEtiqueta || filtroCliente || filtroResumo || projetoDoFiltro
                         ? "Nenhuma tarefa bate com o filtro atual."
                         : undefined
                     }

@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-26",
     area: "Tarefas",
+    titulo: "Mais de um cliente na tarefa e filtro de cliente",
+    texto: "Em Detalhes da tarefa, ao lado de Cliente, o campo \"Outros clientes\" (+ Cliente) põe a tarefa também no quadro dos outros clientes. O cliente principal continua sendo o do campo Cliente (relatórios, horas e portal contam só ele). No quadro de Tarefas há um filtro novo de cliente (Todos os clientes, cada cliente, Sem cliente) e o cartão mostra +N quando tem outros clientes. Também: a legenda do post não copia mais a Copywrite.",
+  },
+  {
+    data: "2026-10-26",
+    area: "Tarefas",
     titulo: "Etiquetas agora se chamam Prioridade",
     texto: "Em Detalhes da tarefa, o campo \"Etiquetas\" virou \"Prioridade\" (+ Prioridade, Nova prioridade), e o filtro do quadro também. As que você já tinha (Alta, Média, Baixa...) continuam nas tarefas, só mudou o nome. O \"Status da postagem\" não mudou.",
   },

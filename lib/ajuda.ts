@@ -26,7 +26,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Onde escrevo a copy / legenda?",
     resposta:
-      "Na tarefa do tipo Postagem, em Detalhes, no campo Copywrite. Ele tem formatação e aceita imagem. A legenda do post acompanha a copy enquanto ninguém mexer nela; se mexer, aparece \"Usar o texto da copy\".",
+      "Na tarefa do tipo Postagem, em Detalhes, no campo Copywrite. Ele tem formatação e aceita imagem. A legenda do post é escrita à parte, no bloco Post (ela não copia a Copywrite).",
     palavras: ["copywrite", "copy", "legenda", "texto do post"],
   },
   {
@@ -53,6 +53,17 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     resposta:
       "Tarefa nova com data de vencimento entra no lugar certo da coluna: antes das que vencem depois ou não têm data. As outras descem uma posição, e a ordem que você arrumou arrastando continua. Tarefa sem vencimento vai pro fim da coluna.",
     palavras: ["ordem", "vencimento", "coluna", "quadro", "posição", "tarefa nova", "organizar", "prazo"],
+  },
+  {
+    pergunta: "Dá pra pôr a mesma tarefa em mais de um cliente?",
+    resposta:
+      "Dá: em Detalhes da tarefa, no campo \"Outros clientes\", clique em \"+ Cliente\". A tarefa passa a aparecer também no quadro desses clientes. O cliente do campo \"Cliente\" continua sendo o principal: relatórios, horas e portal contam só ele.",
+    palavras: ["cliente", "vários clientes", "mais de um cliente", "outro cliente", "duplicar cliente"],
+  },
+  {
+    pergunta: "Como filtro as tarefas por cliente?",
+    resposta: "No topo da tela de Tarefas, escolha o cliente no filtro \"Todos os clientes\" (ou \"Sem cliente\"). Ele soma com a busca, o responsável e a prioridade.",
+    palavras: ["filtro", "filtrar", "cliente", "tarefas por cliente"],
   },
   {
     pergunta: "Dá pra mudar a ordem do checklist?",

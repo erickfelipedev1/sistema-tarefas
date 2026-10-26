@@ -57,9 +57,9 @@ function arrumar(post: Post): Post {
   };
 }
 
-// Menu "Post" da tarefa: monta o post do cliente a partir da tarefa (a legenda
-// já vem da aba Copywrite e a data prevista, do prazo), envia pros Posts do
-// cliente e deixa editar o que já foi criado (legenda, data, redes, arquivos,
+// Menu "Post" da tarefa: monta o post do cliente a partir da tarefa (a data
+// prevista vem do prazo; a legenda é escrita aqui, não copia a Copywrite),
+// envia pros Posts do cliente e deixa editar o que já foi criado (legenda, data, redes, arquivos,
 // capa do vídeo). Os posts que saíram desta tarefa aparecem aqui com o status;
 // o preview de cada rede e os comentários do cliente ficam na aba Posts do
 // cliente.
@@ -67,14 +67,12 @@ export default function PostDaTarefa({
   taskId,
   projectId,
   projectName,
-  copyText,
   dueDate,
   currentUserLabel,
 }: {
   taskId: string;
   projectId: string | null;
   projectName: string;
-  copyText: string;
   dueDate: string | null;
   currentUserLabel: string;
 }) {
@@ -88,15 +86,7 @@ export default function PostDaTarefa({
   const [categoria, setCategoria] = useState<PostCategory>("estatico");
   const [redes, setRedes] = useState<PostNetwork[]>(["instagram"]);
   const [data, setData] = useState(dueDate ?? "");
-  const [legenda, setLegenda] = useState(copyText);
-  // A copy fica na mesma aba, logo acima: enquanto a legenda for igual à copy
-  // anterior (ninguém mexeu nela), acompanha o que é escrito na copy.
-  const copyAnterior = useRef(copyText);
-  useEffect(() => {
-    const antes = copyAnterior.current;
-    copyAnterior.current = copyText;
-    setLegenda((atual) => (atual === antes ? copyText : atual));
-  }, [copyText]);
+  const [legenda, setLegenda] = useState("");
   const [itens, setItens] = useState<ItemDeMidia[]>([]);
   const [capa, setCapa] = useState<CapaDoForm | null>(null);
   // Post que está sendo editado (null = post novo).
@@ -225,7 +215,7 @@ export default function PostDaTarefa({
     setErro(null);
   }
 
-  // Zera o formulário (post novo, com a legenda e a data vindas da tarefa).
+  // Zera o formulário (post novo, com a data vinda da tarefa).
   function limpar() {
     for (const i of itens) if (i.nova) URL.revokeObjectURL(i.nova.url);
     if (capa?.nova) URL.revokeObjectURL(capa.nova.url);
@@ -236,7 +226,7 @@ export default function PostDaTarefa({
     setCategoria("estatico");
     setRedes(["instagram"]);
     setData(dueDate ?? "");
-    setLegenda(copyText);
+    setLegenda("");
     setErro(null);
   }
 
@@ -713,13 +703,7 @@ export default function PostDaTarefa({
               className={campoClasse}
             />
             <div className="mt-1 flex items-center justify-between text-[11px] text-ink-muted">
-              {copyText.trim() && legenda !== copyText ? (
-                <button type="button" onClick={() => setLegenda(copyText)} className="font-medium text-brand-forte hover:underline">
-                  Usar o texto da copy
-                </button>
-              ) : (
-                <span>{copyText.trim() && !editando ? "Veio da copy, aqui em cima." : ""}</span>
-              )}
+              <span />
               <span className="tabular-nums">{legenda.length.toLocaleString("pt-BR")} caracteres</span>
             </div>
           </div>

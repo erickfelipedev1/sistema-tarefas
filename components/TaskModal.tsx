@@ -39,6 +39,7 @@ import BaixarTodosOsAnexos from "./BaixarTodosOsAnexos";
 import MencaoInput from "./MencaoInput";
 import SubtarefasTab from "./SubtarefasTab";
 import EtiquetasDaTarefa from "./EtiquetasDaTarefa";
+import ClientesExtrasDaTarefa from "./ClientesExtrasDaTarefa";
 import { idsMencionados, MENCAO_TODOS, nomeParaMencao, partirPorMencoes, pessoaAtiva } from "@/lib/mencoes";
 import { carregarSubprojetos, type Subprojeto } from "@/lib/subprojetos";
 
@@ -901,6 +902,10 @@ export default function TaskModal({
                   </div>
                 )}
 
+                {current && !current.parent_id && projects.length > 1 && (
+                  <ClientesExtrasDaTarefa key={current.id} taskId={current.id} principalId={taskProjectId} projects={projects} />
+                )}
+
                 {taskProjectId && subprojetos.length > 0 && (
                   <div className="min-w-0">
                     <label htmlFor="projeto-da-tarefa" className="mb-1 block text-xs font-medium text-ink-muted">
@@ -954,7 +959,6 @@ export default function TaskModal({
                       taskId={current.id}
                       projectId={current.project_id}
                       projectName={projects.find((p) => p.id === current.project_id)?.name ?? "o cliente"}
-                      copyText={current.copy_text ?? ""}
                       dueDate={current.due_date}
                       currentUserLabel={currentUserLabel}
                     />

@@ -30,6 +30,7 @@ import { PaginaRow } from "@/components/WikiPagesPanel";
 import type { PaginaResumo } from "@/lib/wiki";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpenIcon, ChevronLeftIcon } from "@/components/ui/icons";
+import { tarefasComEsteClienteExtra } from "@/lib/clientes-extras";
 
 // A transcrição e o rascunho da ata com IA (aba "Atas") rodam em Server
 // Actions desta página: a IA pode levar mais de um minuto numa reunião longa.
@@ -66,11 +67,18 @@ export default async function ProjetoPage({
   const souLider = perfil?.ve_tudo === true;
   const temOtimizacoes = souLider || perfil?.faz_otimizacoes === true;
 
-  const { data: tasks } = await supabase
+  const { data: tarefasDoCliente } = await supabase
     .from("tasks")
     .select("*")
     .eq("project_id", id)
     .order("position", { ascending: true });
+  // Tarefas de outro cliente que também são deste (migration 0093); sem a
+  // migration a consulta falha e fica só o que é do cliente.
+  const idsComoExtra = await tarefasComEsteClienteExtra(supabase, id);
+  const { data: tarefasExtras } = idsComoExtra.length
+    ? await supabase.from("tasks").select("*").in("id", idsComoExtra).order("position", { ascending: true })
+    : { data: [] as typeof tarefasDoCliente };
+  const tasks = [...(tarefasDoCliente ?? []), ...(tarefasExtras ?? [])];
 
   const { data: profiles } = await supabase
     .from("profiles")
