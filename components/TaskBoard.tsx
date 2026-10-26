@@ -760,10 +760,10 @@ export default function TaskBoard({
                   <select
                     value={filtroEtiqueta}
                     onChange={(e) => setFiltroEtiqueta(e.target.value)}
-                    aria-label="Filtrar por etiqueta"
+                    aria-label="Filtrar por prioridade"
                     className="h-10 rounded-lg border border-line bg-surface px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
                   >
-                    <option value="">Todas as etiquetas</option>
+                    <option value="">Todas as prioridades</option>
                     {catalogo.map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.name}

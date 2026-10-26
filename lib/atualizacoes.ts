@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-26",
+    area: "Tarefas",
+    titulo: "Etiquetas agora se chamam Prioridade",
+    texto: "Em Detalhes da tarefa, o campo \"Etiquetas\" virou \"Prioridade\" (+ Prioridade, Nova prioridade), e o filtro do quadro também. As que você já tinha (Alta, Média, Baixa...) continuam nas tarefas, só mudou o nome. O \"Status da postagem\" não mudou.",
+  },
+  {
+    data: "2026-10-26",
     area: "Sistema",
     titulo: "Olho pra ver a senha",
     texto: "Pedido da Mariana: os campos de senha (login, login do cliente, trocar senha e criar senha nova) ganharam um olho à direita. Clique nele pra ver o que está digitando e clique de novo pra esconder.",

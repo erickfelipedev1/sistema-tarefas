@@ -30,7 +30,7 @@ export function EtiquetaSelo({
         <button
           type="button"
           onClick={aoTirar}
-          aria-label={`Tirar a etiqueta ${etiqueta.name}`}
+          aria-label={`Tirar a prioridade ${etiqueta.name}`}
           className="opacity-80 hover:opacity-100"
         >
           <XIcon className="h-2.5 w-2.5" />
@@ -43,7 +43,7 @@ export function EtiquetaSelo({
 const campo =
   "rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
-// Etiquetas dentro da tarefa (aba Detalhes): as que ela tem, com ✕ pra tirar;
+// Prioridade (as "etiquetas" do banco) dentro da tarefa (aba Detalhes): as que ela tem, com ✕ pra tirar;
 // "+ Etiqueta" pra colocar uma que já existe; "Nova etiqueta" cria (nome + cor) e
 // já põe na tarefa. As etiquetas são de todo mundo; apagar uma do catálogo é
 // de quem criou (ou da liderança) — o banco confere.
@@ -82,7 +82,7 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
     const { error } = await supabase.from("task_label_links").insert({ task_id: taskId, label_id: id });
     if (error) {
       setLigadas((a) => a.filter((x) => x !== id));
-      return setErro("Não foi possível colocar a etiqueta. Tente de novo.");
+      return setErro("Não foi possível colocar a prioridade. Tente de novo.");
     }
     setErro(null);
     aoMudar();
@@ -93,7 +93,7 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
     const { error } = await supabase.from("task_label_links").delete().eq("task_id", taskId).eq("label_id", id);
     if (error) {
       setLigadas((a) => [...a, id]);
-      return setErro("Não foi possível tirar a etiqueta. Tente de novo.");
+      return setErro("Não foi possível tirar a prioridade. Tente de novo.");
     }
     setErro(null);
     aoMudar();
@@ -113,7 +113,7 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
     }
     const { data, error } = await supabase.from("task_labels").insert({ name: limpo, color: cor }).select().single();
     if (error || !data) {
-      return setErro("Não foi possível criar a etiqueta. Tente de novo.");
+      return setErro("Não foi possível criar a prioridade. Tente de novo.");
     }
     setCatalogo((a) => [...a, data as Etiqueta].sort((x, y) => x.name.localeCompare(y.name)));
     setNome("");
@@ -122,10 +122,10 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
   }
 
   async function apagarDoCatalogo(et: Etiqueta) {
-    if (!window.confirm(`Apagar a etiqueta "${et.name}" de TODAS as tarefas? Não dá pra desfazer.`)) return;
+    if (!window.confirm(`Apagar a prioridade "${et.name}" de TODAS as tarefas? Não dá pra desfazer.`)) return;
     const { data, error } = await supabase.from("task_labels").delete().eq("id", et.id).select("id");
     if (error || !data || data.length === 0) {
-      return setErro("Só quem criou a etiqueta (ou a liderança) pode apagar.");
+      return setErro("Só quem criou a prioridade (ou a liderança) pode apagar.");
     }
     setCatalogo((a) => a.filter((c) => c.id !== et.id));
     setLigadas((a) => a.filter((x) => x !== et.id));
@@ -138,20 +138,20 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
 
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-ink-muted">Etiquetas</label>
+      <label className="mb-1 block text-xs font-medium text-ink-muted">Prioridade</label>
       <div className="flex flex-wrap items-center gap-1.5">
         {daTarefa.map((et) => (
           <EtiquetaSelo key={et.id} etiqueta={et} aoTirar={() => tirar(et.id)} />
         ))}
-        {!carregando && daTarefa.length === 0 && <span className="text-xs text-ink-muted">Nenhuma etiqueta.</span>}
+        {!carregando && daTarefa.length === 0 && <span className="text-xs text-ink-muted">Nenhuma prioridade.</span>}
         {disponiveis.length > 0 && (
           <select
             value=""
             onChange={(e) => e.target.value && colocar(e.target.value)}
-            aria-label="Pôr uma etiqueta que já existe"
+            aria-label="Pôr uma prioridade que já existe"
             className={`${campo} max-w-[10rem]`}
           >
-            <option value="">+ Etiqueta</option>
+            <option value="">+ Prioridade</option>
             {disponiveis.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -164,7 +164,7 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
           onClick={() => setCriando((a) => !a)}
           className="text-xs font-medium text-brand-forte hover:underline"
         >
-          {criando ? "Cancelar" : "Nova etiqueta"}
+          {criando ? "Cancelar" : "Nova prioridade"}
         </button>
         {catalogo.length > 0 && (
           <button
@@ -183,12 +183,12 @@ export default function EtiquetasDaTarefa({ taskId, aoMudar }: { taskId: string;
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             maxLength={30}
-            placeholder="Nome da etiqueta"
-            aria-label="Nome da nova etiqueta"
+            placeholder="Nome da prioridade"
+            aria-label="Nome da nova prioridade"
             autoFocus
             className={`${campo} w-40`}
           />
-          <div className="flex max-w-[16rem] flex-wrap items-center gap-1.5" role="group" aria-label="Cor da etiqueta">
+          <div className="flex max-w-[16rem] flex-wrap items-center gap-1.5" role="group" aria-label="Cor da prioridade">
             {CORES_TAREFA.map((c) => (
               <button
                 key={c.key}

@@ -86,7 +86,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Dá pra duplicar uma tarefa?",
     resposta:
-      "Dá: abra a tarefa e clique em Duplicar, no rodapé de Detalhes. A cópia leva descrição, copy, datas, responsáveis, checklist (desmarcado) e etiquetas, e abre na hora pra você ajustar. Comentários, anexos e o post não vão junto.",
+      "Dá: abra a tarefa e clique em Duplicar, no rodapé de Detalhes. A cópia leva descrição, copy, datas, responsáveis, checklist (desmarcado) e prioridade, e abre na hora pra você ajustar. Comentários, anexos e o post não vão junto.",
     palavras: ["duplicar", "copiar tarefa", "cópia", "repetir tarefa", "clonar"],
   },
   {
@@ -116,10 +116,10 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["mencionar", "@", "marcar pessoa", "avisar alguém", "todos"],
   },
   {
-    pergunta: "Como uso as etiquetas?",
+    pergunta: "Como uso a prioridade (antes chamada de etiqueta)?",
     resposta:
-      "Em Detalhes da tarefa, em Etiquetas, escolha ou crie uma (nome e cor). Elas aparecem no cartão do quadro, e dá pra filtrar o quadro por etiqueta.",
-    palavras: ["etiqueta", "tag", "rótulo", "filtrar"],
+      "Em Detalhes da tarefa, em Prioridade, escolha ou crie uma (nome e cor), como Alta, Média e Baixa. Ela aparece no cartão do quadro, e dá pra filtrar o quadro por prioridade.",
+    palavras: ["prioridade", "etiqueta", "tag", "rótulo", "filtrar", "alta", "média", "baixa", "urgente"],
   },
   {
     pergunta: "O que é a aba Projetos do cliente?",
