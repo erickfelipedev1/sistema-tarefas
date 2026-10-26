@@ -12,10 +12,6 @@ import { XIcon } from "./ui/icons";
 const campo =
   "rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15";
 
-function formatarPrazo(data: string | null) {
-  return data ? data.split("-").reverse().slice(0, 2).join("/") : null;
-}
-
 // Menu "Subtarefas" da tarefa (migration 0067): cada subtarefa é uma tarefa
 // completa ligada a esta por "parent_id" — tem descrição, período, vários
 // responsáveis, checklist, anexos, comentários e horas, e aparece no quadro
@@ -169,6 +165,29 @@ export default function SubtarefasTab({
     aoMudar();
   }
 
+  // Muda o início ou a entrega da subtarefa direto na lista. O início não pode
+  // ficar depois da entrega (a entrega é obrigatória: não dá pra apagar).
+  async function mudarData(item: Task, campo: "start_date" | "due_date", valor: string) {
+    if (!valor) return;
+    const inicio = campo === "start_date" ? valor : item.start_date;
+    const entrega = campo === "due_date" ? valor : item.due_date;
+    if (inicio && entrega && inicio > entrega) {
+      return setErro(
+        campo === "start_date" ? "O início não pode ser depois da entrega." : "A entrega não pode ser antes do início."
+      );
+    }
+    const antes = item;
+    const depois = { ...item, [campo]: valor };
+    setItens((atual) => atual.map((i) => (i.id === item.id ? depois : i)));
+    const { error } = await supabase.from("tasks").update({ [campo]: valor }).eq("id", item.id);
+    if (error) {
+      setItens((atual) => atual.map((i) => (i.id === item.id ? antes : i)));
+      return setErro("Não foi possível salvar a data. Tente de novo.");
+    }
+    setErro(null);
+    aoAtualizar(depois);
+  }
+
   async function remover(item: Task) {
     if (!window.confirm(`Excluir a subtarefa "${item.title}"? Os comentários, anexos e horas dela vão junto.`)) return;
     const { error } = await supabase.from("tasks").delete().eq("id", item.id);
@@ -199,7 +218,6 @@ export default function SubtarefasTab({
           const responsaveis = (item.assigned_to ?? [])
             .map((id) => pessoas.find((p) => p.id === id))
             .filter((p): p is Profile => !!p);
-          const prazo = formatarPrazo(item.due_date);
           return (
             <li key={item.id} className="rounded-lg border border-line bg-canvas px-3 py-2">
               <div className="flex items-center gap-2">
@@ -281,7 +299,28 @@ export default function SubtarefasTab({
                       </option>
                     ))}
                 </select>
-                {prazo && <span>· prazo {prazo}</span>}
+                <label className="inline-flex items-center gap-1">
+                  Início
+                  <input
+                    type="date"
+                    value={item.start_date ?? ""}
+                    max={item.due_date ?? undefined}
+                    onChange={(e) => mudarData(item, "start_date", e.target.value)}
+                    aria-label="Início da subtarefa"
+                    className={campo}
+                  />
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  Entrega
+                  <input
+                    type="date"
+                    value={item.due_date ?? ""}
+                    min={item.start_date ?? undefined}
+                    onChange={(e) => mudarData(item, "due_date", e.target.value)}
+                    aria-label="Entrega da subtarefa"
+                    className={campo}
+                  />
+                </label>
               </div>
             </li>
           );

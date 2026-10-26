@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-26",
     area: "Tarefas",
+    titulo: "Mudar a data da subtarefa na própria lista",
+    texto: "Na aba Subtarefas, cada subtarefa ganhou os campos Início e Entrega: é só escolher a nova data ali, sem abrir a subtarefa. O início não pode ficar depois da entrega.",
+  },
+  {
+    data: "2026-10-26",
+    area: "Tarefas",
     titulo: "Mais de um cliente na tarefa e filtro de cliente",
     texto: "Em Detalhes da tarefa, ao lado de Cliente, o campo \"Outros clientes\" (+ Cliente) põe a tarefa também no quadro dos outros clientes. O cliente principal continua sendo o do campo Cliente (relatórios, horas e portal contam só ele). No quadro de Tarefas há um filtro novo de cliente (Todos os clientes, cada cliente, Sem cliente) e o cartão mostra +N quando tem outros clientes. Também: a legenda do post não copia mais a Copywrite.",
   },
