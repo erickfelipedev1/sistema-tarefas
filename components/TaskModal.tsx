@@ -190,27 +190,39 @@ export default function TaskModal({
   // A tarefa nasce assim que a pessoa dá o nome (ao sair do campo, no Enter
   // ou depois de uma pausa digitando); o resto vai salvando sozinho depois.
   const criandoRef = useRef(false);
-  async function criar() {
+  // Uma criação por vez: o botão Salvar e o "sair do campo" podem disparar juntos,
+  // e quem chegou depois espera a mesma criação em vez de ser ignorado.
+  const criacaoRef = useRef<Promise<boolean> | null>(null);
+  function criar(): Promise<boolean> {
+    if (!criacaoRef.current) {
+      criacaoRef.current = criarTarefa().finally(() => {
+        criacaoRef.current = null;
+      });
+    }
+    return criacaoRef.current;
+  }
+  // Devolve se a tarefa existe depois da chamada (criada agora ou já criada).
+  async function criarTarefa(): Promise<boolean> {
     if (!title.trim()) {
       setErro("Dá um nome pra tarefa antes de criar.");
-      return;
+      return false;
     }
-    if (criandoRef.current || current) return;
+    if (criandoRef.current || current) return !!current;
     // Sem período escolhido: começa e entrega hoje (dá pra mudar depois).
     const inicio = startDate || hojeLocal;
     const entrega = dueDate || (inicio > hojeLocal ? inicio : hojeLocal);
     if (inicio > entrega) {
       setErro("O início não pode ser depois da entrega.");
-      return;
+      return false;
     }
     const erroHora = erroDeHorario(inicio, entrega, startTime, dueTime);
     if (erroHora) {
       setErro(erroHora);
-      return;
+      return false;
     }
     if (descriptionHtml.length > LIMITE_DO_HTML) {
       setErro("A descrição está grande demais pra salvar. Encurte um pouco o texto.");
-      return;
+      return false;
     }
     criandoRef.current = true;
     setStartDate(inicio);
@@ -250,7 +262,7 @@ export default function TaskModal({
           ? "Pra criar tarefa com período, rode a migration 0040_tarefa_periodo.sql no Supabase."
           : `Não deu pra criar a tarefa: ${error?.message ?? "erro desconhecido"}`
       );
-      return;
+      return false;
     }
 
     // A tarefa não cria mais página de detalhamento na Wiki: a Wiki do
@@ -262,6 +274,14 @@ export default function TaskModal({
     // Notificação no celular dos responsáveis (menos quem criou).
     avisarTarefaAtribuida(tarefaFinal.id).catch(() => {});
     if (mencoesDaDescricao.length > 0) avisarMencaoNaDescricao(tarefaFinal.id).catch(() => {});
+    return true;
+  }
+
+  // Botão Salvar, no alto: cria a tarefa (se ainda não foi criada) e fecha. O resto
+  // já salva sozinho ao sair de cada campo; clicar aqui tira o foco do campo antes.
+  async function salvarEFechar() {
+    if (isNovo && !(await criar())) return;
+    onClose();
   }
 
   // Troca o projeto do cliente; as subtarefas acompanham a tarefa principal.
@@ -503,12 +523,24 @@ export default function TaskModal({
             <h2 className="text-lg font-semibold text-ink">
               {isNovo ? "Nova tarefa" : "Atualize aqui sua tarefa"}
             </h2>
-            <button
-              onClick={onClose}
-              className="text-xl leading-none text-ink-muted hover:text-ink"
-            >
-              ✕
-            </button>
+            <div className="flex flex-shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={salvarEFechar}
+                // Sem "disabled" enquanto salva: clicar tira o foco do nome, que já começa a
+                // criar a tarefa, e um botão desativado engoliria o próprio clique.
+                className="rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-navy hover:bg-brand-hover"
+              >
+                {saving ? "Salvando..." : "Salvar"}
+              </button>
+              <button
+                onClick={onClose}
+                aria-label="Fechar"
+                className="text-xl leading-none text-ink-muted hover:text-ink"
+              >
+                ✕
+              </button>
+            </div>
           </div>
           {current?.parent_id && (
             <button
@@ -978,42 +1010,33 @@ export default function TaskModal({
                 </Link>
               )}
 
-              <div className="flex items-center justify-between border-t border-line pt-4">
-                {isNovo ? (
+              {!isNovo && (
+                <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
                   <button
-                    onClick={criar}
-                    disabled={saving}
-                    className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-navy hover:bg-brand-hover disabled:opacity-50"
+                    type="button"
+                    onClick={duplicar}
+                    disabled={duplicando}
+                    title="Criar uma cópia desta tarefa"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-hover disabled:opacity-60"
                   >
-                    {saving ? "Criando..." : "Criar tarefa"}
+                    <CopyIcon className="h-3.5 w-3.5" />
+                    {duplicando ? "Duplicando..." : "Duplicar"}
                   </button>
-                ) : (
-                  <div className="flex w-full items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={duplicar}
-                      disabled={duplicando}
-                      title="Criar uma cópia desta tarefa"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-hover disabled:opacity-60"
-                    >
-                      <CopyIcon className="h-3.5 w-3.5" />
-                      {duplicando ? "Duplicando..." : "Duplicar"}
-                    </button>
-                    <button
-                      onClick={excluirTarefa}
-                      title="Excluir tarefa"
-                      className="text-sm text-ink-muted hover:text-danger"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <button
+                    onClick={excluirTarefa}
+                    title="Excluir tarefa"
+                    className="text-sm text-ink-muted hover:text-danger"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              )}
 
               {isNovo && (
                 <p className="text-xs text-ink-muted">
-                  A tarefa é criada sozinha assim que você dá o nome. Checklist,
-                  anexos e comentários ficam disponíveis logo depois.
+                  Clique em Salvar no alto, ou a tarefa é criada sozinha assim que
+                  você dá o nome. Checklist, anexos e comentários ficam disponíveis
+                  logo depois.
                 </p>
               )}
             </div>

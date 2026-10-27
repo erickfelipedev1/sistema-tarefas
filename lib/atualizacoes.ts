@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-27",
     area: "Tarefas",
+    titulo: "Botão Salvar no alto da tarefa",
+    texto: "A janela da tarefa ganhou o botão Salvar, no canto de cima (ao lado do X). Na tarefa nova ele cria a tarefa e fecha; na tarefa que já existe ele fecha garantindo que tudo foi salvo. O que você muda continua salvando sozinho ao sair de cada campo.",
+  },
+  {
+    data: "2026-10-27",
+    area: "Tarefas",
     titulo: "Lixeira de tarefas: excluir deixou de ser pra sempre",
     texto: "Toda tarefa excluída agora vai pra Lixeira (novo item no menu) e fica lá por 30 dias. Em Restaurar ela volta pro quadro com comentários, checklist, anexos e horas, e sem avisar ninguém. Passados os 30 dias, some de vez. Vale também pra subtarefas.",
   },

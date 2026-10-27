@@ -20,7 +20,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como crio uma tarefa?",
     resposta:
-      "Clique em \"Nova tarefa\" (em Tarefas ou dentro do cliente) e dê o nome: a tarefa já é criada sozinha, sem botão de salvar. Sem datas escolhidas, ela começa e entrega hoje; dá pra mudar depois. Tudo o que você mexer em seguida salva automático.",
+      "Clique em \"Nova tarefa\" (em Tarefas ou dentro do cliente) e dê o nome e clique em Salvar, no alto da janela (ou, se preferir, a tarefa é criada sozinha assim que você sai do campo do nome). Sem datas escolhidas, ela começa e entrega hoje; dá pra mudar depois. Tudo o que você mexer em seguida salva automático.",
     palavras: ["nova tarefa", "criar", "adicionar tarefa", "salvar"],
     link: { rotulo: "Ir pras tarefas", href: "/board" },
   },
