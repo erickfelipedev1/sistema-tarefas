@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-27",
+    area: "Sistema",
+    titulo: "Menos consumo de dados nos posts",
+    texto: "As miniaturas de vídeo sem capa, no calendário de postagem, na lista de posts e na tarefa, agora mostram um ícone de play em vez de carregar o vídeo. O vídeo só é baixado quando você abre o post. Isso deixa as telas mais leves e evita estourar o limite de tráfego do servidor.",
+  },
+  {
+    data: "2026-10-27",
     area: "Tarefas",
     titulo: "Tarefa cancelada fica apagada e riscada de vermelho",
     texto: "No quadro, na lista e no calendário, a tarefa com status Cancelada agora aparece apagada, com o título riscado de vermelho, pra não ser confundida com uma tarefa ativa. A concluída continua cinza.",

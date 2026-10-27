@@ -33,6 +33,7 @@ import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } fro
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
+import MiniaturaDeVideo from "./MiniaturaDeVideo";
 import CapaDoReel, { type CapaDoForm } from "./CapaDoReel";
 import ArquivosParaBaixar from "./ArquivosParaBaixar";
 import { BaixarItem, BaixarTodos } from "./BaixarDoForm";
@@ -574,7 +575,7 @@ export default function PostDaTarefa({
                 <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-black">
                   {url && miniatura ? (
                     mini?.tipo === "video" ? (
-                      <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      <MiniaturaDeVideo />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={url} alt="" className="h-full w-full object-cover" />
@@ -730,7 +731,7 @@ export default function PostDaTarefa({
                       {!url ? (
                         <span className="grid h-full w-full place-items-center text-[10px] text-white/60">…</span>
                       ) : tipoDaMini === "video" ? (
-                        <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                        <MiniaturaDeVideo />
                       ) : (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={url} alt="" className="h-full w-full object-cover" />

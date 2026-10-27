@@ -6,6 +6,7 @@ import { carregarStatusDaPostagem, textoSobre, type StatusDaPostagem } from "@/l
 import type { Post, PostCategory, PostStatus } from "@/lib/types";
 import { CATEGORIAS, miniaturaDoItem, ORDEM_DAS_CATEGORIAS, REDES, redesValidas, STATUS_DO_POST } from "@/lib/posts";
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "../ui/icons";
+import MiniaturaDeVideo from "./MiniaturaDeVideo";
 
 export type PostNoCalendario = Post & { projectName?: string };
 
@@ -208,7 +209,7 @@ export default function CalendarioDePostagem({
         <span className="grid h-6 w-6 flex-shrink-0 place-items-center overflow-hidden rounded bg-black text-ink-muted">
           {url && miniatura ? (
             mini?.tipo === "video" ? (
-              <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+              <MiniaturaDeVideo />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={url} alt="" draggable={false} className="h-full w-full object-cover" />

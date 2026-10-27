@@ -38,6 +38,7 @@ import ArquivosParaBaixar from "./posts/ArquivosParaBaixar";
 import { BaixarItem, BaixarTodos } from "./posts/BaixarDoForm";
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
+import MiniaturaDeVideo from "./posts/MiniaturaDeVideo";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -1310,7 +1311,7 @@ function SeletorDeRede({
 function Miniatura({ url, tipo }: { url: string; tipo: "image" | "video" }) {
   if (!url) return <span className="grid h-full w-full place-items-center text-[10px] text-white/60">…</span>;
   if (tipo === "video") {
-    return <video src={url} muted playsInline preload="metadata" className="h-full w-full object-cover" />;
+    return <MiniaturaDeVideo />;
   }
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />;
