@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-27",
+    area: "Clientes",
+    titulo: "Aba Documentos e link do cliente abrindo no topo",
+    texto: "Na página do cliente, a aba Arquivos agora se chama Documentos (o conteúdo é o mesmo). E o link do portal que você manda pro cliente voltou a abrir no topo da página: antes ele descia sozinho até a caixa de mensagens. Agora só a conversa rola até a última mensagem, e a página fica onde está.",
+  },
+  {
+    data: "2026-10-27",
     area: "Posts",
     titulo: "Cancelar o envio de um post ao cliente",
     texto: "Mandou o post pro cliente sem querer, ou lembrou de um ajuste? Enquanto o post está \"Aguardando o cliente\", o botão Cancelar envio (nos Posts do cliente e na tarefa) devolve ele pra rascunho e o cliente deixa de ver. Os comentários ficam salvos, e quando você enviar de novo ele aparece como um envio novo, não como reenviado.",

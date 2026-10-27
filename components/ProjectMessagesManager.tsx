@@ -67,7 +67,10 @@ export default function ProjectMessagesManager({
   }, [projectId]);
 
   useEffect(() => {
-    fimRef.current?.scrollIntoView({ block: "end" });
+    // Rola só a caixa de mensagens. scrollIntoView arrastava a página inteira
+    // pra baixo e o cliente abria o link já no fim da tela.
+    const caixa = fimRef.current?.parentElement;
+    if (caixa) caixa.scrollTop = caixa.scrollHeight;
   }, [mensagens.length]);
 
   async function enviar() {

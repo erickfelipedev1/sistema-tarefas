@@ -22,7 +22,7 @@ const ABAS = [
   { key: "posts", label: "Posts", icon: ImageIcon },
   { key: "atas", label: "Atas", icon: UsersIcon },
   { key: "wiki", label: "Wiki", icon: BookOpenIcon },
-  { key: "arquivos", label: "Arquivos", icon: FileStackIcon },
+  { key: "arquivos", label: "Documentos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
   { key: "mensagens", label: "Mensagens", icon: MessageCircleIcon },
   { key: "analytics", label: "Analytics", icon: BarChartIcon },
