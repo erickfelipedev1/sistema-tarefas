@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PinIcon } from "./ui/icons";
 
-// Fixa (ou solta) uma página da Wiki do cliente em destaque: grava
-// pages.pinned_at (migration 0054). O destaque é do cliente, não de quem
-// clicou — todo mundo que abre a aba vê a página no topo.
+// Fixa (ou solta) uma página em destaque, na Wiki do cliente ou na Minha Wiki:
+// grava pages.pinned_at (migration 0054). Na Wiki do cliente o destaque é do
+// cliente (todo mundo que abre a aba vê a página no topo); na Minha Wiki, a
+// página é de quem criou.
 export default function FixarPaginaButton({ pageId, fixada }: { pageId: string; fixada: boolean }) {
   const router = useRouter();
   const supabase = createClient();

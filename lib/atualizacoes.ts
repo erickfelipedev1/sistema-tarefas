@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-10-27",
+    area: "Sistema",
+    titulo: "Fixar páginas na Minha Wiki",
+    texto: "Pedido da Emilly: na Minha Wiki, cada página ganhou o alfinete 📌 pra fixar. As fixadas ficam no topo, numa seção \"Fixadas\", e também primeiro na lista lateral. Clique no alfinete de novo pra soltar. A Wiki do cliente já tinha isso.",
+  },
+  {
     data: "2026-10-26",
     area: "Tarefas",
     titulo: "Mudar a data da subtarefa na própria lista",

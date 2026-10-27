@@ -66,6 +66,13 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["filtro", "filtrar", "cliente", "tarefas por cliente"],
   },
   {
+    pergunta: "Como fixo uma página da Wiki?",
+    resposta:
+      "Na Minha Wiki (e na Wiki de cada cliente), passe o mouse na página e clique no alfinete. As fixadas ficam no topo, na seção \"Fixadas\"; clique de novo pra soltar.",
+    palavras: ["wiki", "fixar", "fixada", "alfinete", "destaque", "página", "nota"],
+    link: { rotulo: "Abrir a Wiki", href: "/wiki" },
+  },
+  {
     pergunta: "Dá pra mudar a ordem do checklist?",
     resposta: "Dá: arraste o item pela alça ⠿ ou use as setas ↑↓ ao lado dele (no computador elas aparecem ao passar o mouse).",
     palavras: ["checklist", "ordem", "reordenar", "mover item", "passos"],

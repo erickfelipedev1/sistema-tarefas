@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileTextIcon } from "./ui/icons";
+import { FileTextIcon, PinIcon } from "./ui/icons";
 import type { PaginaResumo } from "@/lib/wiki";
 
 // Navegação interna da Wiki: uma lista simples e real das páginas (sem
@@ -36,7 +36,11 @@ export default function WikiSidebar({
                     : "text-ink-muted hover:bg-surface-hover hover:text-ink"
                 }`}
               >
-                <FileTextIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                {p.pinned_at ? (
+                  <PinIcon className="h-3.5 w-3.5 flex-shrink-0 text-brand-forte" fill="currentColor" />
+                ) : (
+                  <FileTextIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                )}
                 <span className="truncate">{p.title || "Sem título"}</span>
               </Link>
             );

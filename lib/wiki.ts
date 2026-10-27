@@ -5,8 +5,8 @@ export interface PaginaResumo {
   title: string;
   created_by_label: string | null;
   updated_at: string;
-  // Quando foi fixada em destaque na Wiki do cliente (migration 0054); nulo
-  // ou ausente = não fixada.
+  // Quando foi fixada em destaque (migration 0054), na Wiki do cliente ou na
+  // Minha Wiki; nulo ou ausente = não fixada.
   pinned_at?: string | null;
 }
 
@@ -26,13 +26,17 @@ export async function getMinhasPaginas(
 ): Promise<PaginaResumo[]> {
   if (!userId) return [];
 
-  const { data } = await supabase
-    .from("pages")
-    .select("id, title, created_by_label, updated_at")
-    .is("project_id", null)
-    .eq("created_by", userId)
-    .order("updated_at", { ascending: false });
-  const minhas = (data ?? []) as PaginaResumo[];
+  const consulta = (colunas: string) =>
+    supabase
+      .from("pages")
+      .select(colunas)
+      .is("project_id", null)
+      .eq("created_by", userId)
+      .order("updated_at", { ascending: false });
+  // Sem a migration 0054 a coluna pinned_at não existe: aí vale a lista sem fixadas.
+  const comFixadas = await consulta("id, title, created_by_label, updated_at, pinned_at");
+  const data = comFixadas.error ? (await consulta("id, title, created_by_label, updated_at")).data : comFixadas.data;
+  const minhas = (data ?? []) as unknown as PaginaResumo[];
   if (minhas.length === 0) return [];
 
   // Quais dessas são página de alguma tarefa (tasks.page_id). Em lotes, pra
@@ -45,8 +49,17 @@ export async function getMinhasPaginas(
       .select("page_id")
       .in("page_id", ids.slice(i, i + 150));
     // Sem conseguir conferir, melhor mostrar a mais do que esconder uma nota.
-    if (error) return minhas;
+    if (error) return paginasComFixadasPrimeiro(minhas);
     for (const t of tarefas ?? []) if (t.page_id) deTarefa.add(t.page_id as string);
   }
-  return minhas.filter((p) => !deTarefa.has(p.id));
+  return paginasComFixadasPrimeiro(minhas.filter((p) => !deTarefa.has(p.id)));
+}
+
+// As fixadas vão pro topo (a mais recém fixada primeiro); o resto segue por
+// atualização, como já veio.
+export function paginasComFixadasPrimeiro(paginas: PaginaResumo[]): PaginaResumo[] {
+  const fixadas = paginas
+    .filter((p) => p.pinned_at)
+    .sort((a, b) => (b.pinned_at ?? "").localeCompare(a.pinned_at ?? ""));
+  return [...fixadas, ...paginas.filter((p) => !p.pinned_at)];
 }

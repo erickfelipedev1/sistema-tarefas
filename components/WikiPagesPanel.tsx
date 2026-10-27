@@ -33,7 +33,16 @@ export default function WikiPagesPanel({
     );
   }, [pages, termo]);
 
-  const recentes = useMemo(() => pages.slice(0, MAX_RECENTES), [pages]);
+  const fixadas = useMemo(() => pages.filter((p) => p.pinned_at), [pages]);
+  const naoFixadas = useMemo(() => pages.filter((p) => !p.pinned_at), [pages]);
+  // As recentes não repetem o que já está fixado.
+  const recentes = useMemo(
+    () =>
+      [...naoFixadas]
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+        .slice(0, MAX_RECENTES),
+    [naoFixadas]
+  );
 
   // Nenhuma página existe ainda: estado vazio profissional, sem listas ou
   // seções pela metade.
@@ -74,6 +83,19 @@ export default function WikiPagesPanel({
         }
       />
 
+      {!termo && fixadas.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Fixadas
+          </h2>
+          <div className="divide-y divide-line rounded-2xl border border-brand-forte/30 bg-surface">
+            {fixadas.map((p) => (
+              <PaginaRow key={p.id} pagina={p} fixavel />
+            ))}
+          </div>
+        </section>
+      )}
+
       {!termo && recentes.length > 0 && (
         <section className="mb-6">
           <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
@@ -89,7 +111,7 @@ export default function WikiPagesPanel({
 
       <section>
         <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          {termo ? `Resultados (${paginasFiltradas.length})` : "Todas as páginas"}
+          {termo ? `Resultados (${paginasFiltradas.length})` : fixadas.length > 0 ? "Outras páginas" : "Todas as páginas"}
         </h2>
 
         {paginasFiltradas.length === 0 ? (
@@ -101,8 +123,8 @@ export default function WikiPagesPanel({
           </div>
         ) : (
           <div data-mov="card" className="divide-y divide-line rounded-2xl border border-line bg-surface">
-            {paginasFiltradas.map((p) => (
-              <PaginaRow key={p.id} pagina={p} />
+            {(termo ? paginasFiltradas : naoFixadas).map((p) => (
+              <PaginaRow key={p.id} pagina={p} fixavel />
             ))}
           </div>
         )}
@@ -137,8 +159,8 @@ function PaginaCard({ pagina }: { pagina: PaginaResumo }) {
 
 // Exportado pra ser reaproveitado também na aba "Wiki" de dentro de um
 // projeto (app/(app)/projetos/[id]/page.tsx), em vez de duplicar a mesma
-// linha de página. Com "fixavel" (só na Wiki do cliente) a linha ganha o
-// alfinete de fixar em destaque.
+// linha de página. Com "fixavel" (Wiki do cliente e Minha Wiki) a linha ganha
+// o alfinete de fixar em destaque.
 export function PaginaRow({ pagina, fixavel = false }: { pagina: PaginaResumo; fixavel?: boolean }) {
   const fixada = !!pagina.pinned_at;
   return (
