@@ -473,8 +473,8 @@ export default function TaskModal({
       : await supabase.from("tasks").select("id", { count: "exact", head: true }).eq("parent_id", current.id);
     const ok = window.confirm(
       filhas && filhas > 0
-        ? `Excluir esta tarefa? ${filhas === 1 ? "A subtarefa dela fica" : `As ${filhas} subtarefas dela ficam`} no quadro como tarefa${filhas === 1 ? "" : "s"} avulsa${filhas === 1 ? "" : "s"}. Essa ação não pode ser desfeita.`
-        : "Excluir esta tarefa? Essa ação não pode ser desfeita."
+        ? `Excluir esta tarefa? ${filhas === 1 ? "A subtarefa dela fica" : `As ${filhas} subtarefas dela ficam`} no quadro como tarefa${filhas === 1 ? "" : "s"} avulsa${filhas === 1 ? "" : "s"}. Ela vai pra Lixeira e dá pra restaurar em até 30 dias.`
+        : "Excluir esta tarefa? Ela vai pra Lixeira e dá pra restaurar em até 30 dias."
     );
     if (!ok) return;
     await supabase.from("tasks").delete().eq("id", current.id);

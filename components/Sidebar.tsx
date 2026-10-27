@@ -31,6 +31,7 @@ import {
   UserIcon,
   UsersIcon,
   SunIcon,
+  Trash2Icon,
 } from "./ui/icons";
 import { useNotifications } from "@/lib/notifications";
 import { CHAVE_VISTO, ULTIMA_ATUALIZACAO } from "@/lib/atualizacoes";
@@ -52,6 +53,7 @@ const SECOES: {
       { href: "/wiki", label: "Wiki", icon: BookOpenIcon },
       { href: "/agente", label: "Agente de IA", icon: BotIcon },
       { href: "/atualizacoes", label: "Atualizações", icon: RefreshIcon },
+      { href: "/lixeira", label: "Lixeira", icon: Trash2Icon },
     ],
   },
   {

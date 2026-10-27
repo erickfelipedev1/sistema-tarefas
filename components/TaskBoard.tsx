@@ -619,7 +619,7 @@ export default function TaskBoard({
 
   async function deleteTask(task: Task) {
     const confirmado = window.confirm(
-      `Tem certeza que quer excluir a tarefa "${task.title}"? Essa ação não pode ser desfeita.`
+      `Excluir a tarefa "${task.title}"? Ela vai pra Lixeira e dá pra restaurar em até 30 dias.`
     );
     if (!confirmado) return;
 

@@ -189,7 +189,7 @@ export default function SubtarefasTab({
   }
 
   async function remover(item: Task) {
-    if (!window.confirm(`Excluir a subtarefa "${item.title}"? Os comentários, anexos e horas dela vão junto.`)) return;
+    if (!window.confirm(`Excluir a subtarefa "${item.title}"? Ela vai pra Lixeira, com os comentários, anexos e horas, e dá pra restaurar em até 30 dias.`)) return;
     const { error } = await supabase.from("tasks").delete().eq("id", item.id);
     if (error) return setErro("Não foi possível excluir a subtarefa.");
     setItens((atual) => atual.filter((i) => i.id !== item.id));

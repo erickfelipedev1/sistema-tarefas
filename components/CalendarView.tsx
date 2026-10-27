@@ -515,7 +515,7 @@ export default function CalendarView({
 
   async function handleDeleteTask(e: React.MouseEvent, task: Task) {
     e.stopPropagation();
-    if (!window.confirm(`Excluir a tarefa "${task.title}"?`)) return;
+    if (!window.confirm(`Excluir a tarefa "${task.title}"? Ela vai pra Lixeira e dá pra restaurar em até 30 dias.`)) return;
     setTasks((current) => current.filter((t) => t.id !== task.id));
     await supabase.from("tasks").delete().eq("id", task.id);
   }

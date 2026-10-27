@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-27",
+    area: "Tarefas",
+    titulo: "Lixeira de tarefas: excluir deixou de ser pra sempre",
+    texto: "Toda tarefa excluída agora vai pra Lixeira (novo item no menu) e fica lá por 30 dias. Em Restaurar ela volta pro quadro com comentários, checklist, anexos e horas, e sem avisar ninguém. Passados os 30 dias, some de vez. Vale também pra subtarefas.",
+  },
+  {
+    data: "2026-10-27",
     area: "Sistema",
     titulo: "Menos consumo de dados nos posts",
     texto: "As miniaturas de vídeo sem capa, no calendário de postagem, na lista de posts e na tarefa, agora mostram um ícone de play em vez de carregar o vídeo. O vídeo só é baixado quando você abre o post. Isso deixa as telas mais leves e evita estourar o limite de tráfego do servidor.",

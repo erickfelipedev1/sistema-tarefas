@@ -11,6 +11,13 @@ export interface PerguntaDeAjuda {
 
 export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
+    pergunta: "Excluí uma tarefa sem querer. Dá pra recuperar?",
+    resposta:
+      "Dá. Tarefa excluída vai pra Lixeira (no menu) e fica lá 30 dias. Clique em Restaurar e ela volta ao quadro com comentários, checklist, anexos e horas. Passados os 30 dias, some de vez.",
+    palavras: ["excluir", "apagar", "apaguei", "sumiu", "recuperar", "restaurar", "lixeira", "voltar tarefa"],
+    link: { rotulo: "Abrir a Lixeira", href: "/lixeira" },
+  },
+  {
     pergunta: "Como crio uma tarefa?",
     resposta:
       "Clique em \"Nova tarefa\" (em Tarefas ou dentro do cliente) e dê o nome: a tarefa já é criada sozinha, sem botão de salvar. Sem datas escolhidas, ela começa e entrega hoje; dá pra mudar depois. Tudo o que você mexer em seguida salva automático.",
