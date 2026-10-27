@@ -23,6 +23,7 @@ import {
   miniaturaDoItem,
   mensagemDeArquivoGrande,
   midiasValidas,
+  MENSAGEM_CANCELAR_ENVIO,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
   ORDEM_DAS_REDES,
@@ -661,6 +662,7 @@ export default function PostsManager({
   // ---------- Ações da lista ----------
   async function mudarStatus(post: Post, status: PostStatus) {
     setAvisoDaLista(null);
+    if (status === "rascunho" && !window.confirm(MENSAGEM_CANCELAR_ENVIO)) return;
     if (status === "enviado") {
       const falta = oQueFaltaProEnvio({
         category: post.category,
@@ -1062,6 +1064,11 @@ export default function PostsManager({
                   {post.status === "ajuste" && (
                     <Button size="sm" onClick={() => abrirEdicao(post)}>
                       Ajustar e reenviar
+                    </Button>
+                  )}
+                  {post.status === "enviado" && (
+                    <Button size="sm" variant="secondary" onClick={() => mudarStatus(post, "rascunho")}>
+                      Cancelar envio
                     </Button>
                   )}
                   {(post.status === "enviado" || post.status === "ajuste") && (

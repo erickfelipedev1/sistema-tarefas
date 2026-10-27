@@ -50,6 +50,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["enviar post", "aprovar", "cliente aprovar", "portal", "posts"],
   },
   {
+    pergunta: "Enviei um post pro cliente sem querer. Dá pra cancelar?",
+    resposta:
+      "Dá, enquanto o cliente ainda não respondeu (status \"Aguardando o cliente\"). Clique em Cancelar envio no post, nos Posts do cliente ou na tarefa. Ele volta a ser rascunho e o cliente deixa de ver. Os comentários ficam salvos, e você pode ajustar e enviar de novo quando quiser. Se o cliente já pediu ajuste, o caminho é Ajustar e reenviar.",
+    palavras: ["cancelar envio", "desfazer envio", "enviei sem querer", "tirar post do cliente", "voltar rascunho"],
+  },
+  {
     pergunta: "Como faço uma subtarefa?",
     resposta:
       "Abra a tarefa e vá em Subtarefas. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o atalho \"abrir original\".",

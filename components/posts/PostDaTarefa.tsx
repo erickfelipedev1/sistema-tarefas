@@ -14,6 +14,7 @@ import {
   ehFormatoDeVideo,
   rotuloDaCapa,
   midiasValidas,
+  MENSAGEM_CANCELAR_ENVIO,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
   ehDoDrive,
@@ -553,6 +554,21 @@ export default function PostDaTarefa({
     setAviso("Post enviado pros Posts do cliente. Ele já pode ver no portal.");
   }
 
+  async function cancelarEnvio(post: Post) {
+    if (!window.confirm(MENSAGEM_CANCELAR_ENVIO)) return;
+    setAviso(null);
+    setErro(null);
+    const { data: salvo, error } = await supabase
+      .from("posts")
+      .update({ status: "rascunho" })
+      .eq("id", post.id)
+      .select()
+      .single();
+    if (error || !salvo) return setErro("Não foi possível cancelar o envio. Tente de novo.");
+    setPosts((atual) => atual.map((p) => (p.id === post.id ? arrumar(salvo as Post) : p)));
+    setAviso("Envio cancelado. O post voltou a ser rascunho e o cliente não vê mais.");
+  }
+
   if (carregando) return <p className="text-sm text-ink-muted">Carregando...</p>;
 
   return (
@@ -601,6 +617,11 @@ export default function PostDaTarefa({
                     {post.status === "rascunho" && (
                       <Button size="sm" onClick={() => enviarRascunho(post)}>
                         Enviar ao cliente
+                      </Button>
+                    )}
+                    {post.status === "enviado" && (
+                      <Button variant="secondary" size="sm" onClick={() => cancelarEnvio(post)}>
+                        Cancelar envio
                       </Button>
                     )}
                     <Link

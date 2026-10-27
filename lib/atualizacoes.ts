@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-27",
+    area: "Posts",
+    titulo: "Cancelar o envio de um post ao cliente",
+    texto: "Mandou o post pro cliente sem querer, ou lembrou de um ajuste? Enquanto o post está \"Aguardando o cliente\", o botão Cancelar envio (nos Posts do cliente e na tarefa) devolve ele pra rascunho e o cliente deixa de ver. Os comentários ficam salvos, e quando você enviar de novo ele aparece como um envio novo, não como reenviado.",
+  },
+  {
+    data: "2026-10-27",
     area: "Tarefas",
     titulo: "Botão Salvar no alto da tarefa",
     texto: "A janela da tarefa ganhou o botão Salvar, no canto de cima (ao lado do X). Na tarefa nova ele cria a tarefa e fecha; na tarefa que já existe ele fecha garantindo que tudo foi salvo. O que você muda continua salvando sozinho ao sair de cada campo.",

@@ -188,6 +188,10 @@ export function capaValida(cover: unknown): PostMedia | null {
   return capa && capa.type === "image" ? capa : null;
 }
 
+// Pergunta de "Cancelar envio": o post volta a rascunho e some pro cliente.
+export const MENSAGEM_CANCELAR_ENVIO =
+  "Cancelar o envio? O post volta a ser rascunho e o cliente deixa de ver. Os comentários ficam salvos e você pode enviar de novo depois.";
+
 // O que falta pra poder enviar ao cliente; null = está pronto.
 export function oQueFaltaProEnvio(post: {
   category: PostCategory;
