@@ -188,7 +188,10 @@ export default function TarefasEmLista({
                   const aberta = !subsFechadas.has(task.id);
                   const feita = task.status === "done";
                   // Concluída: cinza e apagada (menos o menu ⋮, que fica normal).
-                  const apagada = feita ? "opacity-60 grayscale" : "";
+                  const cancelada = task.status === "cancelled";
+                  // Cancelada: apagada, com o título riscado de vermelho (sem cinza,
+                  // pra o risco continuar vermelho).
+                  const apagada = feita ? "opacity-60 grayscale" : cancelada ? "opacity-60" : "";
                   const atrasada = !!task.due_date && task.due_date < hoje && task.status !== "done" && task.status !== "cancelled";
                   const marcas = (ligacoes[task.id] ?? []).flatMap((id) => {
                     const et = etiquetas.get(id);
@@ -199,7 +202,7 @@ export default function TarefasEmLista({
                     <li key={task.id} className="border-b border-line last:border-b-0">
                       <div
                         onClick={() => aoAbrir(task)}
-                        style={{ borderLeftColor: feita ? "#9AA0A6" : corDoCliente(task) }}
+                        style={{ borderLeftColor: feita || cancelada ? "#9AA0A6" : corDoCliente(task) }}
                         className={`group grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-l-[3px] px-4 py-2.5 hover:bg-surface-hover ${grade}`}
                       >
                         <input
@@ -212,7 +215,11 @@ export default function TarefasEmLista({
                         />
                         <div className={`min-w-0 ${apagada}`}>
                           <div className="flex items-center gap-1.5">
-                            <p className={`truncate text-sm font-medium ${feita ? "text-ink-muted line-through" : "text-ink"}`}>
+                            <p
+                              className={`truncate text-sm font-medium ${
+                                feita ? "text-ink-muted line-through" : cancelada ? "text-ink-muted line-through decoration-red-500 decoration-2" : "text-ink"
+                              }`}
+                            >
                               {task.title}
                             </p>
                             {subs.length > 0 && (

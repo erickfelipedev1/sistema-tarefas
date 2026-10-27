@@ -884,6 +884,7 @@ function BarraTarefa({
   const { task, col0, col1, contEsq, contDir, faixa } = seg;
   const cor = useCorDaTarefa(task);
   const feita = task.status === "done";
+  const cancelada = task.status === "cancelled";
   const maisDeUmDia = !!task.start_date && !!task.due_date && task.start_date < task.due_date;
   const ate = task.due_date?.split("-").reverse().slice(0, 2).join("/");
   const periodo = maisDeUmDia
@@ -914,10 +915,10 @@ function BarraTarefa({
       }}
       className={`group/chip pointer-events-auto flex min-w-0 cursor-pointer items-center gap-1.5 px-2.5 transition-[filter] hover:brightness-110 ${
         contEsq ? "rounded-l-none" : "rounded-l-full"
-      } ${contDir ? "rounded-r-none" : "rounded-r-full"} ${feita ? "opacity-60" : ""}`}
+      } ${contDir ? "rounded-r-none" : "rounded-r-full"} ${feita || cancelada ? "opacity-60" : ""}`}
     >
       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current opacity-70" aria-hidden="true" />
-      <span className={`min-w-0 flex-1 truncate text-[11px] font-medium leading-none ${feita ? "line-through" : ""}`}>
+      <span className={`min-w-0 flex-1 truncate text-[11px] font-medium leading-none ${feita ? "line-through" : cancelada ? "line-through decoration-red-500 decoration-2" : ""}`}>
         {task.title}
       </span>
       {maisDeUmDia && col1 > col0 ? (
@@ -952,6 +953,7 @@ function ChipTarefa({
 }) {
   const cor = useCorDaTarefa(task);
   const feita = task.status === "done";
+  const cancelada = task.status === "cancelled";
   // Como no Google Agenda: o evento é um bloco da cor do cliente, com o texto
   // por cima. Tarefa concluída fica apagada e riscada.
   return (
@@ -962,10 +964,10 @@ function ChipTarefa({
       }}
       style={{ backgroundColor: cor.fundo, color: cor.texto }}
       className={`group/chip flex cursor-pointer items-center gap-1.5 rounded-[5px] px-1.5 py-[3px] transition-[filter] hover:brightness-110 ${
-        feita ? "opacity-60" : ""
+        feita || cancelada ? "opacity-60" : ""
       }`}
     >
-      <span className={`flex-1 truncate text-[11px] font-medium leading-4 ${feita ? "line-through" : ""}`}>
+      <span className={`flex-1 truncate text-[11px] font-medium leading-4 ${feita ? "line-through" : cancelada ? "line-through decoration-red-500 decoration-2" : ""}`}>
         {task.title}
       </span>
       {dia && dia !== task.due_date ? (
@@ -1185,6 +1187,7 @@ function CartaoTarefa({
 }) {
   const cor = useCorDaTarefa(task);
   const feita = task.status === "done";
+  const cancelada = task.status === "cancelled";
   return (
     <div
       onClick={(e) => {
@@ -1193,7 +1196,7 @@ function CartaoTarefa({
       }}
       style={{ backgroundColor: cor.fundo, color: cor.texto }}
       className={`group/chip flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-[filter] hover:brightness-110 ${
-        feita ? "opacity-60" : ""
+        feita || cancelada ? "opacity-60" : ""
       }`}
     >
       {dia && dia !== task.due_date ? (
@@ -1206,7 +1209,7 @@ function CartaoTarefa({
           <span className="flex-shrink-0 text-xs font-medium opacity-90">{rotuloDeHorario(task, dia)}</span>
         )
       )}
-      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${feita ? "line-through" : ""}`}>
+      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${feita ? "line-through" : cancelada ? "line-through decoration-red-500 decoration-2" : ""}`}>
         {task.title}
       </span>
       <span className="hidden flex-shrink-0 truncate text-xs opacity-80 sm:inline">

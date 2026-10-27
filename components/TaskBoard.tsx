@@ -982,6 +982,10 @@ export default function TaskBoard({
                           : task.status === "done"
                           ? // Concluída: cinza e apagada (volta ao normal com o mouse em cima).
                             "opacity-60 grayscale hover:opacity-90"
+                          : task.status === "cancelled"
+                          ? // Cancelada: apagada, com o título riscado de vermelho (sem cinza,
+                            // pra o risco continuar vermelho).
+                            "opacity-60 hover:opacity-90"
                           : ""
                       } ${
                         marcaAntes
@@ -1044,7 +1048,13 @@ export default function TaskBoard({
                       </div>
 
                       <div className="p-3">
-                      <p className="text-[13px] font-medium leading-snug text-ink">{task.title}</p>
+                      <p
+                        className={`text-[13px] font-medium leading-snug ${
+                          task.status === "cancelled" ? "text-ink-muted line-through decoration-red-500 decoration-2" : "text-ink"
+                        }`}
+                      >
+                        {task.title}
+                      </p>
 
                       {task.due_date && (
                         <p
