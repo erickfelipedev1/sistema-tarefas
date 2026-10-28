@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-28",
+    area: "Sistema",
+    titulo: "Anexos de vídeo mais leves",
+    texto: "Na aba Anexos da tarefa, os vídeos agora aparecem com um ícone de play em vez de carregar o começo do arquivo. O vídeo só é baixado quando você abre o anexo. Isso poupa o limite de tráfego do servidor.",
+  },
+  {
+    data: "2026-10-28",
     area: "Tarefas",
     titulo: "Telas mais leves: carregam aos poucos",
     texto: "A coluna Concluído do quadro agora mostra as 15 tarefas concluídas mais recentes, da última pra mais antiga, e o botão Ver mais traz as outras. Na aba Posts do cliente, os pendentes (rascunho, aguardando e ajuste) aparecem sempre e os publicados vêm 8 por vez. Em Atualizações, os dias mais antigos ficam atrás de um botão. Com busca ou filtro ligado, a coluna Concluído mostra tudo que bate.",

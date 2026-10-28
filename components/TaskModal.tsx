@@ -1637,11 +1637,8 @@ function AnexosTab({
                     <span className="absolute inset-0 animate-pulse bg-surface-hover" aria-hidden="true" />
                   )}
                 </span>
-              ) : tipoDoArquivoPeloNome(a.file_name) === "video" && !falhas.has(a.file_path) && miniaturas[a.file_path] !== "" ? (
-                <MiniaturaDeVideo
-                  url={miniaturas[a.file_path]}
-                  aoFalhar={() => setFalhas((atual) => new Set(atual).add(a.file_path))}
-                />
+              ) : tipoDoArquivoPeloNome(a.file_name) === "video" ? (
+                <MiniaturaDeVideo />
               ) : (
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded border border-line bg-canvas text-[10px] font-semibold uppercase text-ink-muted">
                   {(a.file_name.split(".").pop() ?? "").slice(0, 4) || "📎"}
@@ -1721,43 +1718,17 @@ function MiniaturaDoDrive({ url, extensao }: { url: string; extensao: string }) 
   );
 }
 
-// Primeiro quadro do vídeo como miniatura. Só carrega quando aparece na tela
-// (uma tarefa pode ter dezenas de vídeos), e só o começo do arquivo.
-function MiniaturaDeVideo({ url, aoFalhar }: { url: string | undefined; aoFalhar: () => void }) {
-  const caixa = useRef<HTMLSpanElement>(null);
-  const [visivel, setVisivel] = useState(false);
-  useEffect(() => {
-    const el = caixa.current;
-    if (!el || visivel) return;
-    const observador = new IntersectionObserver(
-      (entradas) => {
-        if (entradas.some((e) => e.isIntersecting)) {
-          setVisivel(true);
-          observador.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    observador.observe(el);
-    return () => observador.disconnect();
-  }, [visivel]);
+// Miniatura de vídeo sem baixar nada: um <video preload="metadata"> puxava boa
+// parte do arquivo (em vídeo de celular, quase ele todo) a cada vez que a lista
+// de anexos aparecia, e o link assinado muda sempre, então o navegador nunca
+// reaproveitava. O vídeo só é baixado quando a pessoa abre o anexo.
+function MiniaturaDeVideo() {
   return (
-    <span ref={caixa} className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded border border-line bg-canvas">
-      {url && visivel ? (
-        <video
-          src={`${url}#t=0.5`}
-          preload="metadata"
-          muted
-          playsInline
-          onError={aoFalhar}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <span className="absolute inset-0 animate-pulse bg-surface-hover" aria-hidden="true" />
-      )}
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white [text-shadow:0_0_3px_rgba(0,0,0,0.8)]" aria-hidden="true">
-        ▶
-      </span>
+    <span
+      className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded border border-line bg-black text-[11px] text-white/80"
+      aria-hidden="true"
+    >
+      ▶
     </span>
   );
 }
