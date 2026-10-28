@@ -28,6 +28,8 @@ export default function AtualizacoesView({
   const [aba, setAba] = useState<"novidades" | "pedidos">(abaInicial ?? "novidades");
   const [area, setArea] = useState<AreaDaAtualizacao | "">("");
   const [vistoAte, setVistoAte] = useState<string | null>(null);
+  // A lista só cresce: mostra os dias mais recentes e o resto vem sob demanda.
+  const [diasVisiveis, setDiasVisiveis] = useState(10);
 
   // Lê uma vez só o que já tinha sido visto e marca tudo como visto.
   const lido = useRef<string | null>(null);
@@ -109,7 +111,7 @@ export default function AtualizacoesView({
       </div>
 
       <ol className="relative space-y-7 border-l border-line pl-5 sm:pl-7">
-        {porDia.map((grupo) => {
+        {porDia.slice(0, diasVisiveis).map((grupo) => {
           const novo = vistoAte !== null && grupo.data > vistoAte;
           return (
             <li key={grupo.data} data-mov="card" className="relative">
@@ -136,6 +138,15 @@ export default function AtualizacoesView({
           );
         })}
       </ol>
+      {porDia.length > diasVisiveis && (
+        <button
+          type="button"
+          onClick={() => setDiasVisiveis((n) => n + 10)}
+          className="mt-6 w-full rounded-xl border border-dashed border-line px-3 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-brand hover:text-ink"
+        >
+          Ver atualizações mais antigas
+        </button>
+      )}
     </div>
   );
 }

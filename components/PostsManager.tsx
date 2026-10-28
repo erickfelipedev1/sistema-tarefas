@@ -85,6 +85,11 @@ function ordenar(lista: Post[]) {
   );
 }
 
+// Publicados acumulam e quase não são mais mexidos: a lista mostra os mais
+// recentes e o resto vem sob demanda ("Ver mais"). Os que ainda esperam
+// alguém (rascunho, enviado, ajuste) aparecem sempre.
+const PUBLICADOS_POR_VEZ = 8;
+
 // Aba "Posts" dentro de /projetos/[id]: qualquer colaborador monta o post
 // do cliente (categoria, redes, data prevista, legenda e os arquivos), vê o
 // preview de cada rede e envia. O cliente vê no portal dele
@@ -126,6 +131,7 @@ export default function PostsManager({
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   // A aba mostra os posts em lista ou no calendário de postagem.
   const [visao, setVisao] = useState<"lista" | "calendario">("lista");
+  const [publicadosVisiveis, setPublicadosVisiveis] = useState(PUBLICADOS_POR_VEZ);
   const [avisoDaLista, setAvisoDaLista] = useState<string | null>(null);
 
   // Formulário
@@ -223,16 +229,38 @@ export default function PostsManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  // O que a lista mostra: tudo que não é publicado + os publicados mais recentes
+  // (e qualquer um que esteja aberto, em edição ou pedido por link/calendário).
+  const postsDaLista = useMemo(() => {
+    const recentes = new Set(
+      posts
+        .filter((p) => p.status === "publicado")
+        .sort((a, b) => (b.scheduled_date ?? "").localeCompare(a.scheduled_date ?? "") || b.created_at.localeCompare(a.created_at))
+        .slice(0, publicadosVisiveis)
+        .map((p) => p.id)
+    );
+    return posts.filter(
+      (p) =>
+        p.status !== "publicado" ||
+        recentes.has(p.id) ||
+        abertos.has(p.id) ||
+        p.id === editando?.id ||
+        p.id === postInicial
+    );
+  }, [posts, publicadosVisiveis, abertos, editando, postInicial]);
+  const publicadosEscondidos = posts.length - postsDaLista.length;
+
   // Links assinados (1h) dos arquivos — o bucket é privado. Só pede os que
   // ainda não tem; "rodada" muda a cada 50 minutos pra refazer todos antes
   // de vencerem, com a aba aberta.
   const caminhos = useMemo(
     () =>
-      posts.flatMap((p) => [
+      // O calendário mostra miniatura de todos; a lista, só dos que aparecem nela.
+      (visao === "calendario" ? posts : postsDaLista).flatMap((p) => [
         ...p.media.filter((m) => !ehDoDrive(m)).map((m) => m.path),
         ...(p.cover ? [p.cover.path] : []),
       ]),
-    [posts]
+    [posts, postsDaLista, visao]
   );
   const [rodada, setRodada] = useState(0);
   const rodadaDosLinks = useRef(0);
@@ -1013,7 +1041,7 @@ export default function PostsManager({
       )}
 
       <div className={`space-y-2.5 ${visao === "calendario" ? "hidden" : ""}`}>
-        {posts.map((post) => {
+        {postsDaLista.map((post) => {
           const falas = comentarios.filter((c) => c.post_id === post.id);
           const autor = profiles.find((p) => p.id === post.created_by);
           const nomeAutor = autor?.name || autor?.username || post.created_by_label || "Alguém";
@@ -1132,6 +1160,16 @@ export default function PostsManager({
             </article>
           );
         })}
+
+        {publicadosEscondidos > 0 && (
+          <button
+            type="button"
+            onClick={() => setPublicadosVisiveis((n) => n + PUBLICADOS_POR_VEZ)}
+            className="w-full rounded-xl border border-dashed border-line px-3 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-brand hover:text-ink"
+          >
+            Ver mais publicados ({publicadosEscondidos})
+          </button>
+        )}
 
         {!carregando && !erroCarregar && posts.length === 0 && !mostrarForm && (
           <div className="rounded-2xl border border-line bg-surface">

@@ -46,6 +46,8 @@ export interface Task {
   created_by: string | null;
   created_by_label: string | null;
   created_at: string;
+  // Quando foi concluída (migration 0033: o banco preenche ao ir pra "Concluído").
+  completed_at?: string | null;
 }
 
 export interface ChecklistItem {

@@ -56,6 +56,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["cancelar envio", "desfazer envio", "enviei sem querer", "tirar post do cliente", "voltar rascunho"],
   },
   {
+    pergunta: "Sumiram tarefas concluídas ou posts publicados antigos. Cadê?",
+    resposta:
+      "Não sumiram: a coluna Concluído mostra as 15 mais recentes (da última pra mais antiga) e a aba Posts do cliente mostra 8 publicados por vez. Clique em Ver mais no fim da lista. Se você usar a busca ou algum filtro, a coluna Concluído mostra tudo que bate.",
+    palavras: ["concluídas", "ver mais", "sumiu", "tarefa antiga", "post publicado antigo", "carregar mais"],
+  },
+  {
     pergunta: "Como faço uma subtarefa?",
     resposta:
       "Abra a tarefa e vá em Subtarefas. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o atalho \"abrir original\".",

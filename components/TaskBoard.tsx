@@ -46,6 +46,18 @@ const COLUNAS: { key: TaskStatus; label: string; dot: string }[] = [
   { key: "cancelled", label: "Cancelada", dot: "bg-slate-400" },
 ];
 
+// Concluídas acumulam sem parar: a coluna mostra as mais recentes e o resto
+// vem sob demanda ("Ver mais").
+const CONCLUIDAS_POR_VEZ = 15;
+
+// Mais recente primeiro. Sem data de conclusão (acabou de ser movida aqui e o
+// banco ainda não devolveu a data) conta como agora.
+function maisRecenteConcluida(a: Task, b: Task) {
+  const dataA = a.completed_at ?? "9999";
+  const dataB = b.completed_at ?? "9999";
+  return dataA < dataB ? 1 : dataA > dataB ? -1 : a.position - b.position;
+}
+
 // Data de hoje no formato "AAAA-MM-DD" (igual ao due_date), respeitando o
 // fuso horário local em vez de UTC.
 function hojeISO() {
@@ -141,6 +153,8 @@ export default function TaskBoard({
   const [modalAberto, setModalAberto] = useState(false);
   const [tarefaEditando, setTarefaEditando] = useState<Task | null>(null);
   const [busca, setBusca] = useState("");
+  // Quantas concluídas aparecem na coluna Concluído.
+  const [concluidasVisiveis, setConcluidasVisiveis] = useState(CONCLUIDAS_POR_VEZ);
   const [filtroResponsavel, setFiltroResponsavel] = useState("");
   // Etiquetas (migration 0069): o catálogo, o que cada tarefa tem e o filtro.
   const [catalogo, setCatalogo] = useState<Etiqueta[]>([]);
@@ -932,9 +946,15 @@ export default function TaskBoard({
       <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 scrollbar-thin sm:mx-0 sm:snap-none sm:px-0 xl:grid xl:grid-cols-6 xl:overflow-visible">
         {COLUNAS.map((coluna) => {
           // Na ordem das posições (a que a pessoa arrumou).
+          // Concluído vai da mais recente pra mais antiga (a ordem de arrastar não vale ali).
+          const ehConcluida = coluna.key === "done";
           const tarefasDaColuna = tasksVisiveis
             .filter((t) => t.status === coluna.key)
-            .sort((a, b) => a.position - b.position);
+            .sort(ehConcluida ? maisRecenteConcluida : (a, b) => a.position - b.position);
+          // Com busca ou filtro ligado mostra tudo que bate; sem filtro, só as mais recentes.
+          const filtrando = !!(busca.trim() || filtroResponsavel || filtroEtiqueta || filtroCliente || filtroResumo || projetoDoFiltro);
+          const exibidas =
+            ehConcluida && !filtrando ? tarefasDaColuna.slice(0, concluidasVisiveis) : tarefasDaColuna;
           return (
             <div
               key={coluna.key}
@@ -955,12 +975,12 @@ export default function TaskBoard({
               </div>
 
               <div className="space-y-2.5">
-                {tarefasDaColuna.map((task, indice) => {
+                {exibidas.map((task, indice) => {
                   const marcaAntes = marcador?.col === coluna.key && marcador.antesDeId === task.id && draggedId !== task.id;
                   const marcaFim =
                     marcador?.col === coluna.key &&
                     marcador.antesDeId === null &&
-                    indice === tarefasDaColuna.length - 1 &&
+                    indice === exibidas.length - 1 &&
                     draggedId !== task.id;
                   const atrasada =
                     !!task.due_date &&
@@ -1166,8 +1186,8 @@ export default function TaskBoard({
                           >
                             <ChevronRightIcon className="h-3.5 w-3.5" />
                           </button>
-                          <span className="mx-0.5 h-3.5 w-px bg-line" aria-hidden="true" />
-                          <button
+                          {!ehConcluida && <span className="mx-0.5 h-3.5 w-px bg-line" aria-hidden="true" />}
+                          {!ehConcluida && <button
                             onClick={(e) => {
                               e.stopPropagation();
                               reposicionar(task, coluna.key, tarefasDaColuna[indice - 1]?.id ?? null);
@@ -1178,8 +1198,8 @@ export default function TaskBoard({
                             className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
                           >
                             <ChevronDownIcon className="h-3.5 w-3.5 rotate-180" />
-                          </button>
-                          <button
+                          </button>}
+                          {!ehConcluida && <button
                             onClick={(e) => {
                               e.stopPropagation();
                               // Desce uma posição: cai antes do cartão que vem DEPOIS do seguinte.
@@ -1191,13 +1211,23 @@ export default function TaskBoard({
                             className="rounded-md p-1 text-ink-muted hover:bg-surface-hover hover:text-ink disabled:pointer-events-none disabled:opacity-30"
                           >
                             <ChevronDownIcon className="h-3.5 w-3.5" />
-                          </button>
+                          </button>}
                         </div>
                       </div>
                       </div>
                     </div>
                   );
                 })}
+
+                {exibidas.length < tarefasDaColuna.length && (
+                  <button
+                    type="button"
+                    onClick={() => setConcluidasVisiveis((n) => n + CONCLUIDAS_POR_VEZ)}
+                    className="w-full rounded-xl border border-dashed border-line px-3 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-brand hover:text-ink"
+                  >
+                    Ver mais ({tarefasDaColuna.length - exibidas.length} concluída{tarefasDaColuna.length - exibidas.length === 1 ? "" : "s"})
+                  </button>
+                )}
 
                 {tarefasDaColuna.length === 0 && (
                   <EmptyState
