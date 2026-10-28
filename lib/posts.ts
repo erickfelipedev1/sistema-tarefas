@@ -166,7 +166,7 @@ export function miniaturaDoItem(
 // um registro torto não derrubar a tela (nem o portal do cliente).
 // A miniatura tem que estar na mesma pasta do original (a pasta do post), pra
 // um registro torto não apontar pro arquivo de outro cliente.
-function thumbValida(path: string, thumb: unknown): thumb is string {
+export function thumbValida(path: string, thumb: unknown): thumb is string {
   if (typeof thumb !== "string" || !thumb || thumb.includes("..")) return false;
   const pasta = path.slice(0, path.lastIndexOf("/") + 1);
   return !!pasta && thumb.startsWith(pasta) && !thumb.slice(pasta.length).includes("/");

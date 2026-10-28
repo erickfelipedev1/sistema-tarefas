@@ -20,7 +20,7 @@ interface Armazenamento {
     upload(
       caminho: string,
       corpo: Blob,
-      opcoes?: { contentType?: string }
+      opcoes?: { contentType?: string; upsert?: boolean }
     ): PromiseLike<{ error: { message: string } | null }>;
   };
 }
@@ -67,7 +67,7 @@ export async function subirMiniatura(
     // Se não ficou menor que o original, não adianta.
     if (!blob || blob.size >= arquivo.size) return null;
     const caminho = caminhoDaMiniatura(caminhoDoOriginal);
-    const { error } = await storage.from(BUCKET_DOS_POSTS).upload(caminho, blob, { contentType: "image/jpeg" });
+    const { error } = await storage.from(BUCKET_DOS_POSTS).upload(caminho, blob, { contentType: "image/jpeg", upsert: true });
     return error ? null : caminho;
   } catch {
     return null;
