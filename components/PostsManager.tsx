@@ -23,6 +23,8 @@ import {
   miniaturaDoItem,
   mensagemDeArquivoGrande,
   midiasValidas,
+  caminhosDoItem,
+  linksDeExibicao,
   MENSAGEM_CANCELAR_ENVIO,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
@@ -37,6 +39,7 @@ import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
 import PublicarNoInstagram from "./posts/PublicarNoInstagram";
 import ArquivosParaBaixar from "./posts/ArquivosParaBaixar";
 import { BaixarItem, BaixarTodos } from "./posts/BaixarDoForm";
+import { subirMiniatura } from "@/lib/miniatura-de-imagem";
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import MiniaturaDeVideo from "./posts/MiniaturaDeVideo";
@@ -257,8 +260,8 @@ export default function PostsManager({
     () =>
       // O calendário mostra miniatura de todos; a lista, só dos que aparecem nela.
       (visao === "calendario" ? posts : postsDaLista).flatMap((p) => [
-        ...p.media.filter((m) => !ehDoDrive(m)).map((m) => m.path),
-        ...(p.cover ? [p.cover.path] : []),
+        ...p.media.filter((m) => !ehDoDrive(m)),
+        ...(p.cover ? [p.cover] : []),
       ]),
     [posts, postsDaLista, visao]
   );
@@ -270,23 +273,17 @@ export default function PostsManager({
   }, []);
   useEffect(() => {
     const refazer = rodadaDosLinks.current !== rodada;
-    const faltam = refazer ? caminhos : caminhos.filter((c) => !(c in links));
+    const faltam = refazer ? caminhos : caminhos.filter((m) => !(m.path in links));
     if (faltam.length === 0) return;
     let ativo = true;
-    supabase.storage
-      .from(BUCKET_DOS_POSTS)
-      .createSignedUrls(faltam, 3600)
-      .then(({ data: assinados, error }) => {
-        // Falha de rede: não guarda nada, tenta de novo na próxima mudança.
-        if (!ativo || error || !assinados) return;
-        rodadaDosLinks.current = rodada;
-        const novos: Record<string, string> = {};
-        // Arquivo que o Storage não assinou fica vazio: o preview mostra
-        // "não deu pra abrir" em vez de pedir o mesmo arquivo em laço.
-        for (const caminho of faltam) novos[caminho] = "";
-        for (const a of assinados) if (a.path && a.signedUrl) novos[a.path] = a.signedUrl;
-        setLinks((atual) => ({ ...atual, ...novos }));
-      });
+    // Falha de rede: não guarda nada, tenta de novo na próxima mudança. Arquivo
+    // que o Storage não assinou fica vazio: o preview mostra "não deu pra abrir"
+    // em vez de pedir o mesmo arquivo em laço. Onde há miniatura, o link é o dela.
+    linksDeExibicao(supabase.storage.from(BUCKET_DOS_POSTS), faltam).then((novos) => {
+      if (!ativo || !novos) return;
+      rodadaDosLinks.current = rodada;
+      setLinks((atual) => ({ ...atual, ...novos }));
+    });
     return () => {
       ativo = false;
     };
@@ -596,7 +593,10 @@ export default function PostsManager({
         );
       }
       subidos.push(caminho);
-      midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size });
+      // Imagem: sobe também uma versão leve pra as telas; o original fica pro Baixar.
+      const thumb = tipo === "image" ? await subirMiniatura(supabase.storage, caminho, arquivo) : null;
+      if (thumb) subidos.push(thumb);
+      midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size, ...(thumb ? { thumb } : {}) });
     }
 
     // Capa: só vale nos formatos de vídeo único; uma imagem nova sobe junto.
@@ -618,11 +618,14 @@ export default function PostsManager({
           );
         }
         subidos.push(caminhoDaCapa);
+        const thumbDaCapa = await subirMiniatura(supabase.storage, caminhoDaCapa, capa.nova.arquivo);
+        if (thumbDaCapa) subidos.push(thumbDaCapa);
         capaFinal = {
           path: caminhoDaCapa,
           type: "image",
           name: capa.nova.arquivo.name,
           size: capa.nova.arquivo.size,
+          ...(thumbDaCapa ? { thumb: thumbDaCapa } : {}),
         };
       }
     }
@@ -657,8 +660,8 @@ export default function PostsManager({
       // de apagar o que subiu, confere se o post já aponta pra esses arquivos.
       const { data: noBanco } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
       const gravados = new Set([
-        ...midiasValidas((noBanco as Post | null)?.media).map((m) => m.path),
-        ...((noBanco as Post | null)?.cover?.path ? [(noBanco as Post).cover!.path] : []),
+        ...midiasValidas((noBanco as Post | null)?.media).flatMap(caminhosDoItem),
+        ...(capaValida((noBanco as Post | null)?.cover) ? caminhosDoItem(capaValida((noBanco as Post).cover)!) : []),
       ]);
       // Tudo que esta tentativa enviou (arquivos e vídeos do Drive) tem que estar no post.
       const enviadosAgora = [...subidos, ...noDrive.map((id) => midiaDoDrive(projectId, postId, id).path)];
@@ -672,11 +675,11 @@ export default function PostsManager({
     }
 
     // Arquivos que saíram do post nesta edição deixam de ocupar espaço.
-    const mantidos = new Set([...midias.map((m) => m.path), ...(capaFinal ? [capaFinal.path] : [])]);
+    const mantidos = new Set([...midias.flatMap(caminhosDoItem), ...(capaFinal ? caminhosDoItem(capaFinal) : [])]);
     // Parte do que a tela conhece agora (um colega pode ter trocado arquivos
     // com o formulário aberto), não do que estava quando ele abriu.
     const antes = editando ? posts.find((p) => p.id === editando.id) ?? editando : null;
-    const sobras = [...(antes?.media ?? []).map((m) => m.path), ...(antes?.cover ? [antes.cover.path] : [])].filter(
+    const sobras = [...(antes?.media ?? []).flatMap(caminhosDoItem), ...(antes?.cover ? caminhosDoItem(antes.cover) : [])].filter(
       (c) => !mantidos.has(c)
     );
     if (sobras.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(sobras);
@@ -713,7 +716,7 @@ export default function PostsManager({
     setAvisoDaLista(null);
     const { error } = await supabase.from("posts").delete().eq("id", post.id);
     if (error) return setAvisoDaLista("Não foi possível excluir o post. Tente de novo.");
-    const arquivosDoPost = [...post.media.map((m) => m.path), ...(post.cover ? [post.cover.path] : [])];
+    const arquivosDoPost = [...post.media.flatMap(caminhosDoItem), ...(post.cover ? caminhosDoItem(post.cover) : [])];
     if (arquivosDoPost.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(arquivosDoPost);
     setPosts((atual) => atual.filter((p) => p.id !== post.id));
     setComentarios((atual) => atual.filter((c) => c.post_id !== post.id));

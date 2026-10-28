@@ -375,6 +375,9 @@ export interface PostMedia {
   // Drive. "path" fica só como identificador do item.
   source?: "drive";
   drive_id?: string;
+  // Versão leve da imagem (lib/miniatura-de-imagem.ts), na mesma pasta. As telas
+  // mostram esta; "Baixar" e o Instagram usam sempre o original ("path").
+  thumb?: string;
 }
 
 export interface Post {
@@ -430,8 +433,10 @@ export interface PublicPost {
   caption: string;
   networks: PostNetwork[];
   scheduled_date: string | null;
-  media: (PostMedia & { url: string })[];
-  cover: (PostMedia & { url: string }) | null;
+  // "url" é o que a tela mostra (a miniatura, se tem); "urlOriginal" é o arquivo
+  // de verdade, pro Baixar.
+  media: (PostMedia & { url: string; urlOriginal?: string })[];
+  cover: (PostMedia & { url: string; urlOriginal?: string }) | null;
   status: Exclude<PostStatus, "rascunho">;
   sent_count: number;
   sent_at: string | null;

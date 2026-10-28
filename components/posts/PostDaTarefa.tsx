@@ -14,6 +14,8 @@ import {
   ehFormatoDeVideo,
   rotuloDaCapa,
   midiasValidas,
+  caminhosDoItem,
+  linksDeExibicao,
   MENSAGEM_CANCELAR_ENVIO,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
@@ -30,6 +32,7 @@ import {
   STATUS_DO_POST,
   tipoDoArquivo,
 } from "@/lib/posts";
+import { subirMiniatura } from "@/lib/miniatura-de-imagem";
 import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -141,29 +144,22 @@ export default function PostDaTarefa({
   const caminhos = useMemo(
     () => [
       ...posts
-        .map((p) => (p.cover ?? (p.media[0] && !ehDoDrive(p.media[0]) ? p.media[0] : undefined))?.path)
-        .filter((c): c is string => !!c),
+        .map((p) => p.cover ?? (p.media[0] && !ehDoDrive(p.media[0]) ? p.media[0] : undefined))
+        .filter((m): m is NonNullable<typeof m> => !!m),
       // No post em edição, todos os arquivos (e a capa) precisam de miniatura.
-      ...(editando
-        ? [...editando.media.filter((m) => !ehDoDrive(m)), ...(editando.cover ? [editando.cover] : [])].map((m) => m.path)
-        : []),
+      ...(editando ? [...editando.media.filter((m) => !ehDoDrive(m)), ...(editando.cover ? [editando.cover] : [])] : []),
     ],
     [posts, editando]
   );
   useEffect(() => {
-    const faltam = caminhos.filter((c) => !(c in links));
+    const faltam = caminhos.filter((m) => !(m.path in links));
     if (faltam.length === 0) return;
     let ativo = true;
-    supabase.storage
-      .from(BUCKET_DOS_POSTS)
-      .createSignedUrls(faltam, 3600)
-      .then(({ data: assinados, error }) => {
-        if (!ativo || error || !assinados) return;
-        const novos: Record<string, string> = {};
-        for (const c of faltam) novos[c] = "";
-        for (const a of assinados) if (a.path && a.signedUrl) novos[a.path] = a.signedUrl;
-        setLinks((atual) => ({ ...atual, ...novos }));
-      });
+    // Onde há miniatura, o link é o dela; o original só sai no Baixar.
+    linksDeExibicao(supabase.storage.from(BUCKET_DOS_POSTS), faltam).then((novos) => {
+      if (!ativo || !novos) return;
+      setLinks((atual) => ({ ...atual, ...novos }));
+    });
     return () => {
       ativo = false;
     };
@@ -425,7 +421,10 @@ export default function PostDaTarefa({
         );
       }
       subidos.push(caminho);
-      midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size });
+      // Imagem: sobe também uma versão leve pra as telas; o original fica pro Baixar.
+      const thumb = tipo === "image" ? await subirMiniatura(supabase.storage, caminho, arquivo) : null;
+      if (thumb) subidos.push(thumb);
+      midias.push({ path: caminho, type: tipo, name: arquivo.name, size: arquivo.size, ...(thumb ? { thumb } : {}) });
     }
 
     // Capa: só vale nos formatos de vídeo único; uma imagem nova sobe junto.
@@ -445,11 +444,14 @@ export default function PostDaTarefa({
           return setErro(`Não deu pra enviar a capa. ${/bucket|not found/i.test(error.message) ? SEM_MIGRACAO : "Tente de novo."}`);
         }
         subidos.push(caminhoDaCapa);
+        const thumbDaCapa = await subirMiniatura(supabase.storage, caminhoDaCapa, capa.nova.arquivo);
+        if (thumbDaCapa) subidos.push(thumbDaCapa);
         capaFinal = {
           path: caminhoDaCapa,
           type: "image",
           name: capa.nova.arquivo.name,
           size: capa.nova.arquivo.size,
+          ...(thumbDaCapa ? { thumb: thumbDaCapa } : {}),
         };
       }
     }
@@ -491,8 +493,8 @@ export default function PostDaTarefa({
       const { data: noBanco } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
       const noPost = noBanco as Post | null;
       const gravados = new Set([
-        ...midiasValidas(noPost?.media).map((m) => m.path),
-        ...(noPost?.cover?.path ? [noPost.cover.path] : []),
+        ...midiasValidas(noPost?.media).flatMap(caminhosDoItem),
+        ...(capaValida(noPost?.cover) ? caminhosDoItem(capaValida(noPost?.cover)!) : []),
       ]);
       // Tudo que esta tentativa enviou (arquivos e vídeos do Drive) tem que estar no post.
       const enviadosAgora = [...subidos, ...noDrive.map((id) => midiaDoDrive(projectId, postId, id).path)];
@@ -511,9 +513,9 @@ export default function PostDaTarefa({
     // do que a tela conhece agora (um colega pode ter trocado arquivos com o
     // formulário aberto), não do que estava quando ele abriu.
     if (editando) {
-      const mantidos = new Set([...midias.map((m) => m.path), ...(capaFinal ? [capaFinal.path] : [])]);
+      const mantidos = new Set([...midias.flatMap(caminhosDoItem), ...(capaFinal ? caminhosDoItem(capaFinal) : [])]);
       const antes = posts.find((p) => p.id === editando.id) ?? editando;
-      const sobras = [...antes.media.filter((m) => !ehDoDrive(m)).map((m) => m.path), ...(antes.cover ? [antes.cover.path] : [])].filter(
+      const sobras = [...antes.media.filter((m) => !ehDoDrive(m)).flatMap(caminhosDoItem), ...(antes.cover ? caminhosDoItem(antes.cover) : [])].filter(
         (c) => !mantidos.has(c)
       );
       if (sobras.length > 0) await supabase.storage.from(BUCKET_DOS_POSTS).remove(sobras);

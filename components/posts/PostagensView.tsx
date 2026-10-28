@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/lib/types";
-import { BUCKET_DOS_POSTS, capaValida, ehDoDrive, midiasValidas } from "@/lib/posts";
+import { BUCKET_DOS_POSTS, capaValida, ehDoDrive, linksDeExibicao, midiasValidas } from "@/lib/posts";
 import { formatarDataBR } from "@/lib/format";
 import { Button } from "../ui/Button";
 import CalendarioDePostagem, { intervaloDaGrade, type PostNoCalendario } from "./CalendarioDePostagem";
@@ -75,26 +75,21 @@ export default function PostagensView({
       .filter((p) => !p.scheduled_date || (p.scheduled_date >= de && p.scheduled_date <= ate))
       .map((p) => {
         const mini = p.cover ?? p.media[0];
-        return mini && !ehDoDrive(mini) ? mini.path : undefined;
+        return mini && !ehDoDrive(mini) ? mini : undefined;
       })
-      .filter((c): c is string => !!c);
+      .filter((m): m is NonNullable<typeof m> => !!m);
   }, [posts, mesNaTela]);
   const linksRef = useRef(links);
   linksRef.current = links;
   useEffect(() => {
-    const faltam = Array.from(new Set(caminhos.filter((c) => !(c in linksRef.current))));
+    const faltam = caminhos.filter((m) => !(m.path in linksRef.current));
     if (faltam.length === 0) return;
     let ativo = true;
-    supabase.storage
-      .from(BUCKET_DOS_POSTS)
-      .createSignedUrls(faltam, 3600)
-      .then(({ data, error }) => {
-        if (!ativo || error || !data) return;
-        const novos: Record<string, string> = {};
-        for (const c of faltam) novos[c] = "";
-        for (const a of data) if (a.path && a.signedUrl) novos[a.path] = a.signedUrl;
-        setLinks((atual) => ({ ...atual, ...novos }));
-      });
+    // Onde há miniatura, o link é o dela.
+    linksDeExibicao(supabase.storage.from(BUCKET_DOS_POSTS), faltam).then((novos) => {
+      if (!ativo || !novos) return;
+      setLinks((atual) => ({ ...atual, ...novos }));
+    });
     return () => {
       ativo = false;
     };

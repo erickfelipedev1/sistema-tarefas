@@ -9,7 +9,7 @@ import { ClientPosts } from "@/components/onboarding/ClientPosts";
 import AnalyticsCliente from "@/components/AnalyticsCliente";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { reporteiConfigurado } from "@/lib/reportei";
-import { capaValida, ehDoDrive, midiasValidas } from "@/lib/posts";
+import { capaValida, caminhosDoItem, ehDoDrive, midiasValidas } from "@/lib/posts";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
   ProjectDocuments,
@@ -104,16 +104,27 @@ export default async function ProgressoPage({
     assinar(
       "post-media",
       postsSemLink.flatMap((p) => [
-        ...p.media.filter((m) => !ehDoDrive(m)).map((m) => m.path),
-        ...(p.cover ? [p.cover.path] : []),
+        ...p.media.filter((m) => !ehDoDrive(m)).flatMap(caminhosDoItem),
+        ...(p.cover ? caminhosDoItem(p.cover) : []),
       ])
     ),
   ]);
   const posts: PublicPost[] = postsSemLink.map((p) => ({
     ...p,
     comments: Array.isArray(p.comments) ? p.comments : [],
-    media: p.media.map((m) => ({ ...m, url: linksPosts.get(m.path) ?? "" })),
-    cover: p.cover ? { ...p.cover, url: linksPosts.get(p.cover.path) ?? "" } : null,
+    // "url" é o que aparece na tela (a miniatura, se tem); "urlOriginal" é pro Baixar.
+    media: p.media.map((m) => ({
+      ...m,
+      url: (m.thumb && linksPosts.get(m.thumb)) || linksPosts.get(m.path) || "",
+      urlOriginal: linksPosts.get(m.path) ?? "",
+    })),
+    cover: p.cover
+      ? {
+          ...p.cover,
+          url: (p.cover.thumb && linksPosts.get(p.cover.thumb)) || linksPosts.get(p.cover.path) || "",
+          urlOriginal: linksPosts.get(p.cover.path) ?? "",
+        }
+      : null,
   }));
 
   const arquivosComLink = arquivos.map((arquivo) => ({

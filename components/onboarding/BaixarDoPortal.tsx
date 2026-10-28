@@ -20,11 +20,11 @@ export default function BaixarDoPortal({ post }: { post: PublicPost }) {
       chave: m.path,
       rotulo: `${m.type === "video" ? "Vídeo" : "Imagem"}${post.media.length > 1 ? ` ${i + 1}` : ""}`,
       nome: `${post.media.length > 1 ? `${String(i + 1).padStart(2, "0")}-` : ""}${m.name || "arquivo"}`,
-      url: m.url,
+      url: m.urlOriginal || m.url,
       driveId: m.source === "drive" && m.drive_id ? m.drive_id : undefined,
     })),
     ...(post.cover
-      ? [{ chave: post.cover.path, rotulo: "Capa", nome: `capa-${post.cover.name || "capa"}`, url: post.cover.url, driveId: undefined }]
+      ? [{ chave: post.cover.path, rotulo: "Capa", nome: `capa-${post.cover.name || "capa"}`, url: post.cover.urlOriginal || post.cover.url, driveId: undefined }]
       : []),
   ];
   const doArmazenamento = itens.filter((i) => !i.driveId && i.url);

@@ -164,6 +164,42 @@ export function miniaturaDoItem(
 
 // posts.media vem do banco como JSON: só passa o que tem a forma certa, pra
 // um registro torto não derrubar a tela (nem o portal do cliente).
+// A miniatura tem que estar na mesma pasta do original (a pasta do post), pra
+// um registro torto não apontar pro arquivo de outro cliente.
+function thumbValida(path: string, thumb: unknown): thumb is string {
+  if (typeof thumb !== "string" || !thumb || thumb.includes("..")) return false;
+  const pasta = path.slice(0, path.lastIndexOf("/") + 1);
+  return !!pasta && thumb.startsWith(pasta) && !thumb.slice(pasta.length).includes("/");
+}
+
+// Os arquivos de um item no bucket: o original e a miniatura (se tem).
+export function caminhosDoItem(m: Pick<PostMedia, "path" | "thumb">): string[] {
+  return m.thumb ? [m.path, m.thumb] : [m.path];
+}
+
+type Assinador = {
+  createSignedUrls(
+    paths: string[],
+    expiresIn: number
+  ): PromiseLike<{ data: { path: string | null; signedUrl: string | null }[] | null; error: unknown }>;
+};
+
+// Links assinados (1 h) pra tela, guardados pelo caminho do ORIGINAL: onde o
+// item tem miniatura o link é o dela (leve), senão o do original. Assinar não
+// gasta tráfego; só baixar. null = falha de rede (não guarda nada, tenta de novo).
+export async function linksDeExibicao(storage: Assinador, itens: PostMedia[]): Promise<Record<string, string> | null> {
+  if (itens.length === 0) return {};
+  const { data, error } = await storage.createSignedUrls(
+    Array.from(new Set(itens.flatMap(caminhosDoItem))),
+    3600
+  );
+  if (error || !data) return null;
+  const porCaminho = new Map(data.filter((d) => d.path && d.signedUrl).map((d) => [d.path as string, d.signedUrl as string]));
+  const links: Record<string, string> = {};
+  for (const m of itens) links[m.path] = (m.thumb && porCaminho.get(m.thumb)) || porCaminho.get(m.path) || "";
+  return links;
+}
+
 export function midiasValidas(media: unknown): PostMedia[] {
   if (!Array.isArray(media)) return [];
   return media.flatMap((m): PostMedia[] => {
@@ -177,6 +213,7 @@ export function midiasValidas(media: unknown): PostMedia[] {
         name: typeof item.name === "string" ? item.name : "arquivo",
         size: typeof item.size === "number" ? item.size : 0,
         ...(doDrive ? { source: "drive" as const, drive_id: item.drive_id } : {}),
+        ...(thumbValida(item.path, item.thumb) ? { thumb: item.thumb } : {}),
       },
     ];
   });
