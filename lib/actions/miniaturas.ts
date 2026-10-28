@@ -14,6 +14,7 @@ import { caminhoDaMiniatura } from "@/lib/miniatura-de-imagem";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TAMANHO_MINIMO = 300 * 1024;
 const EXTENSOES_COM_MINIATURA = /\.(jpe?g|png|webp)$/i;
+const CATEGORIAS_COM_CAPA = ["reel", "shorts", "youtube"];
 
 export interface ImagemSemMiniatura {
   postId: string;
@@ -33,15 +34,26 @@ async function autorizado() {
 export async function listarImagensSemMiniatura(): Promise<{ erro: string } | { itens: ImagemSemMiniatura[] }> {
   if (!(await autorizado())) return { erro: "Só quem vê tudo pode rodar isto." };
   const admin = createAdminClient();
-  const { data, error } = await admin.from("posts").select("id, media, cover");
-  if (error) return { erro: `Não deu pra listar os posts: ${error.message}` };
+  // O PostgREST devolve no máximo 1000 linhas por pedido: lê em páginas.
+  const posts: { id: unknown; category: unknown; media: unknown; cover: unknown }[] = [];
+  for (let de = 0; ; de += 500) {
+    const { data, error } = await admin
+      .from("posts")
+      .select("id, category, media, cover")
+      .order("id")
+      .range(de, de + 499);
+    if (error) return { erro: `Não deu pra listar os posts: ${error.message}` };
+    posts.push(...(data ?? []));
+    if (!data || data.length < 500) break;
+  }
 
   const itens: ImagemSemMiniatura[] = [];
-  for (const post of data ?? []) {
+  for (const post of posts) {
     const candidatos: { onde: "media" | "cover"; m: ReturnType<typeof midiasValidas>[number] }[] = [
       ...midiasValidas(post.media).map((m) => ({ onde: "media" as const, m })),
     ];
-    const capa = capaValida(post.cover);
+    // Só reel, shorts e youtube têm capa (o banco zera a capa dos outros).
+    const capa = CATEGORIAS_COM_CAPA.includes(post.category as string) ? capaValida(post.cover) : null;
     if (capa) candidatos.push({ onde: "cover", m: capa });
     for (const { onde, m } of candidatos) {
       if (m.type !== "image" || m.source === "drive" || m.thumb) continue;
@@ -69,29 +81,30 @@ export async function registrarMiniatura(
   if (!thumbValida(path, thumb) || thumb !== caminhoDaMiniatura(path)) return { erro: "Caminho de miniatura inválido." };
 
   const admin = createAdminClient();
-  // O arquivo tem que existir de verdade no bucket antes de apontar pra ele.
-  const pasta = thumb.slice(0, thumb.lastIndexOf("/"));
-  const nome = thumb.slice(thumb.lastIndexOf("/") + 1);
-  const { data: arquivos, error: erroLista } = await admin.storage
-    .from(BUCKET_DOS_POSTS)
-    .list(pasta, { search: nome, limit: 5 });
-  if (erroLista || !arquivos?.some((a) => a.name === nome)) return { erro: "A miniatura não está no bucket." };
+  // O arquivo tem que existir de verdade no bucket antes de apontar pra ele
+  // (assinar um caminho que não existe dá erro).
+  const { data: assinado, error: erroAssinar } = await admin.storage.from(BUCKET_DOS_POSTS).createSignedUrl(thumb, 60);
+  if (erroAssinar || !assinado?.signedUrl) return { erro: "A miniatura não está no bucket." };
 
   // Lê, acrescenta a miniatura no item e grava só se o post não mudou no meio
   // (alguém pode estar editando): em caso de corrida, lê de novo.
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const { data: post, error } = await admin
       .from("posts")
-      .select("project_id, media, cover, updated_at")
+      .select("project_id, category, media, cover, updated_at")
       .eq("id", postId)
       .maybeSingle();
     if (error || !post) return { erro: "Post não encontrado." };
+    if (onde === "cover" && !CATEGORIAS_COM_CAPA.includes(post.category as string)) {
+      return { erro: "Este post não usa capa (o banco a apagaria)." };
+    }
     if (!path.startsWith(`${post.project_id}/${postId}/`)) return { erro: "O arquivo não é deste post." };
 
     let achou = false;
     const marcar = (m: unknown) => {
       const item = m as { path?: unknown; thumb?: unknown } | null;
-      if (item && item.path === path && !item.thumb) {
+      // Um thumb torto no banco conta como "sem miniatura" (igual à lista) e é trocado.
+      if (item && item.path === path && !thumbValida(path, item.thumb)) {
         achou = true;
         return { ...(item as object), thumb };
       }

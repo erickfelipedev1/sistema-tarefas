@@ -59,7 +59,9 @@ export function caminhoDaMiniatura(caminhoDoOriginal: string) {
 export async function subirMiniatura(
   storage: Armazenamento,
   caminhoDoOriginal: string,
-  arquivo: File
+  arquivo: File,
+  // Só o backfill (/miniaturas) refaz uma miniatura que já está no bucket.
+  substituir = false
 ): Promise<string | null> {
   if (!FORMATOS.includes(arquivo.type) || arquivo.size < TAMANHO_MINIMO) return null;
   try {
@@ -67,7 +69,7 @@ export async function subirMiniatura(
     // Se não ficou menor que o original, não adianta.
     if (!blob || blob.size >= arquivo.size) return null;
     const caminho = caminhoDaMiniatura(caminhoDoOriginal);
-    const { error } = await storage.from(BUCKET_DOS_POSTS).upload(caminho, blob, { contentType: "image/jpeg", upsert: true });
+    const { error } = await storage.from(BUCKET_DOS_POSTS).upload(caminho, blob, { contentType: "image/jpeg", upsert: substituir });
     return error ? null : caminho;
   } catch {
     return null;

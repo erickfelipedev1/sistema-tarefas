@@ -49,8 +49,9 @@ export default function MiniaturasView() {
         const { data: blob, error } = await supabase.storage.from(BUCKET_DOS_POSTS).download(item.path);
         if (error || !blob) throw new Error("Não consegui baixar o original.");
         const extensao = (item.path.split(".").pop() ?? "").toLowerCase();
-        const arquivo = new File([blob], item.name || "imagem", { type: blob.type || TIPOS[extensao] || "" });
-        const thumb = await subirMiniatura(supabase.storage, item.path, arquivo);
+        const tipo = Object.values(TIPOS).includes(blob.type) ? blob.type : TIPOS[extensao] || "";
+        const arquivo = new File([blob], item.name || "imagem", { type: tipo });
+        const thumb = await subirMiniatura(supabase.storage, item.path, arquivo, true);
         if (!thumb || thumb !== caminhoDaMiniatura(item.path)) {
           // Imagem pequena, formato que o navegador não abre ou miniatura que não ficou menor.
           setPuladas((n) => n + 1);
@@ -105,7 +106,17 @@ export default function MiniaturasView() {
           · Puladas: <b>{puladas}</b>
         </p>
         {rodando && <p className="mt-2 text-ink-muted">Trabalhando... deixe esta aba aberta.</p>}
-        {fim && <p className="mt-2 font-medium text-success">Pronto. As telas já carregam as versões leves.</p>}
+        {fim && feitas === 0 && puladas > 0 && (
+          <p className="mt-2 font-medium text-danger">
+            Nenhuma miniatura foi gerada ({puladas} puladas). Pode ser formato que o navegador não abre ou permissão do
+            bucket: avise o suporte antes de rodar de novo.
+          </p>
+        )}
+        {fim && feitas > 0 && (
+          <p className="mt-2 font-medium text-success">
+            Pronto. As telas já carregam as versões leves{puladas > 0 ? ` (${puladas} imagens ficaram sem, por serem leves ou de formato não suportado)` : ""}.
+          </p>
+        )}
         {erro && <p className="mt-2 text-danger">{erro}</p>}
         {falhas.length > 0 && (
           <div className="mt-3">
