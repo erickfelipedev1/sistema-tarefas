@@ -22,7 +22,7 @@ export const ESCALA_LIXO: { dia: number; rotulo: string; nomes: string[] }[] = [
   { dia: 1, rotulo: "Segunda", nomes: ["Vitoria", "Sabrina", "Nicolle"] },
   { dia: 2, rotulo: "Terça", nomes: ["Marcus", "Rodrigo"] },
   { dia: 3, rotulo: "Quarta", nomes: ["Erick", "Mariana", "Gabriel"] },
-  { dia: 4, rotulo: "Quinta", nomes: ["Julia", "Guilherme"] },
+  { dia: 4, rotulo: "Quinta", nomes: ["Julia"] },
   { dia: 5, rotulo: "Sexta", nomes: ["Ana", "Emilly", "Mayara"] },
 ];
 

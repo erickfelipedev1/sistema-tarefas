@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-10-28",
+    area: "Sistema",
+    titulo: "Escala do lixo atualizada",
+    texto: "Na página Regras, a escala de quinta-feira agora é só da Julia. O Guilherme saiu da escala.",
+  },
+  {
     data: "2026-10-27",
     area: "Clientes",
     titulo: "Aba Documentos e link do cliente abrindo no topo",
