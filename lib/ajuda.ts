@@ -105,7 +105,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como anexo arquivos? Dá pra mandar vários?",
     resposta:
-      "Na aba Anexos da tarefa, clique na área \"Anexar arquivos\" e marque quantos quiser, ou arraste os arquivos pra lá. No celular, use o botão \"Escolher fotos e vídeos (vários)\" pra marcar várias da galeria; no seletor de arquivos, segure o dedo num item pra marcar mais de um. Arquivo acima de 45 MB vai sozinho pro Google Drive do d.hub e aparece na lista como os outros (com o selo D).",
+      "Na aba Anexos da tarefa, clique na área \"Anexar arquivos\" e marque quantos quiser, ou arraste os arquivos pra lá. No celular, use o botão \"Escolher fotos e vídeos (vários)\" pra marcar várias da galeria; no seletor de arquivos, segure o dedo num item pra marcar mais de um. Vídeo (de qualquer tamanho) e arquivo acima de 45 MB vão sozinhos pro Google Drive do d.hub e aparecem na lista como os outros (com o selo D).",
     palavras: ["anexar", "anexo", "subir arquivo", "enviar arquivo", "vários arquivos", "upload", "arrastar", "arquivo grande", "drive"],
   },
   {

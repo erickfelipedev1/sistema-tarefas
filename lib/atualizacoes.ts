@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-10-28",
+    area: "Tarefas",
+    titulo: "Vídeos anexados vão pro Google Drive",
+    texto: "Todo vídeo anexado numa tarefa agora sobe direto pro Google Drive do d.hub (aparece na lista com o selo D, abre e baixa como antes). Isso libera o espaço do servidor, que estava quase todo ocupado por vídeos. Os vídeos que já estavam anexados também vão sendo passados pro Drive.",
+  },
+  {
+    data: "2026-10-28",
     area: "Posts",
     titulo: "Imagens dos posts mais leves, com o original pra baixar",
     texto: "Ao enviar uma imagem ou capa num post, o d.hub guarda o original e cria uma versão leve só pra mostrar nas telas (lista, calendário, preview e portal do cliente). O botão Baixar, do time e do cliente, e a publicação no Instagram continuam usando o original, sem perda de qualidade. Vale pras imagens enviadas daqui pra frente.",

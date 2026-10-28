@@ -1446,8 +1446,9 @@ function AnexosTab({
 
   // Vários de uma vez (escolhendo na janela ou arrastando pra área): um
   // atrás do outro, com o progresso. O Supabase aceita até 50 MB por arquivo;
-  // passou de LIMITE_DO_SUPABASE vai pro Google Drive do d.hub (link aberto
-  // pra quem tiver) e o anexo guarda "drive:<código>".
+  // vídeo (de qualquer tamanho) e o que passou de LIMITE_DO_SUPABASE vão pro
+  // Google Drive do d.hub (link aberto pra quem tiver) e o anexo guarda
+  // "drive:<código>". Vídeo pesava quase todo o espaço do plano do Supabase.
   const LIMITE_MB = Math.round(LIMITE_DO_SUPABASE / 1024 / 1024);
   const [progresso, setProgresso] = useState<string | null>(null);
   const [sobreArea, setSobreArea] = useState(false);
@@ -1461,17 +1462,23 @@ function AnexosTab({
       const arquivo = arquivos[i];
       const quantos = arquivos.length > 1 ? ` ${i + 1} de ${arquivos.length}` : "";
       setProgresso(`Enviando${quantos}...`);
-      let caminho: string;
-      if (arquivo.size > LIMITE_DO_SUPABASE) {
+      let caminho = "";
+      const ehVideo = arquivo.type.startsWith("video/") || tipoDoArquivoPeloNome(arquivo.name) === "video";
+      if (arquivo.size > LIMITE_DO_SUPABASE || ehVideo) {
         const r = await enviarAnexoParaODrive(arquivo, (f) =>
           setProgresso(`Enviando${quantos} pro Google Drive... ${Math.round(f * 100)}%`)
         );
         if ("erro" in r) {
-          (r.naoConfigurado ? semDrive : falhas).push(arquivo.name);
-          continue;
+          // Vídeo que cabe no Supabase não se perde se o Drive falhar: segue pra lá.
+          if (arquivo.size > LIMITE_DO_SUPABASE) {
+            (r.naoConfigurado ? semDrive : falhas).push(arquivo.name);
+            continue;
+          }
+        } else {
+          caminho = `${PREFIXO_DO_DRIVE}${r.id}`;
         }
-        caminho = `${PREFIXO_DO_DRIVE}${r.id}`;
-      } else {
+      }
+      if (!caminho) {
         caminho = `${taskId}/${Date.now()}-${i}-${nomeSeguro(arquivo.name)}`;
         const { error: erroUpload } = await supabase.storage.from("task-attachments").upload(caminho, arquivo);
         if (erroUpload) {
