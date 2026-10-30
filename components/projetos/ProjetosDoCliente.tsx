@@ -65,7 +65,7 @@ function ordenarTarefas(lista: Task[]) {
   });
 }
 
-type Rascunho = Pick<Subprojeto, "name" | "description" | "status" | "start_date" | "due_date"> & { id?: string };
+type Rascunho = Pick<Subprojeto, "name" | "description" | "status" | "responsible_id" | "start_date" | "due_date"> & { id?: string };
 
 // Aba "Projetos" do cliente (migration 0083): frentes de trabalho que agrupam
 // tarefas do cliente, com o andamento de cada uma. A tarefa entra no projeto
@@ -237,6 +237,12 @@ export default function ProjetosDoCliente({
               <p className="mt-0.5 text-xs text-ink-muted">
                 {[periodo(aberto), aberto.created_by_label && `criado por ${aberto.created_by_label}`].filter(Boolean).join(" · ")}
               </p>
+              {aberto.responsible_id && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
+                  <Avatar name={nomeDe(aberto.responsible_id)} src={perfilPorId.get(aberto.responsible_id)?.avatar_url} size="xs" />
+                  Responsável: <span className="font-medium text-ink">{nomeDe(aberto.responsible_id)}</span>
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -358,6 +364,7 @@ export default function ProjetosDoCliente({
           <FormDoProjeto
             rascunho={form}
             projectId={projectId}
+            profiles={profiles}
             currentUserLabel={currentUserLabel}
             aoFechar={() => setForm(null)}
             aoSalvar={(sp) => {
@@ -389,7 +396,7 @@ export default function ProjetosDoCliente({
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={() => setForm({ name: "", description: null, status: "ativo", start_date: null, due_date: null })} disabled={!!erroCarregar}>
+        <Button size="sm" onClick={() => setForm({ name: "", description: null, status: "ativo", responsible_id: null, start_date: null, due_date: null })} disabled={!!erroCarregar}>
           <PlusIcon className="h-3.5 w-3.5" />
           Novo projeto
         </Button>
@@ -428,6 +435,7 @@ export default function ProjetosDoCliente({
         <FormDoProjeto
           rascunho={form}
           projectId={projectId}
+          profiles={profiles}
           currentUserLabel={currentUserLabel}
           aoFechar={() => setForm(null)}
           aoSalvar={(sp) => {
@@ -492,6 +500,12 @@ function CartaoDoProjeto({
           {periodo(projeto)}
         </p>
       )}
+      {projeto.responsible_id && (
+        <p className="-mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-muted">
+          <Avatar name={nomeDe(projeto.responsible_id)} src={fotoDe(projeto.responsible_id)} size="xs" />
+          <span className="truncate">{nomeDe(projeto.responsible_id)}</span>
+        </p>
+      )}
       <BarraDeAndamento {...a} className="w-full" />
       <div className="flex w-full items-center justify-between gap-2">
         <span className={`text-[11px] ${atrasadas ? "font-medium text-danger" : "text-ink-muted"}`}>
@@ -552,12 +566,14 @@ function Janela({ titulo, aoFechar, children }: { titulo: string; aoFechar: () =
 function FormDoProjeto({
   rascunho,
   projectId,
+  profiles,
   currentUserLabel,
   aoFechar,
   aoSalvar,
 }: {
   rascunho: Rascunho;
   projectId: string;
+  profiles: Profile[];
   currentUserLabel: string;
   aoFechar: () => void;
   aoSalvar: (sp: Subprojeto) => void;
@@ -566,6 +582,7 @@ function FormDoProjeto({
   const [nome, setNome] = useState(rascunho.name);
   const [descricao, setDescricao] = useState(rascunho.description ?? "");
   const [status, setStatus] = useState<StatusDoSubprojeto>(rascunho.status);
+  const [responsavel, setResponsavel] = useState(rascunho.responsible_id ?? "");
   const [inicio, setInicio] = useState(rascunho.start_date ?? "");
   const [entrega, setEntrega] = useState(rascunho.due_date ?? "");
   const [salvando, setSalvando] = useState(false);
@@ -581,6 +598,7 @@ function FormDoProjeto({
       name: nome.trim(),
       description: descricao.trim() || null,
       status,
+      responsible_id: responsavel || null,
       start_date: inicio || null,
       due_date: entrega || null,
     };
@@ -627,6 +645,22 @@ function FormDoProjeto({
               placeholder="O objetivo, o escopo, links importantes..."
               className={campo}
             />
+          </div>
+          <div>
+            <label htmlFor="sp-responsavel" className="mb-1 block text-xs font-medium text-ink-muted">
+              Responsável <span className="font-normal">(opcional)</span>
+            </label>
+            <select id="sp-responsavel" value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={campo}>
+              <option value="">Sem responsável</option>
+              {profiles
+                .filter((p) => p.ativo !== false || p.id === rascunho.responsible_id)
+                .sort((a, b) => (a.name || a.username || "").localeCompare(b.name || b.username || "", "pt-BR"))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || p.username}
+                  </option>
+                ))}
+            </select>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>

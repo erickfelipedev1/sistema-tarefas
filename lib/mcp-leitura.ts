@@ -32,7 +32,7 @@ const STATUS_DO_POST: Record<string, string> = {
   publicado: "Aprovado",
 };
 
-const STATUS_DO_PROJETO: Record<string, string> = { ativo: "Em andamento", pausado: "Pausado", concluido: "Concluído" };
+const STATUS_DO_PROJETO: Record<string, string> = { nao_iniciado: "Não iniciado", ativo: "Em andamento", pausado: "Pausado", concluido: "Concluído" };
 
 function erro(texto: string) {
   return { isError: true, content: [{ type: "text" as const, text: texto }] };
