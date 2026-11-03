@@ -355,6 +355,14 @@ export default function FaturamentoDoCliente({
                 )}
 
                 <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
+                  <a
+                    href={`/api/faturas/${f.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 items-center rounded-lg border border-line bg-surface px-3 text-xs font-medium text-ink hover:bg-surface-hover"
+                  >
+                    Baixar PDF
+                  </a>
                   {f.status === "draft" && (
                     <Button size="sm" onClick={() => emitir(f)}>
                       Emitir ao cliente

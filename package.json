@@ -16,6 +16,7 @@
     "@mantine/core": "^8.3.11",
     "@mantine/hooks": "^8.3.11",
     "@modelcontextprotocol/sdk": "1.26.0",
+    "@react-pdf/renderer": "3.4.5",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
     "gsap": "^3.14.2",
