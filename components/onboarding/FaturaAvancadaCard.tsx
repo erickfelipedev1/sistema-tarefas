@@ -50,12 +50,7 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
 
   return (
     <div className="rounded-xl border border-line bg-surface">
-      <button
-        type="button"
-        onClick={() => setAberta((v) => !v)}
-        aria-expanded={aberta}
-        className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left hover:bg-surface-hover/50"
-      >
+      <div className="flex items-center justify-between gap-3 px-3.5 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <ReceiptIcon className="h-4 w-4 flex-shrink-0 text-ink-muted" />
           <div className="min-w-0">
@@ -72,6 +67,36 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
           <span className="text-sm font-semibold text-ink">{formatarMoeda(fatura.amount)}</span>
           {quitada ? <Badge tone="success">Paga</Badge> : <Badge tone="brand">Em aberto</Badge>}
         </div>
+      </div>
+
+      {/* Os itens, com a descrição de cada um, ficam sempre à vista. */}
+      {itens.length > 0 && (
+        <ul className="divide-y divide-line border-t border-line text-xs">
+          {itens.map((item, i) => (
+            <li key={i} className="flex items-start justify-between gap-3 px-3.5 py-2">
+              <span className="min-w-0">
+                <span className="text-ink">
+                  {Number(item.quantity) !== 1 &&
+                    `${Number(item.quantity).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} × `}
+                  {item.name}
+                </span>
+                {item.detail && <span className="mt-0.5 block text-ink-muted">{item.detail}</span>}
+              </span>
+              <span className="flex-shrink-0 tabular-nums text-ink">
+                {Number(item.unit_price) > 0 ? formatarMoeda(Number(item.total)) : "incluso"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setAberta((v) => !v)}
+        aria-expanded={aberta}
+        className="w-full border-t border-line px-3.5 py-2 text-left text-xs font-medium text-brand-forte hover:bg-surface-hover/50"
+      >
+        {aberta ? "Ocultar detalhes" : "Ver detalhes, como pagar e PDF"}
       </button>
 
       {aberta && (
@@ -103,25 +128,7 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
 
           {itens.length > 0 && (
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Itens</p>
-              <ul className="divide-y divide-line rounded-lg border border-line">
-                {itens.map((item, i) => (
-                  <li key={i} className="flex items-start justify-between gap-3 px-3 py-2">
-                    <span className="min-w-0">
-                      <span className="text-ink">
-                        {Number(item.quantity) !== 1 &&
-                          `${Number(item.quantity).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} × `}
-                        {item.name}
-                      </span>
-                      {item.detail && <span className="mt-0.5 block text-ink-muted">{item.detail}</span>}
-                    </span>
-                    <span className="flex-shrink-0 tabular-nums text-ink">
-                      {Number(item.unit_price) > 0 ? formatarMoeda(Number(item.total)) : "incluso"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <dl className="mt-2 ml-auto max-w-xs space-y-1">
+              <dl className="ml-auto max-w-xs space-y-1">
                 <div className="flex justify-between text-ink-muted">
                   <dt>Subtotal</dt>
                   <dd className="tabular-nums text-ink">{formatarMoeda(totais.subtotal)}</dd>
