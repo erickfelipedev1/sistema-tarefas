@@ -10,7 +10,9 @@ export function invoiceDisplayStatus(
   invoice: Pick<Invoice | PublicInvoice, "status" | "due_date">
 ): InvoiceDisplayStatus {
   if (invoice.status !== "pending") return invoice.status;
-  const hoje = new Date().toISOString().slice(0, 10);
+  // Data de hoje no Brasil: em UTC, depois das 21h a fatura que vence hoje já
+  // apareceria como vencida.
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   return invoice.due_date < hoje ? "overdue" : "pending";
 }
 

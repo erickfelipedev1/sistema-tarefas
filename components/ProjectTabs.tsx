@@ -24,6 +24,7 @@ const ABAS = [
   { key: "wiki", label: "Wiki", icon: BookOpenIcon },
   { key: "arquivos", label: "Documentos", icon: FileStackIcon },
   { key: "faturas", label: "Faturas", icon: ReceiptIcon },
+  { key: "faturamento", label: "Faturamento", icon: ReceiptIcon },
   { key: "mensagens", label: "Mensagens", icon: MessageCircleIcon },
   { key: "analytics", label: "Analytics", icon: BarChartIcon },
 ] as const;
@@ -40,6 +41,9 @@ type AbaKey = (typeof ABAS)[number]["key"];
 // "Posts" também só monta quando é aberta (consulta, tempo real e links
 // assinados dos arquivos).
 // "Projetos" (migration 0083) também só monta quando é aberta.
+// "Faturas" e "Faturamento" (migration 0098) só existem pra quem a página
+// mandar (equipe de faturamento); "Faturamento" só nos clientes do piloto e
+// só monta quando é aberta.
 // "inicial" abre a página já numa aba (?aba=posts, vindo de um aviso).
 export default function ProjectTabs({
   tarefas,
@@ -50,6 +54,7 @@ export default function ProjectTabs({
   wiki,
   arquivos,
   faturas,
+  faturamento,
   mensagens,
   analytics,
   inicial,
@@ -63,7 +68,8 @@ export default function ProjectTabs({
   atas?: ReactNode;
   wiki: ReactNode;
   arquivos: ReactNode;
-  faturas: ReactNode;
+  faturas?: ReactNode;
+  faturamento?: ReactNode;
   mensagens: ReactNode;
   analytics: ReactNode;
   inicial?: string;
@@ -72,13 +78,16 @@ export default function ProjectTabs({
     (item) =>
       (item.key !== "otimizacoes" || !!otimizacoes) &&
       (item.key !== "atas" || !!atas) &&
-      (item.key !== "projetos" || !!projetos)
+      (item.key !== "projetos" || !!projetos) &&
+      (item.key !== "faturas" || !!faturas) &&
+      (item.key !== "faturamento" || !!faturamento)
   );
   const [aba, setAba] = useState<AbaKey>(abas.find((item) => item.key === inicial)?.key ?? "tarefas");
   const [abriuAnalytics, setAbriuAnalytics] = useState(aba === "analytics");
   const [abriuPosts, setAbriuPosts] = useState(aba === "posts");
   const [abriuAtas, setAbriuAtas] = useState(aba === "atas");
   const [abriuProjetos, setAbriuProjetos] = useState(aba === "projetos");
+  const [abriuFaturamento, setAbriuFaturamento] = useState(aba === "faturamento");
 
   return (
     <div>
@@ -95,6 +104,7 @@ export default function ProjectTabs({
                 if (item.key === "posts") setAbriuPosts(true);
                 if (item.key === "atas") setAbriuAtas(true);
                 if (item.key === "projetos") setAbriuProjetos(true);
+                if (item.key === "faturamento") setAbriuFaturamento(true);
               }}
               className={`flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                 ativa
@@ -118,7 +128,8 @@ export default function ProjectTabs({
       {abriuAtas && atas && <div className={aba === "atas" ? "" : "hidden"}>{atas}</div>}
       <div className={aba === "wiki" ? "" : "hidden"}>{wiki}</div>
       <div className={aba === "arquivos" ? "" : "hidden"}>{arquivos}</div>
-      <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>
+      {faturas && <div className={aba === "faturas" ? "" : "hidden"}>{faturas}</div>}
+      {abriuFaturamento && faturamento && <div className={aba === "faturamento" ? "" : "hidden"}>{faturamento}</div>}
       <div className={aba === "mensagens" ? "" : "hidden"}>{mensagens}</div>
       {abriuAnalytics && <div className={aba === "analytics" ? "" : "hidden"}>{analytics}</div>}
     </div>

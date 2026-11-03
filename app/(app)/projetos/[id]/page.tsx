@@ -12,6 +12,7 @@ import ProjectTabs from "@/components/ProjectTabs";
 import Coreografia from "@/components/movimento/Coreografia";
 import DriveBrowser from "@/components/DriveBrowser";
 import InvoicesManager from "@/components/InvoicesManager";
+import FaturamentoDoCliente from "@/components/faturamento/FaturamentoDoCliente";
 import OptimizationsManager from "@/components/OptimizationsManager";
 import AtasManager from "@/components/atas/AtasManager";
 import ProjetosDoCliente from "@/components/projetos/ProjetosDoCliente";
@@ -66,6 +67,9 @@ export default async function ProjetoPage({
   const perfil = await perfilAtual();
   const souLider = perfil?.ve_tudo === true;
   const temOtimizacoes = souLider || perfil?.faz_otimizacoes === true;
+  // Abas "Faturas" e "Faturamento" (migration 0098): só pra quem pode ver
+  // faturamento, a mesma regra do banco (pode_ver_faturamento).
+  const podeFaturar = souLider || perfil?.ve_faturamento === true;
 
   const { data: tarefasDoCliente } = await supabase
     .from("tasks")
@@ -320,7 +324,12 @@ export default async function ProjetoPage({
           />
         }
         faturas={
-          <InvoicesManager projectId={id} currentUserLabel={userLabel} />
+          podeFaturar ? <InvoicesManager projectId={id} currentUserLabel={userLabel} /> : undefined
+        }
+        faturamento={
+          podeFaturar && project.faturamento_avancado === true ? (
+            <FaturamentoDoCliente projectId={id} currentUserLabel={userLabel} />
+          ) : undefined
         }
         mensagens={
           <div>
