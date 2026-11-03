@@ -327,6 +327,46 @@ export interface PublicInvoice {
   // Nome da empresa quando a fatura é de uma empresa do cliente (migration
   // 0099); vazio nas faturas do próprio cliente.
   company?: string | null;
+  // Faturamento avançado (migration 0098): número, desconto, imposto,
+  // parcelas e quem emite / quem paga. Só vêm nas faturas "advanced".
+  advanced?: boolean;
+  number?: string | null;
+  discount?: number;
+  tax_percent?: number;
+  tax_label?: string | null;
+  tax_added?: boolean;
+  notes?: string | null;
+  created_at?: string;
+  installments?: PublicInstallment[] | null;
+  issuer?: PublicIssuer | null;
+  client?: PublicBillingClient | null;
+}
+
+export interface PublicInstallment {
+  position: number;
+  amount: number;
+  due_date: string;
+  status: "pending" | "paid";
+  paid_at: string | null;
+}
+
+export interface PublicIssuer {
+  legal_name: string | null;
+  document: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+  pix_type: string | null;
+  pix_key: string | null;
+  bank_info: string | null;
+}
+
+export interface PublicBillingClient {
+  legal_name: string | null;
+  document: string | null;
+  address: string | null;
+  billing_email: string | null;
+  contact_name: string | null;
 }
 
 // Linha de optimizations (migration 0043) — otimização diária do tráfego,

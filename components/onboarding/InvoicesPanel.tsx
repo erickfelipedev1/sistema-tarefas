@@ -7,10 +7,13 @@ import {
   invoiceDisplayStatus,
 } from "@/lib/invoices";
 import type { PublicInvoice } from "@/lib/types";
+import { FaturaAvancadaCard } from "./FaturaAvancadaCard";
 
 type FaturaComLink = PublicInvoice & { publicUrl: string | null };
 
-function FaturaItem({ fatura }: { fatura: FaturaComLink }) {
+function FaturaItem({ fatura, token }: { fatura: FaturaComLink; token: string }) {
+  // Faturamento avançado (migration 0098): cartão que abre com os detalhes.
+  if (fatura.advanced) return <FaturaAvancadaCard fatura={fatura} token={token} />;
   const statusExibido = invoiceDisplayStatus(fatura);
   const Conteudo = (
     <>
@@ -86,7 +89,16 @@ function totalEmAberto(lista: FaturaComLink[]) {
 // não aparecem aqui: não fazem sentido pro cliente ver.
 // Quando o cliente é dono de empresas (migration 0099), as faturas vêm
 // agrupadas por empresa, cada grupo com o que ainda está em aberto.
-export function InvoicesPanel({ invoices, empresas: empresasDoCliente = [] }: { invoices: FaturaComLink[]; empresas?: string[] }) {
+export function InvoicesPanel({
+  invoices,
+  empresas: empresasDoCliente = [],
+  token,
+}: {
+  invoices: FaturaComLink[];
+  empresas?: string[];
+  // Link do portal: o PDF da fatura sai por ele.
+  token: string;
+}) {
   const faturasVisiveis = invoices.filter((f) => f.status !== "cancelled");
   const proprias = faturasVisiveis.filter((f) => !f.company);
   // As empresas do cliente aparecem mesmo sem fatura; as que só têm fatura
@@ -136,7 +148,7 @@ export function InvoicesPanel({ invoices, empresas: empresasDoCliente = [] }: { 
                 ) : (
                   <div className="space-y-2">
                     {g.lista.map((fatura) => (
-                      <FaturaItem key={fatura.id} fatura={fatura} />
+                      <FaturaItem key={fatura.id} fatura={fatura} token={token} />
                     ))}
                   </div>
                 )}

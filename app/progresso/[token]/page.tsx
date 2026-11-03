@@ -216,7 +216,7 @@ export default async function ProgressoPage({
             files={arquivosComLink}
           />
         }
-        faturas={<InvoicesPanel invoices={faturasComLink} empresas={empresasDoCliente} />}
+        faturas={<InvoicesPanel invoices={faturasComLink} empresas={empresasDoCliente} token={params.token} />}
       />
     </main>
   );

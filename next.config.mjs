@@ -9,6 +9,7 @@ const nextConfig = {
     // As fontes do PDF são lidas do disco: precisam ir junto com a rota.
     outputFileTracingIncludes: {
       "/api/faturas/[id]/pdf": ["./lib/pdf/fonts/**/*"],
+      "/api/progresso/[token]/faturas/[id]/pdf": ["./lib/pdf/fonts/**/*"],
     },
   },
 };
