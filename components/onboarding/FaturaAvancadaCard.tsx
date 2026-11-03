@@ -66,10 +66,7 @@ export function FaturaAvancadaCard({
         <div className="flex min-w-0 items-center gap-2.5">
           <ReceiptIcon className="h-4 w-4 flex-shrink-0 text-ink-muted" />
           <div className="min-w-0">
-            <p className="truncate text-sm text-ink">
-              {fatura.number ? `${fatura.number} · ` : ""}
-              {fatura.description}
-            </p>
+            <p className="truncate text-sm text-ink">{fatura.description}</p>
             <p className="text-xs text-ink-muted">
               {quitada ? "Fatura paga" : parcelas.length > 1 ? `${pagas} de ${parcelas.length} parcelas pagas` : "Aguardando pagamento"}
             </p>
