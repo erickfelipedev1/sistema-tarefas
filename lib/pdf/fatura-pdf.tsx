@@ -49,6 +49,15 @@ function registrarFontes() {
       { src: path.join(pasta, "montserrat-latin-800-normal.woff"), fontWeight: 800 },
     ],
   });
+  Font.register({
+    family: "Poppins",
+    fonts: [
+      { src: path.join(pasta, "poppins-latin-400-normal.woff"), fontWeight: 400 },
+      { src: path.join(pasta, "poppins-latin-600-normal.woff"), fontWeight: 600 },
+      { src: path.join(pasta, "poppins-latin-700-normal.woff"), fontWeight: 700 },
+      { src: path.join(pasta, "poppins-latin-800-normal.woff"), fontWeight: 800 },
+    ],
+  });
   // Sem hifenização automática: nomes e valores não podem quebrar no meio.
   Font.registerHyphenationCallback((palavra) => [palavra]);
   fontesRegistradas = true;
@@ -167,11 +176,18 @@ function Marca({ tema, estilos }: { tema: TemaDaFatura; estilos: ReturnType<type
     // Passa os bytes: o react-pdf trata caminho do Windows ("C:\...") como URL.
     const arquivo = path.join(pastaLogos, tema.logo.arquivo);
     const formato = /\.jpe?g$/i.test(arquivo) ? "jpg" : "png";
-    return (
+    const imagem = (
       <Image
         src={{ data: readFileSync(arquivo), format: formato }}
         style={{ width: tema.logo.largura, height: tema.logo.largura / tema.logo.proporcao }}
       />
+    );
+    if (!tema.mostrarNome) return imagem;
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        {imagem}
+        <Text style={estilos.marcaTexto}>{tema.marca}</Text>
+      </View>
     );
   }
   if (tema.chave === "now") return <LogoNow largura={150} cor={tema.sobreFaixa} />;

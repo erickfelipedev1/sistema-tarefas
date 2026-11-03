@@ -58,12 +58,20 @@ export function FaturasPorEmpresa({ grupos, token }: { grupos: GrupoDeEmpresa[];
                   <ChevronRightIcon className="h-4 w-4 flex-shrink-0" style={marca ? { color: marca.detalheFaixa } : undefined} />
                 )}
                 {marca?.logo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`/marcas/${marca.logo.arquivo}`}
-                    alt={g.titulo}
-                    style={{ width: marca.logo.largura * 0.75, height: (marca.logo.largura * 0.75) / marca.logo.proporcao }}
-                  />
+                  <span className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/marcas/${marca.logo.arquivo}`}
+                      alt={g.titulo}
+                      className={marca.mostrarNome ? "rounded-lg" : ""}
+                      style={{ width: marca.logo.largura * 0.75, height: (marca.logo.largura * 0.75) / marca.logo.proporcao }}
+                    />
+                    {marca.mostrarNome && (
+                      <span className="text-base font-extrabold tracking-[0.14em]" style={{ color: marca.sobreFaixa }}>
+                        {marca.marca}
+                      </span>
+                    )}
+                  </span>
                 ) : (
                   <span
                     className={marca ? "text-base font-extrabold tracking-[0.14em]" : "text-sm font-semibold text-ink"}

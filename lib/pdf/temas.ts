@@ -1,12 +1,14 @@
 // Identidade visual do PDF da fatura, uma por empresa. O tema vem do nome do
 // cliente; quem não tem tema próprio usa o da now d.gital.
 //
-// NLG: paleta e fonte do site (azul royal #0a009b, navy #001024, azul claro só
-// em detalhes finos, Montserrat) e o logo branco do site.
-// JORNADA 4S e JOG CORP: cores PROVISÓRIAS medidas nas fotos de perfil do
-// Instagram (@jornada4s, @jogcorp); sem os logos e as cores oficiais, o nome
-// vai em texto na faixa. Para trocar: colocar o logo em lib/pdf/logos/ e
-// preencher "logo" (arquivo, largura em pontos e proporção largura/altura).
+// NLG: manual da marca (#1800ad, #091d34, #2b99b5, Montserrat) e logo branco.
+// JOG CORP: manual da marca (#041120, #212e47, dourado #dda865, marrom
+// #87623c, Poppins) e logo branco em PNG transparente.
+// JORNADA 4S: sem manual; cores medidas no logo (azul #00145a, laranja
+// #ec3c04) e o quadrado do perfil como logo. Se chegar o manual, trocar aqui.
+// Para trocar um logo: colocar o arquivo em lib/pdf/logos/ e em public/marcas/
+// (portal) e preencher "logo" (arquivo, largura em pontos, proporção
+// largura/altura).
 
 export type ChaveDoTema = "now" | "nlg" | "jornada" | "jog";
 
@@ -24,6 +26,8 @@ export interface TemaDaFatura {
   fonteTitulo: string;
   fonteCorpo: string;
   logo?: { arquivo: string; largura: number; proporcao: number };
+  // Escreve o nome ao lado do logo (quando o logo não traz o nome).
+  mostrarNome?: boolean;
 }
 
 export const TEMAS: Record<ChaveDoTema, TemaDaFatura> = {
@@ -43,13 +47,13 @@ export const TEMAS: Record<ChaveDoTema, TemaDaFatura> = {
   nlg: {
     chave: "nlg",
     marca: "NLG",
-    faixa: "#0A009B",
-    tabela: "#001024",
-    destaque: "#0A009B",
+    faixa: "#1800AD",
+    tabela: "#091D34",
+    destaque: "#1800AD",
     sobreFaixa: "#FFFFFF",
-    detalheFaixa: "#5EBCD4",
-    suave: "#F1F3F7",
-    linha: "#DBE0E4",
+    detalheFaixa: "#2B99B5",
+    suave: "#F4F5F9",
+    linha: "#E1E4EA",
     fonteTitulo: "Montserrat",
     fonteCorpo: "Montserrat",
     logo: { arquivo: "nlg.png", largura: 120, proporcao: 500 / 142 },
@@ -57,28 +61,33 @@ export const TEMAS: Record<ChaveDoTema, TemaDaFatura> = {
   jornada: {
     chave: "jornada",
     marca: "JORNADA 4S",
-    faixa: "#080820",
-    tabela: "#080820",
-    destaque: "#C8402A",
+    faixa: "#00145A",
+    tabela: "#000722",
+    destaque: "#EC3C04",
     sobreFaixa: "#FFFFFF",
-    detalheFaixa: "#E8795F",
-    suave: "#F6F5F8",
-    linha: "#E4E2EA",
+    detalheFaixa: "#FF7A45",
+    suave: "#F4F6FB",
+    linha: "#DDE2EE",
     fonteTitulo: "Urbanist",
     fonteCorpo: "Manrope",
+    logo: { arquivo: "jornada.png", largura: 54, proporcao: 1 },
+    mostrarNome: true,
   },
   jog: {
     chave: "jog",
     marca: "JOG CORP",
-    faixa: "#001028",
-    tabela: "#001028",
-    destaque: "#3E5C8F",
-    sobreFaixa: "#FFFFFF",
-    detalheFaixa: "#A9BCD9",
-    suave: "#F2F4F9",
-    linha: "#DFE4EE",
-    fonteTitulo: "Urbanist",
-    fonteCorpo: "Manrope",
+    faixa: "#041120",
+    tabela: "#212E47",
+    // Marrom do manual para rótulos e traços sobre fundo claro (o dourado
+    // fica para a faixa escura, onde tem contraste).
+    destaque: "#87623C",
+    sobreFaixa: "#FAFAFA",
+    detalheFaixa: "#DDA865",
+    suave: "#FAF6EF",
+    linha: "#E8E0D2",
+    fonteTitulo: "Poppins",
+    fonteCorpo: "Poppins",
+    logo: { arquivo: "jog.png", largura: 130, proporcao: 320 / 110 },
   },
 };
 
