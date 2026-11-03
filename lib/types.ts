@@ -324,6 +324,9 @@ export interface PublicInvoice {
   file_path: string | null;
   // Só nas faturas enviadas pelo Relatório mensal (migration 0045).
   items?: InvoiceItem[] | null;
+  // Nome da empresa quando a fatura é de uma empresa do cliente (migration
+  // 0099); vazio nas faturas do próprio cliente.
+  company?: string | null;
 }
 
 // Linha de optimizations (migration 0043) — otimização diária do tráfego,

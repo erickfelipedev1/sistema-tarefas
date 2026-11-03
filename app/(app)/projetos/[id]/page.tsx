@@ -84,6 +84,12 @@ export default async function ProjetoPage({
     : { data: [] as typeof tarefasDoCliente };
   const tasks = [...(tarefasDoCliente ?? []), ...(tarefasExtras ?? [])];
 
+  // Empresas deste cliente (migration 0099): o dono vê o faturamento de todas
+  // na aba Faturamento. Sem a migration a coluna não existe: fica sem empresas.
+  const { data: empresasDoCliente } = podeFaturar
+    ? await supabase.from("projects").select("id, name").eq("empresa_de", id).order("name", { ascending: true })
+    : { data: null };
+
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, username, name, avatar_url, ativo")
@@ -328,7 +334,11 @@ export default async function ProjetoPage({
         }
         faturamento={
           podeFaturar && project.faturamento_avancado === true ? (
-            <FaturamentoDoCliente projectId={id} currentUserLabel={userLabel} />
+            <FaturamentoDoCliente
+              projectId={id}
+              currentUserLabel={userLabel}
+              empresas={(empresasDoCliente ?? []) as { id: string; name: string }[]}
+            />
           ) : undefined
         }
         mensagens={

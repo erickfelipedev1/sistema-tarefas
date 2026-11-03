@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +10,7 @@ import {
   gerarParcelas,
   lerValor,
   parcelaVencida,
+  resumirFaturas,
   somaDasParcelas,
   TIPOS_DE_PIX,
   totalDoItem,
@@ -126,12 +128,15 @@ function statusExibido(f: FaturaAvancada, parcelas: ParcelaDaFatura[]): StatusDa
 export default function FaturamentoDoCliente({
   projectId,
   currentUserLabel,
+  empresas = [],
 }: {
   projectId: string;
   currentUserLabel: string;
+  // Empresas deste cliente (migration 0099): quando há, aparece a aba "Empresas".
+  empresas?: { id: string; name: string }[];
 }) {
   const supabase = createClient();
-  const [secao, setSecao] = useState<"faturas" | "dados">("faturas");
+  const [secao, setSecao] = useState<"faturas" | "empresas" | "dados">(empresas.length > 0 ? "empresas" : "faturas");
   const [faturas, setFaturas] = useState<FaturaAvancada[]>([]);
   const [parcelas, setParcelas] = useState<Record<string, ParcelaDaFatura[]>>({});
   const [emissor, setEmissor] = useState<Emissor | null>(null);
@@ -237,6 +242,7 @@ export default function FaturamentoDoCliente({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-xs font-medium">
           {[
+            ...(empresas.length > 0 ? [{ v: "empresas" as const, label: `Empresas (${empresas.length})` }] : []),
             { v: "faturas" as const, label: `Faturas (${faturas.length})` },
             { v: "dados" as const, label: "Dados de cobrança" },
           ].map((op) => (
@@ -261,7 +267,9 @@ export default function FaturamentoDoCliente({
       {erroCarregar && <p className="text-xs text-danger">{erroCarregar}</p>}
       {aviso && <p className="text-xs text-danger">{aviso}</p>}
 
-      {secao === "dados" ? (
+      {secao === "empresas" ? (
+        <ResumoDasEmpresas empresas={empresas} />
+      ) : secao === "dados" ? (
         <DadosDeCobranca
           projectId={projectId}
           emissor={emissor}
@@ -401,6 +409,133 @@ export default function FaturamentoDoCliente({
           }}
         />
       )}
+    </div>
+  );
+}
+
+function Indicador({ rotulo, valor, tom }: { rotulo: string; valor: number; tom?: "danger" | "success" }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-3.5 py-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">{rotulo}</p>
+      <p className={`mt-1 text-lg font-semibold ${tom === "danger" && valor > 0 ? "text-danger" : tom === "success" ? "text-success" : "text-ink"}`}>
+        {formatarMoeda(valor)}
+      </p>
+    </div>
+  );
+}
+
+// Resumo das empresas do cliente (migration 0099): total do grupo e de cada
+// empresa, com o detalhe das faturas e o atalho para o faturamento dela.
+function ResumoDasEmpresas({ empresas }: { empresas: { id: string; name: string }[] }) {
+  const supabase = createClient();
+  const [faturas, setFaturas] = useState<FaturaAvancada[]>([]);
+  const [parcelas, setParcelas] = useState<Record<string, ParcelaDaFatura[]>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      const ids = empresas.map((e) => e.id);
+      const { data: fs, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .in("project_id", ids)
+        .order("due_date", { ascending: false });
+      if (!ativo) return;
+      if (error) {
+        setErro("Não deu pra carregar as faturas das empresas. Tenta de novo.");
+        setCarregando(false);
+        return;
+      }
+      const lista = (fs ?? []) as FaturaAvancada[];
+      const { data: ps } = lista.length
+        ? await supabase.from("invoice_installments").select("*").in("invoice_id", lista.map((f) => f.id)).order("position")
+        : { data: [] as (ParcelaDaFatura & { invoice_id: string })[] };
+      if (!ativo) return;
+      const mapa: Record<string, ParcelaDaFatura[]> = {};
+      ((ps ?? []) as (ParcelaDaFatura & { invoice_id: string })[]).forEach((p) => {
+        (mapa[p.invoice_id] ??= []).push(p);
+      });
+      setFaturas(lista);
+      setParcelas(mapa);
+      setCarregando(false);
+    })();
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresas.map((e) => e.id).join(",")]);
+
+  if (carregando) return <p className="py-8 text-center text-sm text-ink-muted">Carregando empresas...</p>;
+  if (erro) return <p className="text-xs text-danger">{erro}</p>;
+
+  const geral = resumirFaturas(faturas, parcelas);
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Todas as empresas</p>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <Indicador rotulo="Emitido" valor={geral.emitido} />
+          <Indicador rotulo="Pago" valor={geral.pago} tom="success" />
+          <Indicador rotulo="Em aberto" valor={geral.aberto} />
+          <Indicador rotulo="Vencido" valor={geral.vencido} tom="danger" />
+        </div>
+        {geral.rascunhos > 0 && (
+          <p className="mt-2 text-xs text-ink-muted">
+            {geral.rascunhos} {geral.rascunhos === 1 ? "rascunho" : "rascunhos"} ainda não emitido{geral.rascunhos === 1 ? "" : "s"} (o cliente não vê).
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {empresas.map((e) => {
+          const dela = faturas.filter((f) => f.project_id === e.id);
+          const r = resumirFaturas(dela, parcelas);
+          return (
+            <section key={e.id} className="flex flex-col rounded-2xl border border-line bg-surface p-4">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="min-w-0 break-words text-sm font-semibold text-ink">{e.name}</h3>
+                <Link href={`/projetos/${e.id}?aba=faturamento`} className="flex-shrink-0 text-xs font-medium text-brand-forte hover:underline">
+                  Abrir
+                </Link>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                <dt className="text-ink-muted">Emitido</dt>
+                <dd className="text-right font-medium text-ink">{formatarMoeda(r.emitido)}</dd>
+                <dt className="text-ink-muted">Pago</dt>
+                <dd className="text-right font-medium text-success">{formatarMoeda(r.pago)}</dd>
+                <dt className="text-ink-muted">Em aberto</dt>
+                <dd className="text-right font-medium text-ink">{formatarMoeda(r.aberto)}</dd>
+                <dt className="text-ink-muted">Vencido</dt>
+                <dd className={`text-right font-medium ${r.vencido > 0 ? "text-danger" : "text-ink"}`}>{formatarMoeda(r.vencido)}</dd>
+              </dl>
+              {dela.length === 0 ? (
+                <p className="mt-3 border-t border-line pt-3 text-xs text-ink-muted">Nenhuma fatura ainda.</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-line border-t border-line">
+                  {dela.slice(0, 6).map((f) => {
+                    const rotulo = ROTULO[statusExibido(f, parcelas[f.id] ?? [])];
+                    return (
+                      <li key={f.id} className="flex items-center justify-between gap-2 py-2 text-xs">
+                        <span className="min-w-0 truncate text-ink-muted">
+                          {f.number ? `${f.number} · ` : ""}
+                          {f.description}
+                        </span>
+                        <span className="flex flex-shrink-0 items-center gap-1.5">
+                          <span className="font-medium text-ink">{formatarMoeda(f.amount)}</span>
+                          <Badge tone={rotulo.tom}>{rotulo.texto}</Badge>
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {dela.length > 6 && <li className="pt-2 text-[11px] text-ink-muted">+ {dela.length - 6} faturas. Abra a empresa para ver todas.</li>}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

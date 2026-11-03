@@ -153,6 +153,53 @@ export function somaDasParcelas(parcelas: Pick<ParcelaDaFatura, "amount">[]): nu
   return parcelas.reduce((s, p) => s + centavos(p.amount), 0) / 100;
 }
 
+export interface ResumoFinanceiro {
+  emitido: number;
+  pago: number;
+  aberto: number;
+  vencido: number;
+  rascunhos: number;
+}
+
+// Totais de um conjunto de faturas (uma empresa ou o grupo todo). Rascunho e
+// cancelada não entram nos valores. Com parcelas, "pago" e "aberto" saem delas;
+// sem parcelas (fatura antiga), da própria fatura.
+export function resumirFaturas(
+  faturas: Pick<FaturaAvancada, "id" | "status" | "amount" | "due_date">[],
+  parcelas: Record<string, Pick<ParcelaDaFatura, "amount" | "status" | "due_date">[]>
+): ResumoFinanceiro {
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  let emitido = 0;
+  let pago = 0;
+  let aberto = 0;
+  let vencido = 0;
+  let rascunhos = 0;
+  for (const f of faturas) {
+    if (f.status === "draft") {
+      rascunhos += 1;
+      continue;
+    }
+    if (f.status === "cancelled") continue;
+    emitido += centavos(f.amount);
+    const ps = parcelas[f.id] ?? [];
+    if (ps.length > 0) {
+      for (const p of ps) {
+        if (p.status === "paid") pago += centavos(p.amount);
+        else {
+          aberto += centavos(p.amount);
+          if (p.due_date < hoje) vencido += centavos(p.amount);
+        }
+      }
+    } else if (f.status === "paid") {
+      pago += centavos(f.amount);
+    } else {
+      aberto += centavos(f.amount);
+      if (f.due_date < hoje) vencido += centavos(f.amount);
+    }
+  }
+  return { emitido: emitido / 100, pago: pago / 100, aberto: aberto / 100, vencido: vencido / 100, rascunhos };
+}
+
 export function parcelaVencida(parcela: Pick<ParcelaDaFatura, "status" | "due_date">): boolean {
   const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   return parcela.status === "pending" && parcela.due_date < hoje;
