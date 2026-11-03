@@ -336,6 +336,7 @@ export interface PublicInvoice {
   tax_label?: string | null;
   tax_added?: boolean;
   notes?: string | null;
+  reference_month?: string | null;
   created_at?: string;
   installments?: PublicInstallment[] | null;
   issuer?: PublicIssuer | null;

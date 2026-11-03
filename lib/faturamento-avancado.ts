@@ -37,8 +37,45 @@ export interface FaturaAvancada {
   tax_label: string | null;
   tax_added: boolean;
   notes: string | null;
+  // Mês de referência (migration 0100), sempre o dia 1.
+  reference_month?: string | null;
   created_by_label: string | null;
   created_at: string;
+}
+
+const MESES = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
+
+export interface MesDeReferencia {
+  chave: string; // "2026-09", ordena certo como texto
+  rotulo: string; // "Setembro de 2026"
+}
+
+function mesDe(ano: number, mes: number): MesDeReferencia {
+  const nome = MESES[mes - 1];
+  return {
+    chave: `${ano}-${String(mes).padStart(2, "0")}`,
+    rotulo: `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${ano}`,
+  };
+}
+
+// Mês a que a fatura se refere (migration 0100: reference_month). Nas faturas
+// sem esse campo, tenta o "de <mês> de <ano>" da descrição e, por último, o
+// mês em que foi criada.
+export function mesDaFatura(f: { reference_month?: string | null; description: string; created_at?: string }): MesDeReferencia {
+  if (f.reference_month && /^\d{4}-\d{2}/.test(f.reference_month)) {
+    return mesDe(Number(f.reference_month.slice(0, 4)), Number(f.reference_month.slice(5, 7)));
+  }
+  const norma = f.description.normalize("NFC").toLowerCase();
+  const achou = norma.match(/(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(\d{4})/);
+  if (achou) {
+    const indice = MESES.findIndex((m) => m === achou[1].replace("marco", "março"));
+    if (indice >= 0) return mesDe(Number(achou[2]), indice + 1);
+  }
+  const criada = (f.created_at ?? new Date().toISOString()).slice(0, 7);
+  return mesDe(Number(criada.slice(0, 4)), Number(criada.slice(5, 7)));
 }
 
 export interface Emissor {

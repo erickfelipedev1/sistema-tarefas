@@ -9,6 +9,7 @@ import {
   calcularFatura,
   gerarParcelas,
   lerValor,
+  mesDaFatura,
   parcelaVencida,
   resumirFaturas,
   somaDasParcelas,
@@ -56,6 +57,8 @@ interface ParcelaEditavel {
 interface Rascunho {
   id?: string;
   description: string;
+  // Mês de referência, "AAAA-MM" (migration 0100).
+  mes: string;
   itens: LinhaEditavel[];
   desconto: string;
   impostoPercentual: string;
@@ -78,6 +81,7 @@ function hojeMaisDias(dias: number) {
 function rascunhoVazio(observacoesPadrao: string): Rascunho {
   return {
     description: "",
+    mes: new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7),
     itens: [{ name: "", detail: "", quantity: "1", unit_price: "" }],
     desconto: "",
     impostoPercentual: "",
@@ -97,6 +101,7 @@ function rascunhoDe(f: FaturaAvancada, parcelas: ParcelaDaFatura[]): Rascunho {
   return {
     id: f.id,
     description: f.description,
+    mes: mesDaFatura(f).chave,
     itens: (f.items ?? []).map((i) => ({
       name: i.name,
       detail: i.detail ?? "",
@@ -681,6 +686,7 @@ function EditorDeFatura({
       tax_label: f.impostoRotulo.trim() || null,
       tax_added: f.impostoSomado,
       notes: f.observacoes.trim() || null,
+      reference_month: /^\d{4}-\d{2}$/.test(f.mes) ? `${f.mes}-01` : null,
     };
 
     let id = f.id ?? "";
@@ -727,16 +733,21 @@ function EditorDeFatura({
   return (
     <Janela titulo={f.id ? "Editar fatura" : "Nova fatura"} aoFechar={aoFechar}>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-        <Campo label="Descrição">
-          <input
-            autoFocus
-            value={f.description}
-            maxLength={160}
-            onChange={(e) => mudar({ description: e.target.value })}
-            placeholder="Ex.: Gestão de redes sociais — novembro"
-            className={campo}
-          />
-        </Campo>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Campo label="Descrição" className="sm:col-span-2">
+            <input
+              autoFocus
+              value={f.description}
+              maxLength={160}
+              onChange={(e) => mudar({ description: e.target.value })}
+              placeholder="Ex.: Serviços de novembro de 2026"
+              className={campo}
+            />
+          </Campo>
+          <Campo label="Mês de referência">
+            <input type="month" value={f.mes} onChange={(e) => mudar({ mes: e.target.value })} className={campo} />
+          </Campo>
+        </div>
 
         <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Itens</h3>
