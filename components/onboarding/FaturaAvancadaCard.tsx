@@ -10,7 +10,16 @@ import type { PublicInvoice } from "@/lib/types";
 // Fatura do faturamento avançado (migration 0098) no portal do cliente:
 // resumo fechado e, ao abrir, itens, parcelas, como pagar (Pix com botão de
 // copiar) e o PDF. Só leitura.
-export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; token: string }) {
+export function FaturaAvancadaCard({
+  fatura,
+  token,
+  acento,
+}: {
+  fatura: PublicInvoice;
+  token: string;
+  // Cor da marca da empresa: vira um traço na lateral do cartão.
+  acento?: string;
+}) {
   const [aberta, setAberta] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
@@ -49,7 +58,10 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
   }
 
   return (
-    <div className="rounded-xl border border-line bg-surface">
+    <div
+      className="overflow-hidden rounded-xl border border-line bg-surface"
+      style={acento ? { borderLeftWidth: 4, borderLeftColor: acento } : undefined}
+    >
       <div className="flex items-center justify-between gap-3 px-3.5 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <ReceiptIcon className="h-4 w-4 flex-shrink-0 text-ink-muted" />

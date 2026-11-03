@@ -8,12 +8,13 @@ import {
 } from "@/lib/invoices";
 import type { PublicInvoice } from "@/lib/types";
 import { FaturaAvancadaCard } from "./FaturaAvancadaCard";
+import { temaDaEmpresa } from "@/lib/pdf/temas";
 
 type FaturaComLink = PublicInvoice & { publicUrl: string | null };
 
-function FaturaItem({ fatura, token }: { fatura: FaturaComLink; token: string }) {
+function FaturaItem({ fatura, token, acento }: { fatura: FaturaComLink; token: string; acento?: string }) {
   // Faturamento avançado (migration 0098): cartão que abre com os detalhes.
-  if (fatura.advanced) return <FaturaAvancadaCard fatura={fatura} token={token} />;
+  if (fatura.advanced) return <FaturaAvancadaCard fatura={fatura} token={token} acento={acento} />;
   const statusExibido = invoiceDisplayStatus(fatura);
   const Conteudo = (
     <>
@@ -129,26 +130,58 @@ export function InvoicesPanel({
         <div className="mt-4 space-y-5">
           {grupos.map((g) => {
             const aberto = totalEmAberto(g.lista);
+            // Empresa com identidade própria (lib/pdf/temas.ts): faixa com a
+            // marca e traço na cor dela nos cartões. As demais seguem o visual do portal.
+            const tema = g.titulo && g.titulo !== "Faturas próprias" ? temaDaEmpresa(g.titulo) : null;
+            const marca = tema && tema.chave !== "now" ? tema : null;
+            const resumoDeAberto =
+              aberto > 0 ? (
+                <span className="text-xs" style={marca ? { color: marca.detalheFaixa } : undefined}>
+                  <span className={marca ? "" : "text-ink-muted"}>Em aberto: </span>
+                  <span className={`font-semibold ${marca ? "" : "text-ink"}`} style={marca ? { color: marca.sobreFaixa } : undefined}>
+                    {formatarMoeda(aberto)}
+                  </span>
+                </span>
+              ) : null;
             return (
               <section key={g.titulo ?? "todas"}>
-                {g.titulo && (
-                  <div className="mb-2 flex items-baseline justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-ink">{g.titulo}</h3>
-                    {aberto > 0 && (
-                      <span className="text-xs text-ink-muted">
-                        Em aberto: <span className="font-semibold text-ink">{formatarMoeda(aberto)}</span>
-                      </span>
-                    )}
-                  </div>
-                )}
+                {g.titulo &&
+                  (marca ? (
+                    <div
+                      className="mb-2 flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                      style={{ backgroundColor: marca.faixa, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)" }}
+                    >
+                      {marca.logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/marcas/${marca.logo.arquivo}`}
+                          alt={g.titulo}
+                          style={{ width: marca.logo.largura * 0.75, height: (marca.logo.largura * 0.75) / marca.logo.proporcao }}
+                        />
+                      ) : (
+                        <h3 className="text-base font-extrabold tracking-[0.14em]" style={{ color: marca.sobreFaixa }}>
+                          {marca.marca}
+                        </h3>
+                      )}
+                      {resumoDeAberto}
+                    </div>
+                  ) : (
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                      <h3 className="text-sm font-semibold text-ink">{g.titulo}</h3>
+                      {resumoDeAberto}
+                    </div>
+                  ))}
                 {g.lista.length === 0 ? (
-                  <div className="rounded-xl border border-line bg-surface px-3.5 py-4 text-center">
+                  <div
+                    className="rounded-xl border border-line bg-surface px-3.5 py-4 text-center"
+                    style={marca ? { borderLeftWidth: 4, borderLeftColor: marca.destaque } : undefined}
+                  >
                     <p className="text-xs text-ink-muted">Ainda não há faturas desta empresa.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {g.lista.map((fatura) => (
-                      <FaturaItem key={fatura.id} fatura={fatura} token={token} />
+                      <FaturaItem key={fatura.id} fatura={fatura} token={token} acento={marca?.destaque} />
                     ))}
                   </div>
                 )}
