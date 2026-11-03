@@ -1,8 +1,10 @@
-// PDF da fatura (aba Faturamento, migration 0098), com a marca da now d.gital:
+// PDF da fatura (aba Faturamento, migration 0098). Cada empresa tem a sua
+// identidade visual (lib/pdf/temas.ts); quem não tem usa a da now d.gital:
 // faixa verde-escuro com o logo em lima, Urbanist nos títulos e Manrope no
-// corpo. Só roda no servidor (rota /api/faturas/[id]/pdf).
+// corpo. Só roda no servidor (rotas /api/faturas/[id]/pdf e do portal).
+import { readFileSync } from "node:fs";
 import path from "node:path";
-import { Document, Font, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import { Document, Font, Image, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { formatarDataBR } from "@/lib/format";
 import {
   calcularFatura,
@@ -13,16 +15,13 @@ import {
   type ParcelaDaFatura,
 } from "@/lib/faturamento-avancado";
 import { LOGO_NOW_CAMINHOS, LOGO_NOW_VIEWBOX } from "./logo-now";
+import { temaDaEmpresa, type TemaDaFatura } from "./temas";
 
-const VERDE_ESCURO = "#152602";
-const VERDE = "#9BBC40";
-const LIMA = "#D5EF75";
 const TEXTO = "#1B1F14";
 const MUDO = "#6B7260";
-const LINHA = "#E3E7D8";
-const FUNDO_SUAVE = "#F6F8EE";
 
 const pasta = path.join(process.cwd(), "lib", "pdf", "fonts");
+const pastaLogos = path.join(process.cwd(), "lib", "pdf", "logos");
 let fontesRegistradas = false;
 function registrarFontes() {
   if (fontesRegistradas) return;
@@ -41,13 +40,22 @@ function registrarFontes() {
       { src: path.join(pasta, "manrope-latin-700-normal.woff"), fontWeight: 700 },
     ],
   });
+  Font.register({
+    family: "Montserrat",
+    fonts: [
+      { src: path.join(pasta, "montserrat-latin-400-normal.woff"), fontWeight: 400 },
+      { src: path.join(pasta, "montserrat-latin-600-normal.woff"), fontWeight: 600 },
+      { src: path.join(pasta, "montserrat-latin-700-normal.woff"), fontWeight: 700 },
+      { src: path.join(pasta, "montserrat-latin-800-normal.woff"), fontWeight: 800 },
+    ],
+  });
   // Sem hifenização automática: nomes e valores não podem quebrar no meio.
   Font.registerHyphenationCallback((palavra) => [palavra]);
   fontesRegistradas = true;
 }
 
-// A fonte da marca não tem o espaço "sem quebra" que o toLocaleString põe
-// entre "R$" e o valor.
+// As fontes não têm o espaço "sem quebra" que o toLocaleString põe entre "R$"
+// e o valor.
 function moeda(valor: number) {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
 }
@@ -56,101 +64,131 @@ function numero(valor: number) {
   return valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 }
 
-const s = StyleSheet.create({
-  pagina: { fontFamily: "Manrope", fontSize: 9, color: TEXTO, paddingBottom: 56 },
-  faixa: {
-    backgroundColor: VERDE_ESCURO,
-    paddingHorizontal: 40,
-    paddingTop: 30,
-    paddingBottom: 26,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  faixaDireita: { alignItems: "flex-end" },
-  tituloFatura: { fontFamily: "Urbanist", fontWeight: 800, fontSize: 26, color: LIMA, letterSpacing: 2 },
-  numeroFatura: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 11, color: "#FFFFFF", marginTop: 3 },
-  corpo: { paddingHorizontal: 40, paddingTop: 22 },
-  datas: { flexDirection: "row", gap: 24, marginBottom: 18 },
-  rotulo: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 7.5, color: VERDE, letterSpacing: 1.2, textTransform: "uppercase" },
-  valorData: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 12, marginTop: 2 },
-  partes: { flexDirection: "row", gap: 24, marginBottom: 18 },
-  parte: { flex: 1, borderTopWidth: 2, borderTopColor: VERDE, paddingTop: 7 },
-  nomeParte: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 11, marginTop: 3, marginBottom: 3 },
-  linhaParte: { color: MUDO, lineHeight: 1.45 },
-  descricao: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 13, marginBottom: 10 },
-  cabecalhoTabela: {
-    flexDirection: "row",
-    backgroundColor: VERDE_ESCURO,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
-  },
-  cabecalhoTexto: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 7.5, color: LIMA, letterSpacing: 1, textTransform: "uppercase" },
-  linhaTabela: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: LINHA },
-  colDescricao: { flex: 1, paddingRight: 8 },
-  colQtd: { width: 44, textAlign: "right" },
-  colUnit: { width: 78, textAlign: "right" },
-  colTotal: { width: 84, textAlign: "right" },
-  nomeItem: { fontWeight: 600 },
-  detalheItem: { color: MUDO, marginTop: 2, lineHeight: 1.4 },
-  totais: { marginTop: 12, alignSelf: "flex-end", width: 230 },
-  linhaTotal: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5 },
-  caixaTotal: {
-    marginTop: 6,
-    backgroundColor: VERDE_ESCURO,
-    borderRadius: 4,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  textoCaixaTotal: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 9, color: LIMA, letterSpacing: 1, textTransform: "uppercase" },
-  valorCaixaTotal: { fontFamily: "Urbanist", fontWeight: 800, fontSize: 16, color: "#FFFFFF" },
-  secao: { marginTop: 20 },
-  tituloSecao: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 7.5, color: VERDE, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 },
-  linhaParcela: { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: LINHA },
-  caixaPagamento: { backgroundColor: FUNDO_SUAVE, borderRadius: 4, padding: 10, borderLeftWidth: 3, borderLeftColor: VERDE },
-  chavePix: { fontFamily: "Urbanist", fontWeight: 700, fontSize: 12, marginTop: 2 },
-  observacoes: { color: MUDO, lineHeight: 1.5 },
-  rodape: {
-    position: "absolute",
-    left: 40,
-    right: 40,
-    bottom: 22,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 0.5,
-    borderTopColor: LINHA,
-    paddingTop: 7,
-    color: MUDO,
-    fontSize: 7.5,
-  },
-});
+function criarEstilos(t: TemaDaFatura) {
+  return StyleSheet.create({
+    pagina: { fontFamily: t.fonteCorpo, fontSize: 9, color: TEXTO, paddingBottom: 56 },
+    faixa: {
+      backgroundColor: t.faixa,
+      paddingHorizontal: 40,
+      paddingTop: 30,
+      paddingBottom: 26,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    marcaTexto: { fontFamily: t.fonteTitulo, fontWeight: 800, fontSize: 24, color: t.sobreFaixa, letterSpacing: 2 },
+    faixaDireita: { alignItems: "flex-end" },
+    tituloFatura: { fontFamily: t.fonteTitulo, fontWeight: 800, fontSize: 24, color: t.sobreFaixa, letterSpacing: 2 },
+    numeroFatura: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 11, color: t.detalheFaixa, marginTop: 3 },
+    corpo: { paddingHorizontal: 40, paddingTop: 22 },
+    datas: { flexDirection: "row", gap: 24, marginBottom: 18 },
+    rotulo: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 7.5, color: t.destaque, letterSpacing: 1.2, textTransform: "uppercase" },
+    valorData: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 12, marginTop: 2 },
+    partes: { flexDirection: "row", gap: 24, marginBottom: 18 },
+    parte: { flex: 1, borderTopWidth: 2, borderTopColor: t.destaque, paddingTop: 7 },
+    nomeParte: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 11, marginTop: 3, marginBottom: 3 },
+    linhaParte: { color: MUDO, lineHeight: 1.45 },
+    descricao: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 13, marginBottom: 10 },
+    cabecalhoTabela: {
+      flexDirection: "row",
+      backgroundColor: t.tabela,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderTopLeftRadius: 4,
+      borderTopRightRadius: 4,
+    },
+    cabecalhoTexto: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 7.5, color: t.detalheFaixa, letterSpacing: 1, textTransform: "uppercase" },
+    linhaTabela: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: t.linha },
+    colDescricao: { flex: 1, paddingRight: 8 },
+    colQtd: { width: 44, textAlign: "right" },
+    colUnit: { width: 78, textAlign: "right" },
+    colTotal: { width: 84, textAlign: "right" },
+    nomeItem: { fontWeight: 600 },
+    detalheItem: { color: MUDO, marginTop: 2, lineHeight: 1.4 },
+    totais: { marginTop: 12, alignSelf: "flex-end", width: 230 },
+    linhaTotal: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5 },
+    caixaTotal: {
+      marginTop: 6,
+      backgroundColor: t.tabela,
+      borderRadius: 4,
+      paddingVertical: 9,
+      paddingHorizontal: 10,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    textoCaixaTotal: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 9, color: t.detalheFaixa, letterSpacing: 1, textTransform: "uppercase" },
+    valorCaixaTotal: { fontFamily: t.fonteTitulo, fontWeight: 800, fontSize: 16, color: "#FFFFFF" },
+    secao: { marginTop: 20 },
+    tituloSecao: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 7.5, color: t.destaque, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 },
+    linhaParcela: { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: t.linha },
+    caixaPagamento: { backgroundColor: t.suave, borderRadius: 4, padding: 10, borderLeftWidth: 3, borderLeftColor: t.destaque },
+    chavePix: { fontFamily: t.fonteTitulo, fontWeight: 700, fontSize: 12, marginTop: 2 },
+    observacoes: { color: MUDO, lineHeight: 1.5 },
+    rodape: {
+      position: "absolute",
+      left: 40,
+      right: 40,
+      bottom: 22,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      borderTopWidth: 0.5,
+      borderTopColor: t.linha,
+      paddingTop: 7,
+      color: MUDO,
+      fontSize: 7.5,
+    },
+  });
+}
 
 export interface DadosDoPdf {
   fatura: FaturaAvancada;
   parcelas: ParcelaDaFatura[];
   emissor: Emissor | null;
   cliente: DadosDoCliente | null;
-  // Nome do cliente no sistema, usado quando a razão social não foi preenchida.
+  // Nome do cliente no sistema: escolhe o tema e serve de nome quando a razão
+  // social não foi preenchida.
   nomeDoCliente: string;
 }
 
-function Logo({ largura }: { largura: number }) {
+function LogoNow({ largura, cor }: { largura: number; cor: string }) {
   const [, , w, h] = LOGO_NOW_VIEWBOX.split(" ").map(Number);
   return (
     <Svg viewBox={LOGO_NOW_VIEWBOX} style={{ width: largura, height: (largura * h) / w }}>
       {LOGO_NOW_CAMINHOS.map((d, i) => (
-        <Path key={i} d={d} fill={LIMA} />
+        <Path key={i} d={d} fill={cor} />
       ))}
     </Svg>
   );
 }
 
-function Parte({ titulo, nome, linhas }: { titulo: string; nome: string; linhas: (string | null | undefined)[] }) {
+function Marca({ tema, estilos }: { tema: TemaDaFatura; estilos: ReturnType<typeof criarEstilos> }) {
+  if (tema.logo) {
+    // Passa os bytes: o react-pdf trata caminho do Windows ("C:\...") como URL.
+    const arquivo = path.join(pastaLogos, tema.logo.arquivo);
+    const formato = /\.jpe?g$/i.test(arquivo) ? "jpg" : "png";
+    return (
+      <Image
+        src={{ data: readFileSync(arquivo), format: formato }}
+        style={{ width: tema.logo.largura, height: tema.logo.largura / tema.logo.proporcao }}
+      />
+    );
+  }
+  if (tema.chave === "now") return <LogoNow largura={150} cor={tema.sobreFaixa} />;
+  return <Text style={estilos.marcaTexto}>{tema.marca}</Text>;
+}
+
+function Parte({
+  s,
+  titulo,
+  nome,
+  linhas,
+}: {
+  s: ReturnType<typeof criarEstilos>;
+  titulo: string;
+  nome: string;
+  linhas: (string | null | undefined)[];
+}) {
   return (
     <View style={s.parte}>
       <Text style={s.rotulo}>{titulo}</Text>
@@ -166,10 +204,12 @@ function Parte({ titulo, nome, linhas }: { titulo: string; nome: string; linhas:
 
 function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
   const { fatura: f, parcelas, emissor, cliente } = dados;
+  const tema = temaDaEmpresa(dados.nomeDoCliente);
+  const s = criarEstilos(tema);
   const itens = f.items ?? [];
   const totais = calcularFatura(itens, f.discount, f.tax_percent, f.tax_added);
   const emitida = f.created_at.slice(0, 10);
-  const tipoPix = TIPOS_DE_PIX.find((t) => t.valor === emissor?.pix_type)?.rotulo;
+  const tipoPix = TIPOS_DE_PIX.find((p) => p.valor === emissor?.pix_type)?.rotulo;
   const rotuloImposto = `${f.tax_label || "Imposto"} (${numero(f.tax_percent)}%)${f.tax_added ? "" : " · incluso"}`;
   const temPagamento = !!(emissor?.pix_key || emissor?.bank_info);
   const nomeEmissor = emissor?.legal_name || "now d.gital";
@@ -178,7 +218,7 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
     <Document title={`Fatura ${f.number ?? ""}`.trim()} author={nomeEmissor} creator="d.hub">
       <Page size="A4" style={s.pagina}>
         <View style={s.faixa}>
-          <Logo largura={150} />
+          <Marca tema={tema} estilos={s} />
           <View style={s.faixaDireita}>
             <Text style={s.tituloFatura}>FATURA</Text>
             {f.number && <Text style={s.numeroFatura}>Número {f.number}</Text>}
@@ -199,6 +239,7 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
 
           <View style={s.partes}>
             <Parte
+              s={s}
               titulo="Emitente"
               nome={nomeEmissor}
               linhas={[
@@ -209,6 +250,7 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
               ]}
             />
             <Parte
+              s={s}
               titulo="Cliente"
               nome={cliente?.legal_name || dados.nomeDoCliente}
               linhas={[
@@ -229,7 +271,7 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
             <Text style={[s.cabecalhoTexto, s.colTotal]}>Total</Text>
           </View>
           {itens.map((item, i) => (
-            <View key={i} style={[s.linhaTabela, i % 2 === 1 ? { backgroundColor: FUNDO_SUAVE } : {}]} wrap={false}>
+            <View key={i} style={[s.linhaTabela, i % 2 === 1 ? { backgroundColor: tema.suave } : {}]} wrap={false}>
               <View style={s.colDescricao}>
                 <Text style={s.nomeItem}>{item.name}</Text>
                 {item.detail && <Text style={s.detalheItem}>{item.detail}</Text>}
@@ -254,7 +296,10 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
             {f.tax_percent > 0 && (
               <View style={s.linhaTotal}>
                 <Text style={{ color: MUDO }}>{rotuloImposto}</Text>
-                <Text>{f.tax_added ? "+ " : ""}{moeda(totais.imposto)}</Text>
+                <Text>
+                  {f.tax_added ? "+ " : ""}
+                  {moeda(totais.imposto)}
+                </Text>
               </View>
             )}
             <View style={s.caixaTotal}>
