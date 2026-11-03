@@ -86,12 +86,14 @@ function totalEmAberto(lista: FaturaComLink[]) {
 // não aparecem aqui: não fazem sentido pro cliente ver.
 // Quando o cliente é dono de empresas (migration 0099), as faturas vêm
 // agrupadas por empresa, cada grupo com o que ainda está em aberto.
-export function InvoicesPanel({ invoices }: { invoices: FaturaComLink[] }) {
+export function InvoicesPanel({ invoices, empresas: empresasDoCliente = [] }: { invoices: FaturaComLink[]; empresas?: string[] }) {
   const faturasVisiveis = invoices.filter((f) => f.status !== "cancelled");
   const proprias = faturasVisiveis.filter((f) => !f.company);
-  const empresas = Array.from(new Set(faturasVisiveis.map((f) => f.company).filter((c): c is string => !!c))).sort(
-    (a, b) => a.localeCompare(b, "pt-BR")
-  );
+  // As empresas do cliente aparecem mesmo sem fatura; as que só têm fatura
+  // (empresa que saiu da lista) também.
+  const empresas = Array.from(
+    new Set([...empresasDoCliente, ...faturasVisiveis.map((f) => f.company).filter((c): c is string => !!c)])
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
   const grupos =
     empresas.length === 0
       ? [{ titulo: null as string | null, lista: faturasVisiveis }]
@@ -107,7 +109,7 @@ export function InvoicesPanel({ invoices }: { invoices: FaturaComLink[] }) {
         {empresas.length > 0 ? "Acompanhe aqui as faturas de cada uma das suas empresas." : "Acompanhe aqui as faturas do seu projeto."}
       </p>
 
-      {faturasVisiveis.length === 0 ? (
+      {faturasVisiveis.length === 0 && empresas.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-line bg-surface px-4 py-6 text-center">
           <p className="text-xs text-ink-muted">Ainda não há faturas cadastradas aqui.</p>
         </div>
@@ -127,11 +129,17 @@ export function InvoicesPanel({ invoices }: { invoices: FaturaComLink[] }) {
                     )}
                   </div>
                 )}
-                <div className="space-y-2">
-                  {g.lista.map((fatura) => (
-                    <FaturaItem key={fatura.id} fatura={fatura} />
-                  ))}
-                </div>
+                {g.lista.length === 0 ? (
+                  <div className="rounded-xl border border-line bg-surface px-3.5 py-4 text-center">
+                    <p className="text-xs text-ink-muted">Ainda não há faturas desta empresa.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {g.lista.map((fatura) => (
+                      <FaturaItem key={fatura.id} fatura={fatura} />
+                    ))}
+                  </div>
+                )}
               </section>
             );
           })}

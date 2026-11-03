@@ -93,6 +93,19 @@ export default async function ProgressoPage({
 
   const arquivos = documentos?.files ?? [];
   const faturas = (invoicesData as PublicInvoice[] | null) ?? [];
+  // Empresas deste cliente (migration 0099): aparecem na aba Faturas mesmo
+  // sem nenhuma fatura ainda. Sem a migration a coluna não existe: nenhuma.
+  const empresasDoCliente = await (async () => {
+    try {
+      const admin = createAdminClient();
+      const { data: dono } = await admin.from("projects").select("id").eq("share_token", params.token).maybeSingle();
+      if (!dono) return [] as string[];
+      const { data } = await admin.from("projects").select("name").eq("empresa_de", dono.id).order("name", { ascending: true });
+      return (data ?? []).map((e) => e.name as string);
+    } catch {
+      return [] as string[];
+    }
+  })();
   // Posts enviados pela equipe (aba "Posts"): os arquivos de cada um também
   // saem daqui com link assinado.
   const postsSemLink = (
@@ -203,7 +216,7 @@ export default async function ProgressoPage({
             files={arquivosComLink}
           />
         }
-        faturas={<InvoicesPanel invoices={faturasComLink} />}
+        faturas={<InvoicesPanel invoices={faturasComLink} empresas={empresasDoCliente} />}
       />
     </main>
   );
