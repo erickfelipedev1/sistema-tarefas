@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Badge } from "../ui/Badge";
 import { ReceiptIcon } from "../ui/icons";
 import { formatarDataBR, formatarMoeda } from "@/lib/format";
-import { calcularFatura, parcelaVencida, TIPOS_DE_PIX } from "@/lib/faturamento-avancado";
+import { calcularFatura, TIPOS_DE_PIX } from "@/lib/faturamento-avancado";
 import type { PublicInvoice } from "@/lib/types";
 
 // Fatura do faturamento avançado (migration 0098) no portal do cliente:
@@ -18,8 +18,6 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
   const parcelas = fatura.installments ?? [];
   const pagas = parcelas.filter((p) => p.status === "paid").length;
   const quitada = fatura.status === "paid";
-  const vencida = !quitada && parcelas.some(parcelaVencida);
-  const proxima = parcelas.find((p) => p.status === "pending");
   const totais = calcularFatura(itens, fatura.discount ?? 0, fatura.tax_percent ?? 0, fatura.tax_added ?? false);
   const emissor = fatura.issuer;
   const tipoPix = TIPOS_DE_PIX.find((t) => t.valor === emissor?.pix_type)?.rotulo;
@@ -66,24 +64,13 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
               {fatura.description}
             </p>
             <p className="text-xs text-ink-muted">
-              {quitada
-                ? "Fatura paga"
-                : proxima
-                  ? `${parcelas.length > 1 ? "Próxima parcela" : "Vence"} em ${formatarDataBR(proxima.due_date)}`
-                  : `Vence em ${formatarDataBR(fatura.due_date)}`}
-              {parcelas.length > 1 && ` · ${pagas} de ${parcelas.length} pagas`}
+              {quitada ? "Fatura paga" : parcelas.length > 1 ? `${pagas} de ${parcelas.length} parcelas pagas` : "Aguardando pagamento"}
             </p>
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
           <span className="text-sm font-semibold text-ink">{formatarMoeda(fatura.amount)}</span>
-          {quitada ? (
-            <Badge tone="success">Paga</Badge>
-          ) : vencida ? (
-            <Badge tone="danger">Vencida</Badge>
-          ) : (
-            <Badge tone="brand">Em aberto</Badge>
-          )}
+          {quitada ? <Badge tone="success">Paga</Badge> : <Badge tone="brand">Em aberto</Badge>}
         </div>
       </button>
 
@@ -162,7 +149,8 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
             </div>
           )}
 
-          {parcelas.length > 0 && (
+          {/* Sem datas de vencimento: parcelas só quando há mais de uma ou já houve pagamento. */}
+          {(parcelas.length > 1 || parcelas.some((p) => p.status === "paid")) && (
             <div>
               <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
                 {parcelas.length > 1 ? "Parcelas" : "Pagamento"}
@@ -171,18 +159,12 @@ export function FaturaAvancadaCard({ fatura, token }: { fatura: PublicInvoice; t
                 {parcelas.map((p) => (
                   <li key={p.position} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                     <span className="text-ink-muted">
-                      {parcelas.length > 1 ? `Parcela ${p.position}/${parcelas.length} · ` : ""}vence {formatarDataBR(p.due_date)}
+                      {parcelas.length > 1 ? `Parcela ${p.position}/${parcelas.length}` : "Fatura"}
                       {p.status === "paid" && p.paid_at && ` · paga em ${formatarDataBR(p.paid_at)}`}
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="font-medium tabular-nums text-ink">{formatarMoeda(p.amount)}</span>
-                      {p.status === "paid" ? (
-                        <Badge tone="success">Paga</Badge>
-                      ) : parcelaVencida(p) ? (
-                        <Badge tone="danger">Vencida</Badge>
-                      ) : (
-                        <Badge tone="neutral">A pagar</Badge>
-                      )}
+                      {p.status === "paid" ? <Badge tone="success">Paga</Badge> : <Badge tone="neutral">A pagar</Badge>}
                     </span>
                   </li>
                 ))}

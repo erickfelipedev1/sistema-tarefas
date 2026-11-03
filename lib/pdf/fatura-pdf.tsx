@@ -6,7 +6,6 @@ import { Document, Font, Page, Path, renderToBuffer, StyleSheet, Svg, Text, View
 import { formatarDataBR } from "@/lib/format";
 import {
   calcularFatura,
-  parcelaVencida,
   TIPOS_DE_PIX,
   type DadosDoCliente,
   type Emissor,
@@ -193,10 +192,6 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
               <Text style={s.valorData}>{formatarDataBR(emitida)}</Text>
             </View>
             <View>
-              <Text style={s.rotulo}>{parcelas.length > 1 ? "Primeiro vencimento" : "Vencimento"}</Text>
-              <Text style={s.valorData}>{formatarDataBR(parcelas[0]?.due_date ?? f.due_date)}</Text>
-            </View>
-            <View>
               <Text style={s.rotulo}>Total</Text>
               <Text style={s.valorData}>{moeda(f.amount)}</Text>
             </View>
@@ -268,18 +263,21 @@ function FaturaPdf({ dados }: { dados: DadosDoPdf }) {
             </View>
           </View>
 
-          {parcelas.length > 0 && (
+          {/* Sem datas de vencimento na fatura: as parcelas só aparecem quando há mais de uma ou já houve pagamento. */}
+          {(parcelas.length > 1 || parcelas.some((p) => p.status === "paid")) && (
             <View style={s.secao} wrap={false}>
               <Text style={s.tituloSecao}>{parcelas.length > 1 ? "Parcelas" : "Pagamento"}</Text>
               {parcelas.map((p) => {
-                const status = p.status === "paid" ? "Paga" : parcelaVencida(p) ? "Vencida" : "A pagar";
-                const corStatus = p.status === "paid" ? "#3F7D1E" : status === "Vencida" ? "#B42318" : MUDO;
+                const status = p.status === "paid" ? "Paga" : "A pagar";
+                const corStatus = p.status === "paid" ? "#3F7D1E" : MUDO;
                 return (
                   <View key={p.position} style={s.linhaParcela}>
                     <Text style={{ width: 60, color: MUDO }}>
                       {p.position}/{parcelas.length}
                     </Text>
-                    <Text style={{ flex: 1 }}>Vence em {formatarDataBR(p.due_date)}</Text>
+                    <Text style={{ flex: 1 }}>
+                      {p.status === "paid" && p.paid_at ? `Paga em ${formatarDataBR(p.paid_at)}` : `Parcela ${p.position}`}
+                    </Text>
                     <Text style={{ width: 80, textAlign: "right", fontWeight: 700 }}>{moeda(p.amount)}</Text>
                     <Text style={{ width: 62, textAlign: "right", fontWeight: 700, color: corStatus }}>{status}</Text>
                   </View>
