@@ -182,6 +182,13 @@ function Marca({ tema, estilos }: { tema: TemaDaFatura; estilos: ReturnType<type
         style={{ width: tema.logo.largura, height: tema.logo.largura / tema.logo.proporcao }}
       />
     );
+    if (tema.logoComBorda) {
+      return (
+        <View style={{ borderWidth: 0.8, borderColor: tema.sobreFaixa, borderRadius: 4, paddingVertical: 7, paddingHorizontal: 12 }}>
+          {imagem}
+        </View>
+      );
+    }
     if (!tema.mostrarNome) return imagem;
     return (
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

@@ -59,13 +59,18 @@ export function FaturasPorEmpresa({ grupos, token }: { grupos: GrupoDeEmpresa[];
                 )}
                 {marca?.logo ? (
                   <span className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/marcas/${marca.logo.arquivo}`}
-                      alt={g.titulo}
-                      className={marca.mostrarNome ? "rounded-lg" : ""}
-                      style={{ width: marca.logo.largura * 0.75, height: (marca.logo.largura * 0.75) / marca.logo.proporcao }}
-                    />
+                    <span
+                      className={marca.logoComBorda ? "rounded-md px-3 py-1.5" : ""}
+                      style={marca.logoComBorda ? { border: `1px solid ${marca.sobreFaixa}` } : undefined}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/marcas/${marca.logo.arquivo}`}
+                        alt={g.titulo}
+                        className={marca.mostrarNome ? "rounded-lg" : ""}
+                        style={{ width: marca.logo.largura * 0.75, height: (marca.logo.largura * 0.75) / marca.logo.proporcao }}
+                      />
+                    </span>
                     {marca.mostrarNome && (
                       <span className="text-base font-extrabold tracking-[0.14em]" style={{ color: marca.sobreFaixa }}>
                         {marca.marca}

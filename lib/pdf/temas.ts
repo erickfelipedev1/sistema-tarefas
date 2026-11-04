@@ -28,6 +28,8 @@ export interface TemaDaFatura {
   logo?: { arquivo: string; largura: number; proporcao: number };
   // Escreve o nome ao lado do logo (quando o logo não traz o nome).
   mostrarNome?: boolean;
+  // Logo dentro de uma caixa de contorno fino, como no site da marca.
+  logoComBorda?: boolean;
 }
 
 export const TEMAS: Record<ChaveDoTema, TemaDaFatura> = {
@@ -89,21 +91,24 @@ export const TEMAS: Record<ChaveDoTema, TemaDaFatura> = {
     fonteCorpo: "Poppins",
     logo: { arquivo: "jog.png", largura: 130, proporcao: 320 / 110 },
   },
-  // WON: só o logo (assinatura branca) veio; as cores são neutras e
-  // PROVISÓRIAS até chegar o manual da marca.
+  // WON: identidade do site da marca (fundo preto, texto branco, dourado
+  // #c89040 de destaque e a assinatura branca numa caixa de contorno fino).
+  // Sem manual: o dourado foi medido no print do site e a fonte segue a
+  // padrão. O dourado escurecido (#9A6A25) serve para texto sobre fundo claro.
   won: {
     chave: "won",
     marca: "WON",
-    faixa: "#0F0F0F",
-    tabela: "#1A1A1A",
-    destaque: "#7A7A7A",
+    faixa: "#000000",
+    tabela: "#0D0D0D",
+    destaque: "#9A6A25",
     sobreFaixa: "#FFFFFF",
-    detalheFaixa: "#BDBDBD",
-    suave: "#F5F5F5",
-    linha: "#E4E4E4",
+    detalheFaixa: "#C89040",
+    suave: "#FAF7F1",
+    linha: "#E8E2D6",
     fonteTitulo: "Urbanist",
     fonteCorpo: "Manrope",
-    logo: { arquivo: "won.png", largura: 110, proporcao: 480 / 192 },
+    logo: { arquivo: "won.png", largura: 78, proporcao: 480 / 192 },
+    logoComBorda: true,
   },
 };
 
