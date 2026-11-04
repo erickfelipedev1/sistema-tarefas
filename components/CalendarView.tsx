@@ -311,12 +311,19 @@ export default function CalendarView({
 
   const celulas = useMemo(() => buildGrid(ano, mes), [ano, mes]);
 
-  // O que passa pela busca e pelo filtro de pessoa (e tem prazo). Subtarefa
-  // não entra: a tarefa principal já está aqui.
+  // O que passa pela busca e pelo filtro de pessoa (e tem prazo). Subtarefa só
+  // entra pra quem está marcado nela (a tarefa principal já cobre o resto): a
+  // pessoa escolhida no filtro, ou eu; sem filtro, os líderes veem as que têm
+  // alguém marcado.
   const tarefasVisiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return tasks.filter((t) => {
-      if (!t.due_date || t.parent_id) return false;
+      if (!t.due_date) return false;
+      if (t.parent_id) {
+        const quem = pessoaFiltro || (verTudo ? "" : currentUserId ?? "");
+        const marcados = t.assigned_to ?? [];
+        if (quem ? !marcados.includes(quem) : marcados.length === 0) return false;
+      }
       if (termo && !t.title.toLowerCase().includes(termo)) return false;
       // Pessoa escolhida: é responsável, ou criou e não tem responsável.
       if (
@@ -329,7 +336,7 @@ export default function CalendarView({
       if (clienteFiltro === "geral" ? !!t.project_id : clienteFiltro && t.project_id !== clienteFiltro) return false;
       return true;
     });
-  }, [tasks, busca, pessoaFiltro, clienteFiltro]);
+  }, [tasks, busca, pessoaFiltro, clienteFiltro, verTudo, currentUserId]);
 
   const [nivel, setNivel] = useState(TAMANHO_PADRAO);
   useEffect(() => {
@@ -919,6 +926,7 @@ function BarraTarefa({
     >
       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current opacity-70" aria-hidden="true" />
       <span className={`min-w-0 flex-1 truncate text-[11px] font-medium leading-none ${feita ? "line-through" : cancelada ? "line-through decoration-red-500 decoration-2" : ""}`}>
+        {task.parent_id ? "↳ " : ""}
         {task.title}
       </span>
       {maisDeUmDia && col1 > col0 ? (
@@ -968,6 +976,7 @@ function ChipTarefa({
       }`}
     >
       <span className={`flex-1 truncate text-[11px] font-medium leading-4 ${feita ? "line-through" : cancelada ? "line-through decoration-red-500 decoration-2" : ""}`}>
+        {task.parent_id ? "↳ " : ""}
         {task.title}
       </span>
       {dia && dia !== task.due_date ? (
@@ -1210,6 +1219,7 @@ function CartaoTarefa({
         )
       )}
       <span className={`min-w-0 flex-1 truncate text-sm font-medium ${feita ? "line-through" : cancelada ? "line-through decoration-red-500 decoration-2" : ""}`}>
+        {task.parent_id ? "↳ " : ""}
         {task.title}
       </span>
       <span className="hidden flex-shrink-0 truncate text-xs opacity-80 sm:inline">
