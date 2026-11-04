@@ -10,7 +10,7 @@
 // (portal) e preencher "logo" (arquivo, largura em pontos, proporção
 // largura/altura).
 
-export type ChaveDoTema = "now" | "nlg" | "jornada" | "jog";
+export type ChaveDoTema = "now" | "nlg" | "jornada" | "jog" | "won";
 
 export interface TemaDaFatura {
   chave: ChaveDoTema;
@@ -89,6 +89,22 @@ export const TEMAS: Record<ChaveDoTema, TemaDaFatura> = {
     fonteCorpo: "Poppins",
     logo: { arquivo: "jog.png", largura: 130, proporcao: 320 / 110 },
   },
+  // WON: só o logo (assinatura branca) veio; as cores são neutras e
+  // PROVISÓRIAS até chegar o manual da marca.
+  won: {
+    chave: "won",
+    marca: "WON",
+    faixa: "#0F0F0F",
+    tabela: "#1A1A1A",
+    destaque: "#7A7A7A",
+    sobreFaixa: "#FFFFFF",
+    detalheFaixa: "#BDBDBD",
+    suave: "#F5F5F5",
+    linha: "#E4E4E4",
+    fonteTitulo: "Urbanist",
+    fonteCorpo: "Manrope",
+    logo: { arquivo: "won.png", largura: 110, proporcao: 480 / 192 },
+  },
 };
 
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -99,5 +115,6 @@ export function temaDaEmpresa(nome: string): TemaDaFatura {
   if (n.includes("nlg")) return TEMAS.nlg;
   if (n.includes("jornada")) return TEMAS.jornada;
   if (n.includes("jog")) return TEMAS.jog;
+  if (/\bwon\b/.test(n)) return TEMAS.won;
   return TEMAS.now;
 }
