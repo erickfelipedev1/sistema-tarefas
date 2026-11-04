@@ -49,7 +49,7 @@ export default async function WikiDocPage({
 
         <div className="min-w-0 flex-1">
           <div className="mx-auto max-w-3xl">
-            <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <div className="nao-imprime mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <Link
                 href={voltarHref}
                 className="inline-flex items-center gap-1 text-ink-muted hover:text-ink"

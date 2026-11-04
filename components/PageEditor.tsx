@@ -15,6 +15,7 @@ export default function PageEditor({ page }: { page: Page }) {
   const [title, setTitle] = useState(page.title);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [updatedAt, setUpdatedAt] = useState(page.updated_at);
+  const [htmlParaImprimir, setHtmlParaImprimir] = useState("");
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const initialContent =
@@ -25,6 +26,23 @@ export default function PageEditor({ page }: { page: Page }) {
   const editor = useCreateBlockNote({
     initialContent,
   });
+
+  // Exportar PDF: monta uma versão limpa (tema claro, só título e conteúdo) que
+  // só existe no papel (.so-imprime) e abre a impressão do navegador, onde se
+  // escolhe "Salvar como PDF". O título da aba vira o nome do arquivo.
+  async function exportarPdf() {
+    const html = await editor.blocksToHTMLLossy(editor.document);
+    setHtmlParaImprimir(html);
+    const tituloAnterior = document.title;
+    document.title = (title.trim() || "Sem título").replace(/[\/:*?"<>|]/g, "-");
+    const restaurar = () => {
+      document.title = tituloAnterior;
+      window.removeEventListener("afterprint", restaurar);
+    };
+    window.addEventListener("afterprint", restaurar);
+    // Espera o React pintar o HTML antes de imprimir.
+    setTimeout(() => window.print(), 150);
+  }
 
   function scheduleSave(nextTitle: string) {
     setStatus("saving");
@@ -46,6 +64,7 @@ export default function PageEditor({ page }: { page: Page }) {
 
   return (
     <div>
+      <div className="nao-imprime">
       <input
         value={title}
         onChange={(e) => {
@@ -60,6 +79,13 @@ export default function PageEditor({ page }: { page: Page }) {
         {page.created_by_label && <span>por {page.created_by_label}</span>}
         {page.created_by_label && <span className="text-ink-muted">·</span>}
         <span>Atualizado {formatarRelativo(updatedAt)}</span>
+        <button
+          type="button"
+          onClick={exportarPdf}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 font-medium text-ink hover:bg-surface-hover"
+        >
+          Exportar PDF
+        </button>
         {status !== "idle" && (
           <>
             <span className="text-ink-muted">·</span>
@@ -80,6 +106,16 @@ export default function PageEditor({ page }: { page: Page }) {
           theme="dark"
           onChange={() => scheduleSave(title)}
         />
+      </div>
+      </div>
+
+      <div className="so-imprime texto-pdf">
+        <h1>{title.trim() || "Sem título"}</h1>
+        <p className="texto-pdf-meta">
+          {page.created_by_label ? `por ${page.created_by_label} · ` : ""}
+          Atualizado em {new Date(updatedAt).toLocaleDateString("pt-BR")}
+        </p>
+        <div dangerouslySetInnerHTML={{ __html: htmlParaImprimir }} />
       </div>
     </div>
   );

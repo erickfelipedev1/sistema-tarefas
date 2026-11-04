@@ -13,7 +13,7 @@ export default function WikiSidebar({
   activePageId?: string;
 }) {
   return (
-    <aside className="hidden w-56 flex-shrink-0 lg:block">
+    <aside className="nao-imprime hidden w-56 flex-shrink-0 lg:block">
       <div className="sticky top-8">
         <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
           Páginas
