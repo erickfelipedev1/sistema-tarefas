@@ -31,7 +31,9 @@ export default function PageEditor({ page }: { page: Page }) {
   // só existe no papel (.so-imprime) e abre a impressão do navegador, onde se
   // escolhe "Salvar como PDF". O título da aba vira o nome do arquivo.
   async function exportarPdf() {
-    const html = await editor.blocksToHTMLLossy(editor.document);
+    // U+FFFC ("caractere de objeto", que sobra de colagens de outros apps) sai
+    // no papel como uma caixinha "OBJ"; some do PDF.
+    const html = (await editor.blocksToHTMLLossy(editor.document)).replace(/￼/g, "");
     setHtmlParaImprimir(html);
     const tituloAnterior = document.title;
     document.title = (title.trim() || "Sem título").replace(/[\/:*?"<>|]/g, "-");
