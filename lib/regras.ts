@@ -21,8 +21,8 @@ export const REGRAS_LIXO = [
 export const ESCALA_LIXO: { dia: number; rotulo: string; nomes: string[] }[] = [
   { dia: 1, rotulo: "Segunda", nomes: ["Vitoria", "Sabrina", "Nicolle"] },
   { dia: 2, rotulo: "Terça", nomes: ["Marcus", "Rodrigo"] },
-  { dia: 3, rotulo: "Quarta", nomes: ["Erick", "Mariana", "Gabriel"] },
-  { dia: 4, rotulo: "Quinta", nomes: ["Julia"] },
+  { dia: 3, rotulo: "Quarta", nomes: ["Erick", "Gabriel"] },
+  { dia: 4, rotulo: "Quinta", nomes: ["Julia", "Mariana"] },
   { dia: 5, rotulo: "Sexta", nomes: ["Ana", "Emilly", "Mayara"] },
 ];
 
