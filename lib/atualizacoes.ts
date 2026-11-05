@@ -12,6 +12,18 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-05",
+    area: "Tarefas",
+    titulo: "Subtarefas com vários responsáveis, datas e horários",
+    texto: "Ao criar uma subtarefa dá pra marcar mais de um responsável e, se quiser, informar o início e o término com data e hora. Tudo é opcional: só preenche o que fizer sentido. Na lista de subtarefas dá pra mudar ou limpar as datas e os horários a qualquer momento.",
+  },
+  {
+    data: "2026-11-05",
+    area: "Calendário",
+    titulo: "Subtarefas com data aparecem no calendário",
+    texto: "A subtarefa que tem data (e horário, se você colocou) aparece no Calendário no dia e na hora programados, pra quem está marcado nela. Sem data, ela continua só na tarefa e no quadro.",
+  },
+  {
     data: "2026-10-28",
     area: "Tarefas",
     titulo: "Vídeos anexados vão pro Google Drive",
