@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-05",
+    area: "Sistema",
+    titulo: "Escala do lixo: Mari passou pra quinta",
+    texto: "Na página Regras, o dia do lixo da Mari agora é na quinta-feira, junto com a Julia. A quarta fica com o Erick e o Gabriel.",
+  },
+  {
+    data: "2026-11-05",
     area: "Tarefas",
     titulo: "Subtarefas com vários responsáveis, datas e horários",
     texto: "Ao criar uma subtarefa dá pra marcar mais de um responsável e, se quiser, informar o início e o término com data e hora. Tudo é opcional: só preenche o que fizer sentido. Na lista de subtarefas dá pra mudar ou limpar as datas e os horários a qualquer momento.",
