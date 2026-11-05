@@ -7,6 +7,7 @@ import { nomeParaMencao, pessoaAtiva } from "@/lib/mencoes";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { STATUS_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
+import { erroDeHorario, hhmm } from "@/lib/horarios";
 import { XIcon } from "./ui/icons";
 
 const campo =
@@ -44,7 +45,13 @@ export default function SubtarefasTab({
   const [erro, setErro] = useState<string | null>(null);
   const [novo, setNovo] = useState("");
   // Responsável já escolhido pra subtarefa que está sendo criada (opcional).
-  const [novoResponsavel, setNovoResponsavel] = useState("");
+  const [novosResponsaveis, setNovosResponsaveis] = useState<string[]>([]);
+  // Datas e horários opcionais da nova subtarefa. Sem data, ela não vai pro
+  // calendário; com data (e horário), aparece lá no dia programado.
+  const [novoInicio, setNovoInicio] = useState("");
+  const [novaHoraInicio, setNovaHoraInicio] = useState("");
+  const [novoFim, setNovoFim] = useState("");
+  const [novaHoraFim, setNovaHoraFim] = useState("");
   const [criando, setCriando] = useState(false);
 
   useEffect(() => {
@@ -93,12 +100,14 @@ export default function SubtarefasTab({
     e.preventDefault();
     const titulo = novo.trim();
     if (!titulo || criando) return;
+    if (novoInicio && novoFim && novoInicio > novoFim) return setErro("O início não pode ser depois do fim.");
+    const falhaHora = erroDeHorario(novoInicio, novoFim, novaHoraInicio, novaHoraFim);
+    if (falhaHora) return setErro(falhaHora);
     setCriando(true);
     setErro(null);
-    const hoje = new Date().toLocaleDateString("en-CA");
-    // Começa hoje e entrega junto com a tarefa principal (dá pra ajustar
-    // depois, abrindo a subtarefa).
-    const entrega = tarefa.due_date && tarefa.due_date >= hoje ? tarefa.due_date : hoje;
+    // Tudo opcional: só o que foi preenchido vai pro banco. Quem tem só o
+    // início usa o mesmo dia como entrega (é o que o calendário lê).
+    const entrega = novoFim || novoInicio || null;
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -109,11 +118,13 @@ export default function SubtarefasTab({
         ...(tarefa.subproject_id ? { subproject_id: tarefa.subproject_id } : {}),
         status: "todo",
         position: getNextPosition("todo"),
-        start_date: hoje,
+        start_date: novoInicio || null,
         due_date: entrega,
+        start_time: novaHoraInicio || null,
+        due_time: novaHoraFim || null,
         repeat_rule: "none",
         color: tarefa.color,
-        assigned_to: novoResponsavel ? [novoResponsavel] : [],
+        assigned_to: novosResponsaveis,
         created_by_label: currentUserLabel,
       })
       .select()
@@ -129,11 +140,15 @@ export default function SubtarefasTab({
     const criada = data as Task;
     setItens((atual) => (atual.some((i) => i.id === criada.id) ? atual : [...atual, criada]));
     setNovo("");
-    setNovoResponsavel("");
+    setNovosResponsaveis([]);
+    setNovoInicio("");
+    setNovaHoraInicio("");
+    setNovoFim("");
+    setNovaHoraFim("");
     aoCriar(criada);
     aoMudar();
     // Push no celular de quem recebeu (o aviso do sininho vem do banco).
-    if (novoResponsavel) avisarTarefaAtribuida(criada.id).catch(() => {});
+    if (novosResponsaveis.length > 0) avisarTarefaAtribuida(criada.id).catch(() => {});
   }
 
   // Põe ou tira responsáveis da subtarefa. Quem entra recebe o aviso.
@@ -165,27 +180,27 @@ export default function SubtarefasTab({
     aoMudar();
   }
 
-  // Muda o início ou a entrega da subtarefa direto na lista. O início não pode
-  // ficar depois da entrega (a entrega é obrigatória: não dá pra apagar).
-  async function mudarData(item: Task, campo: "start_date" | "due_date", valor: string) {
-    if (!valor) return;
-    const inicio = campo === "start_date" ? valor : item.start_date;
-    const entrega = campo === "due_date" ? valor : item.due_date;
-    if (inicio && entrega && inicio > entrega) {
+  // Muda data ou horário da subtarefa direto na lista. Tudo é opcional (valor
+  // vazio limpa o campo). O início não pode ficar depois da entrega, nem a hora
+  // de início depois da de fim no mesmo dia.
+  async function mudarPeriodo(item: Task, campo: "start_date" | "due_date" | "start_time" | "due_time", valor: string) {
+    const prox = { ...item, [campo]: valor || null } as Task;
+    if (prox.start_date && prox.due_date && prox.start_date > prox.due_date) {
       return setErro(
         campo === "start_date" ? "O início não pode ser depois da entrega." : "A entrega não pode ser antes do início."
       );
     }
+    const falhaHora = erroDeHorario(prox.start_date ?? "", prox.due_date ?? "", hhmm(prox.start_time), hhmm(prox.due_time));
+    if (falhaHora) return setErro(falhaHora);
     const antes = item;
-    const depois = { ...item, [campo]: valor };
-    setItens((atual) => atual.map((i) => (i.id === item.id ? depois : i)));
-    const { error } = await supabase.from("tasks").update({ [campo]: valor }).eq("id", item.id);
+    setItens((atual) => atual.map((i) => (i.id === item.id ? prox : i)));
+    const { error } = await supabase.from("tasks").update({ [campo]: valor || null }).eq("id", item.id);
     if (error) {
       setItens((atual) => atual.map((i) => (i.id === item.id ? antes : i)));
-      return setErro("Não foi possível salvar a data. Tente de novo.");
+      return setErro("Não foi possível salvar a alteração. Tente de novo.");
     }
     setErro(null);
-    aoAtualizar(depois);
+    aoAtualizar(prox);
   }
 
   async function remover(item: Task) {
@@ -305,19 +320,33 @@ export default function SubtarefasTab({
                     type="date"
                     value={item.start_date ?? ""}
                     max={item.due_date ?? undefined}
-                    onChange={(e) => mudarData(item, "start_date", e.target.value)}
-                    aria-label="Início da subtarefa"
+                    onChange={(e) => mudarPeriodo(item, "start_date", e.target.value)}
+                    aria-label="Data de início da subtarefa"
+                    className={campo}
+                  />
+                  <input
+                    type="time"
+                    value={hhmm(item.start_time)}
+                    onChange={(e) => mudarPeriodo(item, "start_time", e.target.value)}
+                    aria-label="Hora de início da subtarefa"
                     className={campo}
                   />
                 </label>
                 <label className="inline-flex items-center gap-1">
-                  Entrega
+                  Término
                   <input
                     type="date"
                     value={item.due_date ?? ""}
                     min={item.start_date ?? undefined}
-                    onChange={(e) => mudarData(item, "due_date", e.target.value)}
-                    aria-label="Entrega da subtarefa"
+                    onChange={(e) => mudarPeriodo(item, "due_date", e.target.value)}
+                    aria-label="Data de término da subtarefa"
+                    className={campo}
+                  />
+                  <input
+                    type="time"
+                    value={hhmm(item.due_time)}
+                    onChange={(e) => mudarPeriodo(item, "due_time", e.target.value)}
+                    aria-label="Hora de término da subtarefa"
                     className={campo}
                   />
                 </label>
@@ -338,19 +367,50 @@ export default function SubtarefasTab({
           aria-label="Nova subtarefa"
           className="min-w-[10rem] flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
+        {novosResponsaveis.map((id) => {
+          const p = pessoas.find((x) => x.id === id);
+          return (
+            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-surface-hover py-1 pl-2 pr-1 text-xs text-ink">
+              {p ? nomeParaMencao(p).split(" ")[0] || "Sem nome" : "?"}
+              <button
+                type="button"
+                onClick={() => setNovosResponsaveis((l) => l.filter((x) => x !== id))}
+                aria-label="Tirar responsável"
+                className="grid h-4 w-4 place-items-center rounded-full text-ink-muted hover:bg-danger-light hover:text-danger"
+              >
+                <XIcon className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          );
+        })}
         <select
-          value={novoResponsavel}
-          onChange={(e) => setNovoResponsavel(e.target.value)}
-          aria-label="Responsável pela nova subtarefa"
+          value=""
+          onChange={(e) => e.target.value && setNovosResponsaveis((l) => [...l, e.target.value])}
+          aria-label="Adicionar responsável à nova subtarefa"
           className="max-w-[11rem] rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         >
-          <option value="">Sem responsável</option>
-          {pessoas.filter(pessoaAtiva).map((p) => (
-            <option key={p.id} value={p.id}>
-              {nomeParaMencao(p) || "Sem nome"}
-            </option>
-          ))}
+          <option value="">{novosResponsaveis.length === 0 ? "+ Responsável (opcional)" : "+ Adicionar"}</option>
+          {pessoas
+            .filter((p) => pessoaAtiva(p) && !novosResponsaveis.includes(p.id))
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {nomeParaMencao(p) || "Sem nome"}
+              </option>
+            ))}
         </select>
+        <div className="flex basis-full flex-wrap items-center gap-2 text-xs text-ink-muted">
+          <label className="inline-flex items-center gap-1">
+            Início
+            <input type="date" value={novoInicio} max={novoFim || undefined} onChange={(e) => setNovoInicio(e.target.value)} aria-label="Data de início (opcional)" className={campo} />
+            <input type="time" value={novaHoraInicio} onChange={(e) => setNovaHoraInicio(e.target.value)} aria-label="Hora de início (opcional)" className={campo} />
+          </label>
+          <label className="inline-flex items-center gap-1">
+            Término
+            <input type="date" value={novoFim} min={novoInicio || undefined} onChange={(e) => setNovoFim(e.target.value)} aria-label="Data de término (opcional)" className={campo} />
+            <input type="time" value={novaHoraFim} onChange={(e) => setNovaHoraFim(e.target.value)} aria-label="Hora de término (opcional)" className={campo} />
+          </label>
+          <span>(opcional — com data, vai pro calendário)</span>
+        </div>
         <button
           type="submit"
           disabled={criando}
