@@ -385,6 +385,7 @@ const CATEGORIA_DO_POST: Record<string, string> = {
   estatico: "Post estático",
   reel: "Reel",
   shorts: "Shorts",
+  story: "Story",
   youtube: "Vídeo do YouTube",
 };
 

@@ -69,13 +69,33 @@ function PostPreviewBase({
 }) {
   const quando = data ? `Previsto para ${data}` : "Data a definir";
   const proporcao =
-    categoria === "reel" || categoria === "shorts"
+    categoria === "reel" || categoria === "shorts" || categoria === "story"
       ? "aspect-[9/16]"
       : categoria === "youtube"
       ? "aspect-video"
       : categoria === "carrossel"
       ? "aspect-[4/5]"
       : null;
+
+  // Story (Instagram/Facebook): tela cheia na vertical, barra de progresso e a
+  // conta em cima. Não tem legenda.
+  if (categoria === "story") {
+    return (
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[340px] overflow-hidden rounded-2xl border border-line bg-black text-white">
+        <Midias midias={midias} capa={null} preencher />
+        <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent px-3 pb-8 pt-3">
+          <div className="h-0.5 w-full rounded-full bg-white/30">
+            <div className="h-full w-1/3 rounded-full bg-white" />
+          </div>
+          <div className="mt-2.5 flex items-center gap-2">
+            <Inicial conta={conta} className="h-7 w-7 border border-white/70 bg-white/20 text-white" />
+            <p className="text-sm font-semibold">{conta}</p>
+            <p className="text-[11px] text-white/70">{quando}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (rede === "tiktok") {
     return (

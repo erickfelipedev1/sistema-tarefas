@@ -51,9 +51,17 @@ export const CATEGORIAS: Record<
     maximo: 1,
     dica: "Um vídeo, em geral na horizontal (16:9). A capa é a miniatura do vídeo.",
   },
+  story: {
+    rotulo: "Story",
+    artigo: "um Story",
+    aceita: "image/*,video/*",
+    minimo: 1,
+    maximo: 1,
+    dica: "Uma imagem ou um vídeo na vertical (9:16). Some em 24 horas.",
+  },
 };
 
-export const ORDEM_DAS_CATEGORIAS: PostCategory[] = ["estatico", "carrossel", "reel", "shorts", "youtube"];
+export const ORDEM_DAS_CATEGORIAS: PostCategory[] = ["estatico", "carrossel", "reel", "story", "shorts", "youtube"];
 
 // Reel, Shorts e vídeo do YouTube: um vídeo só, e podem ter capa.
 export function ehFormatoDeVideo(categoria: PostCategory): boolean {
@@ -239,14 +247,15 @@ export function oQueFaltaProEnvio(post: {
   const regra = CATEGORIAS[post.category];
   if (post.quantasMidias < regra.minimo) {
     return regra.minimo === 1
-      ? `Falta ${ehFormatoDeVideo(post.category) ? "o vídeo" : "a imagem"} do post.`
+      ? `Falta ${post.category === "story" ? "a imagem ou o vídeo" : ehFormatoDeVideo(post.category) ? "o vídeo" : "a imagem"} do post.`
       : `Um carrossel precisa de pelo menos ${regra.minimo} arquivos.`;
   }
   if (post.quantasMidias > regra.maximo) {
     return regra.maximo === 1 ? `${regra.rotulo} leva um arquivo só.` : `O carrossel leva no máximo ${regra.maximo} arquivos.`;
   }
   if (redesValidas(post.networks).length === 0) return "Marque pelo menos uma rede.";
-  if (post.caption.trim() === "") return "Falta a legenda.";
+  // Story não leva legenda (o Instagram ignora): não pede.
+  if (post.category !== "story" && post.caption.trim() === "") return "Falta a legenda.";
   return null;
 }
 

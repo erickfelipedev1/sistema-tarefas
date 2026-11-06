@@ -403,7 +403,7 @@ export interface ReportAnalysis {
 
 // Preview de posts (migration 0051): o post que o colaborador monta pro
 // cliente aprovar. Ver lib/posts.ts pros rótulos de cada valor.
-export type PostCategory = "carrossel" | "estatico" | "reel" | "shorts" | "youtube";
+export type PostCategory = "carrossel" | "estatico" | "reel" | "shorts" | "youtube" | "story";
 export type PostNetwork = "instagram" | "facebook" | "tiktok" | "linkedin" | "youtube";
 export type PostStatus = "rascunho" | "enviado" | "ajuste" | "publicado";
 

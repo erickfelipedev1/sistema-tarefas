@@ -126,6 +126,18 @@ export async function criarContainers(
     return { principal, filhos: [] };
   }
 
+  if (categoria === "story") {
+    // Story: imagem ou vídeo, sem legenda (a API do Instagram não usa).
+    const m = midias[0];
+    const principal = await criarContainer(
+      igId,
+      m.tipo === "video"
+        ? { media_type: "STORIES", video_url: m.url }
+        : { media_type: "STORIES", image_url: m.url }
+    );
+    return { principal, filhos: [] };
+  }
+
   if (categoria === "reel" || categoria === "shorts") {
     const params: Record<string, string> = {
       media_type: "REELS",

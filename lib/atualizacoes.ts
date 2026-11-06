@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-06",
+    area: "Posts",
+    titulo: "Novo formato de post: Story",
+    texto: "Ao criar um post, a categoria agora tem Story (entre Reel e Shorts). Leva uma imagem ou um vídeo na vertical, sem capa e sem legenda obrigatória. O preview mostra a tela de Story, o cliente recebe o aviso \"Um Story previsto para…\" e, com o Instagram ligado, dá pra publicar como Story.",
+  },
+  {
+    data: "2026-11-06",
     area: "Tarefas",
     titulo: "Painel: clique nos números pra ver as tarefas",
     texto: "No topo do Painel, os círculos Atrasadas, Abertas e Realizadas (e os nomes na lista Atividades) agora são clicáveis: ao clicar, abrem logo abaixo as tarefas que formam aquele número, com o cliente, o status e a data. Clicar de novo fecha, e clicar numa tarefa leva pro cliente dela.",

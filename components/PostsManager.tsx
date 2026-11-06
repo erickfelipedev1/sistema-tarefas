@@ -815,7 +815,7 @@ export default function PostsManager({
                 </Campo>
               </div>
 
-              <Campo label="Legenda" required>
+              <Campo label="Legenda" required={categoria !== "story"}>
                 <textarea
                   value={legenda}
                   onChange={(e) => setLegenda(e.target.value)}
@@ -829,7 +829,7 @@ export default function PostsManager({
                 </p>
               </Campo>
 
-              <Campo label={ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"} required>
+              <Campo label={ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagem ou vídeo" : "Imagens e vídeos"} required>
                 <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
                 {itens.length > 0 && (
                   <ul className="mb-3 flex flex-wrap gap-2">

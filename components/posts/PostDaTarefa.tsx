@@ -734,7 +734,7 @@ export default function PostDaTarefa({
 
           <div>
             <p className="mb-1 text-xs font-medium text-ink-muted">
-              {ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : "Imagens e vídeos"}
+              {ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagem ou vídeo" : "Imagens e vídeos"}
             </p>
             <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
             {itens.length > 0 && (
