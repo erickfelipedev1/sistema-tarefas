@@ -219,6 +219,66 @@ export default function ProjetosDoCliente({
     const a = andamento(doProjeto);
     const podeExcluir = souLider || aberto.created_by === currentUserId;
     const hoje = hojeISO();
+    // Subtarefas aparecem dentro da tarefa principal (recuadas, logo abaixo).
+    // Subtarefa cuja principal não está neste projeto fica solta, com o "↳".
+    const idsDoProjeto = new Set(doProjeto.map((t) => t.id));
+    const principais = doProjeto.filter((t) => !t.parent_id || !idsDoProjeto.has(t.parent_id));
+    const filhasDe = new Map<string, Task[]>();
+    for (const t of doProjeto) {
+      if (t.parent_id && idsDoProjeto.has(t.parent_id)) {
+        filhasDe.set(t.parent_id, [...(filhasDe.get(t.parent_id) ?? []), t]);
+      }
+    }
+    const linhaDaTarefa = (t: Task, dentro: boolean) => {
+      const atrasada = emAberto(t) && !!t.due_date && t.due_date < hoje;
+      return (
+      <div className={`flex items-center gap-2 py-2.5 ${dentro ? "pl-3 pr-3 sm:pr-4" : "px-3 sm:px-4"}`}>
+        <button
+          type="button"
+          onClick={() => setModal({ tarefa: t })}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <span className={`h-2 w-2 flex-shrink-0 rounded-full ${PONTO_DO_STATUS[t.status]}`} aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span
+              className={`block truncate text-sm font-medium ${
+                t.status === "done" || t.status === "cancelled" ? "text-ink-muted line-through" : "text-ink"
+              }`}
+            >
+              {t.parent_id && !dentro ? "↳ " : ""}
+              {t.title}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-ink-muted">
+              {ROTULO_DO_STATUS[t.status]}
+              {t.due_date && (
+                <span className={atrasada ? "font-medium text-danger" : ""}>
+                  {" · "}
+                  {atrasada ? "Atrasada · " : ""}
+                  {formatarDataBR(t.due_date)}
+                </span>
+              )}
+            </span>
+          </span>
+          {t.assigned_to.length > 0 && (
+            <span className="hidden flex-shrink-0 -space-x-1.5 sm:flex">
+              {t.assigned_to.slice(0, 3).map((id) => (
+                <Avatar key={id} name={nomeDe(id)} src={perfilPorId.get(id)?.avatar_url} size="xs" className="ring-2 ring-surface" />
+              ))}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => ligar([t.id], null)}
+          title="Tirar do projeto (a tarefa continua no quadro)"
+          aria-label={`Tirar "${t.title}" do projeto`}
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-hover hover:text-ink"
+        >
+          <XIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      );
+    };
     return (
       <div className="space-y-4">
         <button
@@ -296,53 +356,18 @@ export default function ProjetosDoCliente({
           </div>
         ) : (
           <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
-            {doProjeto.map((t) => {
-              const atrasada = emAberto(t) && !!t.due_date && t.due_date < hoje;
+            {principais.map((t) => {
+              const filhas = filhasDe.get(t.id) ?? [];
               return (
-                <li key={t.id} className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
-                  <button
-                    type="button"
-                    onClick={() => setModal({ tarefa: t })}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  >
-                    <span className={`h-2 w-2 flex-shrink-0 rounded-full ${PONTO_DO_STATUS[t.status]}`} aria-hidden="true" />
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={`block truncate text-sm font-medium ${
-                          t.status === "done" || t.status === "cancelled" ? "text-ink-muted line-through" : "text-ink"
-                        }`}
-                      >
-                        {t.parent_id ? "↳ " : ""}
-                        {t.title}
-                      </span>
-                      <span className="mt-0.5 block text-[11px] text-ink-muted">
-                        {ROTULO_DO_STATUS[t.status]}
-                        {t.due_date && (
-                          <span className={atrasada ? "font-medium text-danger" : ""}>
-                            {" · "}
-                            {atrasada ? "Atrasada · " : ""}
-                            {formatarDataBR(t.due_date)}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    {t.assigned_to.length > 0 && (
-                      <span className="hidden flex-shrink-0 -space-x-1.5 sm:flex">
-                        {t.assigned_to.slice(0, 3).map((id) => (
-                          <Avatar key={id} name={nomeDe(id)} src={perfilPorId.get(id)?.avatar_url} size="xs" className="ring-2 ring-surface" />
-                        ))}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => ligar([t.id], null)}
-                    title="Tirar do projeto (a tarefa continua no quadro)"
-                    aria-label={`Tirar "${t.title}" do projeto`}
-                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-hover hover:text-ink"
-                  >
-                    <XIcon className="h-3.5 w-3.5" />
-                  </button>
+                <li key={t.id}>
+                  {linhaDaTarefa(t, false)}
+                  {filhas.length > 0 && (
+                    <ul className="mb-2 ml-6 divide-y divide-line border-l-2 border-line sm:ml-8">
+                      {filhas.map((f) => (
+                        <li key={f.id}>{linhaDaTarefa(f, true)}</li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               );
             })}

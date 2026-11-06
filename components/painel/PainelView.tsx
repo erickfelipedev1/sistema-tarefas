@@ -5,6 +5,7 @@ import type {
   BlocoEficiencia,
   Eficiencia,
   ItemCaixaDeEntrada,
+  AtividadesDoPainel,
   Painel,
   PostComAjuste,
   TarefaMetrica,
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import Coreografia from "@/components/movimento/Coreografia";
 import PainelFiltros from "./PainelFiltros";
+import AtividadesClicaveis from "./AtividadesClicaveis";
 import GraficoSemanas from "./GraficoSemanas";
 import { AneisConcentricos, Anel, MeiaLua } from "./Medidores";
 
@@ -30,6 +32,7 @@ export type OtimizacaoDoPainel = Pick<
 export default function PainelView({
   painel,
   eficiencia,
+  atividades,
   pessoaNome,
   pessoaAvatar,
   pessoaCargo,
@@ -50,6 +53,7 @@ export default function PainelView({
 }: {
   painel: Painel;
   eficiencia: Eficiencia;
+  atividades: AtividadesDoPainel;
   pessoaNome: string;
   pessoaAvatar: string | null;
   pessoaCargo: string | null;
@@ -129,40 +133,21 @@ export default function PainelView({
           <MeiaLua valor={eficiencia.geral.eficiencia} cor="rgb(var(--color-brand-forte))" rotulo="Eficiência" />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 lg:px-6">
-          <Anel
-            rotulo="Atrasadas"
-            cor="var(--viz-atrasadas)"
-            quantidade={eficiencia.geral.atrasadas}
-            valor={parte(eficiencia.geral.atrasadas, eficiencia.geral.total)}
-          />
-          <Anel
-            rotulo="Abertas"
-            cor="var(--viz-abertas)"
-            quantidade={eficiencia.geral.abertas}
-            valor={parte(eficiencia.geral.abertas, eficiencia.geral.total)}
-          />
-          <Anel
-            rotulo="Realizadas"
-            cor="var(--viz-realizadas)"
-            quantidade={eficiencia.geral.realizadas}
-            valor={parte(eficiencia.geral.realizadas, eficiencia.geral.total)}
-          />
-        </div>
-
-        <dl className="grid grid-cols-[1fr_auto] gap-y-1 text-sm lg:pl-6">
-          <dt className="col-span-2 mb-1 text-sm font-semibold text-ink">Atividades</dt>
-          <dt className="text-ink-muted">Atrasadas</dt>
-          <dd data-mov="numero" className="text-right font-semibold text-ink">{eficiencia.geral.atrasadas}</dd>
-          <dt className="text-ink-muted">Realizadas</dt>
-          <dd data-mov="numero" className="text-right font-semibold text-ink">{eficiencia.geral.realizadas}</dd>
-          <dt className="text-ink-muted">Abertas</dt>
-          <dd data-mov="numero" className="text-right font-semibold text-ink">{eficiencia.geral.abertas}</dd>
-          <dt className="border-t border-line pt-1 text-ink-muted">Total</dt>
-          <dd data-mov="numero" className="border-t border-line pt-1 text-right font-semibold text-ink">
-            {eficiencia.geral.total}
-          </dd>
-        </dl>
+        <AtividadesClicaveis
+          atividades={atividades}
+          total={eficiencia.geral.total}
+          nomesProjetos={nomesProjetos}
+          cores={{
+            atrasadas: "var(--viz-atrasadas)",
+            abertas: "var(--viz-abertas)",
+            realizadas: "var(--viz-realizadas)",
+          }}
+          partes={{
+            atrasadas: parte(atividades.atrasadas.length, eficiencia.geral.total),
+            abertas: parte(atividades.abertas.length, eficiencia.geral.total),
+            realizadas: parte(atividades.realizadas.length, eficiencia.geral.total),
+          }}
+        />
       </section>
 
       <section className="mt-3 grid gap-3 lg:grid-cols-3">

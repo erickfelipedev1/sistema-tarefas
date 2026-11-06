@@ -254,3 +254,36 @@ export function calcularEficiencia(
   }
   return { geral, tarefas: tarefasB, demandas: demandasB };
 }
+
+// As tarefas por trás dos números do topo do Painel (mesma regra de
+// calcularEficiencia), pra cada anel poder abrir a sua lista: atrasadas (mais
+// antigas primeiro), abertas e realizadas no período (mais recentes primeiro).
+export interface AtividadesDoPainel {
+  atrasadas: TarefaMetrica[];
+  abertas: TarefaMetrica[];
+  realizadas: TarefaMetrica[];
+}
+
+export function listarAtividades(
+  tarefas: TarefaMetrica[],
+  { dias, agora = new Date() }: { dias: number; agora?: Date }
+): AtividadesDoPainel {
+  const hoje = diaSP(agora);
+  const inicio = somarDias(hoje, -(dias - 1));
+  const saida: AtividadesDoPainel = { atrasadas: [], abertas: [], realizadas: [] };
+  for (const t of tarefas) {
+    const aberta = t.status === "todo" || t.status === "doing" || t.status === "dependency" || t.status === "approval";
+    const realizada = t.status === "done" && !!t.completed_at && diaSP(t.completed_at) >= inicio;
+    if (aberta) {
+      if (t.due_date && t.due_date < hoje) saida.atrasadas.push(t);
+      else saida.abertas.push(t);
+    } else if (realizada) {
+      saida.realizadas.push(t);
+    }
+  }
+  const porPrazo = (a: TarefaMetrica, b: TarefaMetrica) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
+  saida.atrasadas.sort(porPrazo);
+  saida.abertas.sort(porPrazo);
+  saida.realizadas.sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
+  return saida;
+}

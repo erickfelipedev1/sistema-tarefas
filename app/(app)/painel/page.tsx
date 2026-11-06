@@ -5,6 +5,7 @@ import {
   calcularEficiencia,
   calcularPainel,
   diaSP,
+  listarAtividades,
   montarCaixaDeEntrada,
   type PedidoRecebido,
   type PostComAjuste,
@@ -90,6 +91,7 @@ export default async function PainelPage({
     new Set((pedidos ?? []).map((p) => p.task_id).filter(Boolean) as string[]),
     { dias: periodo.dias }
   );
+  const atividades = listarAtividades(tarefas, { dias: periodo.dias });
   const caixaDeEntrada = montarCaixaDeEntrada(
     tarefas,
     (pedidos ?? []) as PedidoRecebido[],
@@ -142,6 +144,7 @@ export default async function PainelPage({
     <PainelView
       painel={painel}
       eficiencia={eficiencia}
+      atividades={atividades}
       pessoaNome={pessoa?.name || pessoa?.username || "—"}
       pessoaAvatar={pessoa?.avatar_url ?? null}
       pessoaCargo={(comCargo?.cargo as string | null | undefined) ?? null}
