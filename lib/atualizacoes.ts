@@ -12,6 +12,42 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-06",
+    area: "Tarefas",
+    titulo: "Painel: clique nos números pra ver as tarefas",
+    texto: "No topo do Painel, os círculos Atrasadas, Abertas e Realizadas (e os nomes na lista Atividades) agora são clicáveis: ao clicar, abrem logo abaixo as tarefas que formam aquele número, com o cliente, o status e a data. Clicar de novo fecha, e clicar numa tarefa leva pro cliente dela.",
+  },
+  {
+    data: "2026-11-06",
+    area: "Clientes",
+    titulo: "Subtarefa dentro da tarefa principal nos projetos",
+    texto: "Na aba Projetos do cliente, as subtarefas agora aparecem recuadas, logo abaixo da tarefa principal, em vez de misturadas na lista. A subtarefa cuja principal está em outro projeto continua solta, com o símbolo ↳.",
+  },
+  {
+    data: "2026-11-06",
+    area: "Sistema",
+    titulo: "Exportar a página da Wiki em PDF",
+    texto: "Em cada página da Wiki há o botão Exportar PDF, ao lado de \"Atualizado\". Ele abre a impressão do navegador com uma versão limpa da página (título, autor, data e conteúdo, em fundo branco): é só escolher Salvar como PDF. O arquivo sai com o título da página.",
+  },
+  {
+    data: "2026-11-04",
+    area: "Calendário",
+    titulo: "Subtarefa aparece pra quem está marcado nela",
+    texto: "A subtarefa com prazo agora aparece no calendário de quem é responsável por ela (ou da pessoa escolhida no filtro), com o símbolo ↳ na frente do título. Quem vê tudo continua vendo só as subtarefas que têm alguém marcado.",
+  },
+  {
+    data: "2026-11-03",
+    area: "Clientes",
+    titulo: "Aba Faturamento (cliente piloto)",
+    texto: "Pra quem cuida de faturas, a página do cliente ganhou a aba Faturamento: fatura com número, itens, desconto, imposto e parcelas, PDF com a marca e, no portal do cliente, a fatura com os serviços, as parcelas e o Pix com botão de copiar. Por enquanto só no cliente piloto.",
+  },
+  {
+    data: "2026-10-30",
+    area: "Clientes",
+    titulo: "Projetos do cliente: status Não iniciado e responsável",
+    texto: "Os projetos de cada cliente ganharam o status Não iniciado e o campo Responsável, pra saber de quem é cada um.",
+  },
+  {
     data: "2026-10-28",
     area: "Tarefas",
     titulo: "Vídeos anexados vão pro Google Drive",
