@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-09",
+    area: "Sistema",
+    titulo: "Arquivo grande vai direto pro Google Drive em mais lugares",
+    texto: "Agora também sobem sozinhos pro Google Drive do d.hub (com a barra de progresso): imagem grande de post (acima de 45 MB), arquivo grande na aba Drive (Compartilhados e dos projetos, com o selo Drive) e gravação de reunião grande nas Atas. A gravação no Drive toca no player do Drive e não tem transcrição automática (a transcrição ao vivo continua valendo). Em Meus arquivos, que é privado, o limite continua 45 MB.",
+  },
+  {
     data: "2026-11-06",
     area: "Posts",
     titulo: "Novo formato de post: Story",

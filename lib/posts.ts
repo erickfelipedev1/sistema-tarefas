@@ -138,11 +138,12 @@ export function midiaDoDrive(
   postId: string,
   driveId: string,
   nome = "Vídeo do Google Drive",
-  tamanho = 0
+  tamanho = 0,
+  tipo: "image" | "video" = "video"
 ): PostMedia {
   return {
     path: `${projectId}/${postId}/drive-${driveId}`,
-    type: "video",
+    type: tipo,
     name: nome,
     size: tamanho,
     source: "drive",
@@ -217,7 +218,8 @@ export function midiasValidas(media: unknown): PostMedia[] {
     return [
       {
         path: item.path,
-        type: doDrive || item.type === "video" ? "video" : "image",
+        // Do Drive vem vídeo (o padrão) ou imagem grande; o resto é imagem, salvo vídeo.
+        type: doDrive ? (item.type === "image" ? "image" : "video") : item.type === "video" ? "video" : "image",
         name: typeof item.name === "string" ? item.name : "arquivo",
         size: typeof item.size === "number" ? item.size : 0,
         ...(doDrive ? { source: "drive" as const, drive_id: item.drive_id } : {}),

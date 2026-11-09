@@ -31,8 +31,9 @@ function lerId(texto: string): string | null {
 }
 
 // Vídeo que subiu mas não virou post (o salvar falhou): vai pra lixeira do Drive.
+// (Serve também pra imagem grande de post: a conferência é pela marca do d.hub.)
 export async function descartarVideosDoDrive(ids: string[]): Promise<void> {
-  await Promise.all(ids.map((id) => descartarVideoDoDrive(id).catch(() => undefined)));
+  await Promise.all(ids.map((id) => descartarAnexoDoDrive(id).catch(() => undefined)));
 }
 
 type RespostaDoPedaco = { status: number; texto: string; recebidoAte: number | null };
@@ -74,6 +75,16 @@ export async function enviarVideoParaODrive(
     // o formulário nunca fica preso em "salvando".
     return { erro: "Não deu pra enviar o vídeo pro Drive agora. Confira a conexão e tente de novo." };
   }
+}
+
+// Mídia de post (vídeo ou imagem grande): o vídeo segue a conferência de
+// vídeo; a imagem usa o envio de arquivo qualquer.
+export async function enviarMidiaParaODrive(
+  arquivo: File,
+  tipo: "image" | "video",
+  aoProgresso: (fracao: number) => void
+): Promise<ResultadoDoEnvio> {
+  return tipo === "video" ? enviarVideoParaODrive(arquivo, aoProgresso) : enviarAnexoParaODrive(arquivo, aoProgresso);
 }
 
 // Anexo grande de tarefa (qualquer tipo de arquivo): mesmo envio, mesma pasta.

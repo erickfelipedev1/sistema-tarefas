@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { consultarTranscricao, enviarParaTranscrever, ErroDaTranscricao } from "@/lib/assemblyai";
 import { ErroDaIA, rascunharAta, rascunhoEmHtml } from "@/lib/ia-atas";
-import { BUCKET_DAS_GRAVACOES } from "@/lib/atas";
+import { BUCKET_DAS_GRAVACOES, idDaGravacaoNoDrive } from "@/lib/atas";
 
 // Server Actions das atas: transcrever a gravação (AssemblyAI) e rascunhar a
 // ata com IA (Claude). Só quem está logado no d.hub usa. As colunas
@@ -48,6 +48,9 @@ export async function transcreverAta(ataId: string): Promise<EstadoDaTranscricao
     .maybeSingle();
   if (!ata) return { erro: "Ata não encontrada. Salve a ata antes de transcrever." };
   if (!ata.audio_path) return { erro: "Esta ata ainda não tem gravação." };
+  if (idDaGravacaoNoDrive(ata.audio_path)) {
+    return { erro: "Gravação grande fica no Google Drive e a transcrição paga não consegue ler esse arquivo." };
+  }
 
   const travada =
     ata.transcricao_status === "processando" &&

@@ -1,6 +1,9 @@
 "use client";
 
 import { linkDoArquivo } from "@/lib/arquivos";
+import { idDoDriveDoAnexo, linkDoAnexo, PREFIXO_DO_DRIVE } from "@/lib/anexos";
+import { enviarAnexoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
+import { descartarAnexoDoDrive } from "@/lib/actions/drive";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +34,7 @@ export default function DriveBrowser({
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [progresso, setProgresso] = useState<string | null>(null);
 
   // Bucket separado pros arquivos privados (o de "Compartilhados"/projetos
   // continua no bucket público de sempre).
@@ -224,19 +228,49 @@ export default function DriveBrowser({
   async function enviarArquivo(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
-    setEnviando(true);
 
-    const prefixo = owned ? currentUserId : projectId ?? "geral";
-    const caminhoArquivo = `${prefixo}/${folderId ?? "raiz"}/${Date.now()}-${nomeSeguro(arquivo.name)}`;
-    const { error: erroUpload } = await supabase.storage
-      .from(bucket)
-      .upload(caminhoArquivo, arquivo);
-
-    if (erroUpload) {
-      window.alert(`Não consegui enviar o arquivo: ${erroUpload.message}`);
-      setEnviando(false);
+    const limiteMb = Math.round(LIMITE_DO_SUPABASE / 1024 / 1024);
+    const grande = arquivo.size > LIMITE_DO_SUPABASE;
+    // "Meus arquivos" é privado e o Google Drive do d.hub abre pra quem tem o
+    // link: arquivo grande só vai pra lá nos Compartilhados e nos projetos.
+    if (grande && owned) {
+      window.alert(
+        `"${arquivo.name}" passa de ${limiteMb} MB e não cabe em Meus arquivos (área privada). Envie em Compartilhados, que guarda arquivo grande no Google Drive do d.hub.`
+      );
       e.target.value = "";
       return;
+    }
+    setEnviando(true);
+
+    let caminhoArquivo = "";
+    let noDrive = false;
+    if (grande) {
+      // Passou do limite do Supabase: vai direto pro Google Drive (com progresso).
+      setProgresso("Enviando pro Google Drive... 0%");
+      const r = await enviarAnexoParaODrive(arquivo, (f) => setProgresso(`Enviando pro Google Drive... ${Math.round(f * 100)}%`));
+      setProgresso(null);
+      if ("erro" in r) {
+        window.alert(
+          r.naoConfigurado
+            ? `"${arquivo.name}" passa de ${limiteMb} MB e o Google Drive do d.hub não está ligado. Avise o Erick.`
+            : `Não consegui enviar o arquivo: ${r.erro}`
+        );
+        setEnviando(false);
+        e.target.value = "";
+        return;
+      }
+      caminhoArquivo = `${PREFIXO_DO_DRIVE}${r.id}`;
+      noDrive = true;
+    } else {
+      const prefixo = owned ? currentUserId : projectId ?? "geral";
+      caminhoArquivo = `${prefixo}/${folderId ?? "raiz"}/${Date.now()}-${nomeSeguro(arquivo.name)}`;
+      const { error: erroUpload } = await supabase.storage.from(bucket).upload(caminhoArquivo, arquivo);
+      if (erroUpload) {
+        window.alert(`Não consegui enviar o arquivo: ${erroUpload.message}`);
+        setEnviando(false);
+        e.target.value = "";
+        return;
+      }
     }
 
     const { data, error } = await supabase
@@ -262,8 +296,9 @@ export default function DriveBrowser({
         )
       );
     } else {
-      // O arquivo subiu mas o registro não — tira do storage pra não sobrar lixo.
-      await supabase.storage.from(bucket).remove([caminhoArquivo]);
+      // O arquivo subiu mas o registro não — tira de onde ele foi pra não sobrar lixo.
+      if (noDrive) await descartarAnexoDoDrive(caminhoArquivo.slice(PREFIXO_DO_DRIVE.length)).catch(() => {});
+      else await supabase.storage.from(bucket).remove([caminhoArquivo]);
       window.alert(`Não consegui salvar o arquivo: ${error?.message ?? "erro desconhecido"}`);
     }
   }
@@ -272,7 +307,10 @@ export default function DriveBrowser({
     const ok = window.confirm(`Excluir o arquivo "${arquivo.file_name}"?`);
     if (!ok) return;
     setFiles((c) => c.filter((f) => f.id !== arquivo.id));
-    await supabase.storage.from(bucket).remove([arquivo.file_path]);
+    const idNoDrive = idDoDriveDoAnexo(arquivo.file_path);
+    // No Google Drive o arquivo vai pra lixeira de lá; no resto, sai do armazenamento.
+    if (idNoDrive) await descartarAnexoDoDrive(idNoDrive).catch(() => {});
+    else await supabase.storage.from(bucket).remove([arquivo.file_path]);
     await supabase.from("drive_files").delete().eq("id", arquivo.id);
   }
 
@@ -280,6 +318,10 @@ export default function DriveBrowser({
   // direto). Os privados ficam num bucket fechado — precisa gerar um
   // link temporário (assinado) na hora de abrir.
   async function abrirArquivo(arquivo: DriveFile) {
+    if (idDoDriveDoAnexo(arquivo.file_path)) {
+      window.open(linkDoAnexo(arquivo.file_path), "_blank", "noopener");
+      return;
+    }
     if (owned) {
       const { data, error } = await supabase.storage
         .from(bucket)
@@ -329,7 +371,7 @@ export default function DriveBrowser({
           }`}
         >
           <PlusIcon className="h-3.5 w-3.5" />
-          {enviando ? "Enviando..." : "Enviar arquivo"}
+          {enviando ? progresso ?? "Enviando..." : "Enviar arquivo"}
           <input
             type="file"
             onChange={enviarArquivo}
@@ -376,6 +418,14 @@ export default function DriveBrowser({
               >
                 <Icone className="h-4 w-4 flex-shrink-0 text-ink-muted" />
                 <span className="truncate">{arquivo.file_name}</span>
+                {idDoDriveDoAnexo(arquivo.file_path) && (
+                  <span
+                    className="flex-shrink-0 rounded bg-surface-hover px-1.5 text-[10px] font-medium text-ink-muted"
+                    title="Guardado no Google Drive do d.hub"
+                  >
+                    Drive
+                  </span>
+                )}
               </button>
               <span className="flex-shrink-0 text-xs text-ink-muted">
                 {formatarTamanho(arquivo.file_size)}

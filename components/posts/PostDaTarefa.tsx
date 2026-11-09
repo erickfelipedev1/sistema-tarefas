@@ -33,7 +33,7 @@ import {
   tipoDoArquivo,
 } from "@/lib/posts";
 import { subirMiniatura } from "@/lib/miniatura-de-imagem";
-import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
+import { descartarVideosDoDrive, enviarMidiaParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
@@ -309,14 +309,14 @@ export default function PostDaTarefa({
 
   // Vídeo grande: sobe pro Google Drive (direto do navegador, com progresso) e
   // vira um item do Drive no post.
-  async function mandarProDrive(arquivo: File, rotulo: string, postId: string) {
+  async function mandarProDrive(arquivo: File, tipo: "image" | "video", rotulo: string, postId: string) {
     if (!projectId) return { erro: "Tarefa sem cliente." };
     setSalvando(`Enviando ${rotulo} pro Google Drive... 0%`);
-    const r = await enviarVideoParaODrive(arquivo, (f) =>
+    const r = await enviarMidiaParaODrive(arquivo, tipo, (f) =>
       setSalvando(`Enviando ${rotulo} pro Google Drive... ${Math.round(f * 100)}%`)
     );
     if ("erro" in r) return r;
-    return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size) };
+    return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size, tipo) };
   }
 
   // Cria o post novo ou grava a edição do que já existe. "enviar" manda ao
@@ -378,9 +378,9 @@ export default function PostDaTarefa({
       const rotulo = aSubir > 1 ? `o arquivo ${feitos} de ${aSubir}` : "o arquivo";
       setSalvando(`Enviando ${rotulo}...`);
 
-      // Vídeo acima do limite do Supabase: vai direto pro Google Drive.
-      if (tipo === "video" && arquivo.size > LIMITE_DO_SUPABASE) {
-        const r = await mandarProDrive(arquivo, rotulo, postId);
+      // Arquivo (vídeo ou imagem) acima do limite do Supabase: vai direto pro Google Drive.
+      if (arquivo.size > LIMITE_DO_SUPABASE) {
+        const r = await mandarProDrive(arquivo, tipo, rotulo, postId);
         if ("media" in r) {
           midias.push(r.media);
           noDrive.push(r.media.drive_id as string);
@@ -399,8 +399,8 @@ export default function PostDaTarefa({
         .upload(caminho, arquivo, { contentType: tipoDoArquivo(arquivo) || undefined });
       if (error) {
         // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
-        if (erroDeArquivoGrande(error.message) && tipo === "video") {
-          const r = await mandarProDrive(arquivo, rotulo, postId);
+        if (erroDeArquivoGrande(error.message)) {
+          const r = await mandarProDrive(arquivo, tipo, rotulo, postId);
           if ("media" in r) {
             midias.push(r.media);
             noDrive.push(r.media.drive_id as string);

@@ -35,7 +35,7 @@ export function oQueImpedeDePublicar(post: Pick<Post, "category" | "caption" | "
   }
   for (const m of post.media) {
     if (m.source === "drive") {
-      return "Este post tem vídeo no Google Drive, que o Instagram não consegue baixar. Envie o vídeo pelo d.hub (até 50 MB) ou publique pelo app do Instagram.";
+      return "Este post tem arquivo no Google Drive, que o Instagram não consegue baixar. Envie o arquivo pelo d.hub (até 50 MB) ou publique pelo app do Instagram.";
     }
     if (m.type === "image" && !/\.jpe?g$/i.test(m.path)) {
       return `"${m.name || "A imagem"}" não é JPEG. O Instagram só aceita JPEG pela API: exporte a arte em .jpg e troque o arquivo.`;

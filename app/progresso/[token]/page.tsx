@@ -10,6 +10,7 @@ import AnalyticsCliente from "@/components/AnalyticsCliente";
 import PacoteDoClienteCard, { type PacoteDoCliente } from "@/components/PacoteDoClienteCard";
 import { reporteiConfigurado } from "@/lib/reportei";
 import { capaValida, caminhosDoItem, ehDoDrive, midiasValidas } from "@/lib/posts";
+import { idDoDriveDoAnexo, linkDoAnexo } from "@/lib/anexos";
 import { ClientDashboardTabs } from "@/components/onboarding/ClientDashboardTabs";
 import type {
   ProjectDocuments,
@@ -112,7 +113,7 @@ export default async function ProgressoPage({
     (Array.isArray(postsData) ? postsData : []) as (Omit<PublicPost, "media" | "cover"> & { media: unknown; cover: unknown })[]
   ).map((p) => ({ ...p, media: midiasValidas(p.media), cover: capaValida(p.cover) }));
   const [linksArquivos, linksFaturas, linksPosts] = await Promise.all([
-    assinar("drive-files", arquivos.map((a) => a.file_path)),
+    assinar("drive-files", arquivos.map((a) => a.file_path).filter((c) => !idDoDriveDoAnexo(c))),
     assinar("invoices", faturas.map((f) => f.file_path).filter((c): c is string => !!c)),
     assinar(
       "post-media",
@@ -142,7 +143,7 @@ export default async function ProgressoPage({
 
   const arquivosComLink = arquivos.map((arquivo) => ({
     ...arquivo,
-    publicUrl: linksArquivos.get(arquivo.file_path) ?? "",
+    publicUrl: idDoDriveDoAnexo(arquivo.file_path) ? linkDoAnexo(arquivo.file_path) : linksArquivos.get(arquivo.file_path) ?? "",
   }));
 
   const faturasComLink = faturas.map((fatura) => ({

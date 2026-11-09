@@ -6,7 +6,8 @@ import { pessoaAtiva } from "@/lib/mencoes";
 import type { Ata, Profile } from "@/lib/types";
 import { formatarDataBR } from "@/lib/format";
 import { htmlParaTexto, sanitizarHtml } from "@/lib/texto-rico";
-import { BUCKET_DAS_GRAVACOES } from "@/lib/atas";
+import { BUCKET_DAS_GRAVACOES, idDaGravacaoNoDrive } from "@/lib/atas";
+import { descartarAnexoDoDrive } from "@/lib/actions/drive";
 import { salvarTranscricaoAoVivo, type RascunhoNaTela } from "@/lib/actions/atas";
 import EditorDeTexto from "../EditorDeTexto";
 import GravadorDeReuniao, { type GravacaoEnviada } from "./GravadorDeReuniao";
@@ -24,6 +25,13 @@ type Cliente = { id: string; name: string };
 // Tudo da ata menos o texto da transcrição (pode ser grande; vem sob demanda).
 const COLUNAS_DA_LISTA =
   "id, project_id, title, meeting_date, start_time, end_time, place, participant_ids, external_participants, agenda_html, decisions_html, next_steps_html, audio_path, audio_mime, audio_size, audio_seconds, transcricao_status, transcricao_id, transcricao_erro, transcricao_em, created_by, created_by_label, created_at, updated_at";
+
+// A gravação some de onde está: do bucket, ou (se era grande) pra lixeira do Google Drive.
+async function removerGravacao(supabase: ReturnType<typeof createClient>, caminho: string) {
+  const idNoDrive = idDaGravacaoNoDrive(caminho);
+  if (idNoDrive) await descartarAnexoDoDrive(idNoDrive).catch(() => {});
+  else await supabase.storage.from(BUCKET_DAS_GRAVACOES).remove([caminho]);
+}
 
 function hojeISO(): string {
   const d = new Date();
@@ -205,7 +213,7 @@ export default function AtasManager({
     if (!window.confirm(`Excluir a ata "${ata.title}"${ata.audio_path ? " e a gravação" : ""}? Não dá pra desfazer.`)) return;
     const { error } = await supabase.from("atas").delete().eq("id", ata.id);
     if (error) return setAviso("Não deu pra excluir a ata. Tente de novo.");
-    if (ata.audio_path) await supabase.storage.from(BUCKET_DAS_GRAVACOES).remove([ata.audio_path]);
+    if (ata.audio_path) await removerGravacao(supabase, ata.audio_path);
     setAtas((atual) => atual.filter((a) => a.id !== ata.id));
     if (abertaId === ata.id) setAbertaId(null);
   }
@@ -547,10 +555,10 @@ function FormDaAta({
     };
     const r = await gravar(proxima, salvaRef.current);
     if ("erro" in r) {
-      await supabase.storage.from(BUCKET_DAS_GRAVACOES).remove([g.path]);
+      await removerGravacao(supabase, g.path);
       return r.erro;
     }
-    if (anterior && anterior !== g.path) await supabase.storage.from(BUCKET_DAS_GRAVACOES).remove([anterior]);
+    if (anterior && anterior !== g.path) await removerGravacao(supabase, anterior);
     setSalva(true);
     let salvaNaLista = r.ata;
     // A transcrição ao vivo (grátis) vai junto, depois que o áudio está salvo.

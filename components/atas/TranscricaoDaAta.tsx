@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BUCKET_DAS_GRAVACOES, duracaoLegivel } from "@/lib/atas";
+import { BUCKET_DAS_GRAVACOES, duracaoLegivel, idDaGravacaoNoDrive } from "@/lib/atas";
 import { rascunharAtaComIA, transcreverAta, verificarTranscricao, type RascunhoNaTela } from "@/lib/actions/atas";
 import type { Ata } from "@/lib/types";
 import { Button } from "../ui/Button";
@@ -44,12 +44,14 @@ export default function TranscricaoDaAta({
   const [aberta, setAberta] = useState(false);
   const [copiada, setCopiada] = useState<"texto" | "pedido" | null>(null);
   const status = ata.transcricao_status;
+  // Gravação grande: está no Google Drive (toca no player do Drive; a transcrição paga não lê).
+  const idNoDrive = idDaGravacaoNoDrive(ata.audio_path);
 
   // Link assinado pra ouvir a gravação.
   useEffect(() => {
     let ativo = true;
     setUrlDoAudio("");
-    if (!ata.audio_path) return;
+    if (!ata.audio_path || idDaGravacaoNoDrive(ata.audio_path)) return;
     createClient()
       .storage.from(BUCKET_DAS_GRAVACOES)
       .createSignedUrl(ata.audio_path, 3600)
@@ -141,16 +143,40 @@ export default function TranscricaoDaAta({
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <audio controls preload="none" src={urlDoAudio} className="w-full" />
       )}
+      {idNoDrive && (
+        <>
+          <iframe
+            src={`https://drive.google.com/file/d/${encodeURIComponent(idNoDrive)}/preview`}
+            title="Gravação da reunião (Google Drive)"
+            allow="autoplay"
+            className="h-[70px] w-full rounded-lg border border-line"
+          />
+          <p className="text-[11px] text-ink-muted">
+            Gravação grande, guardada no Google Drive do d.hub. Se aparecer &quot;sendo processado&quot;, aguarde alguns
+            minutos. O Drive pode levar um tempo para liberar o áudio.{" "}
+            <a
+              href={`https://drive.google.com/file/d/${encodeURIComponent(idNoDrive)}/view`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              Abrir no Drive
+            </a>
+          </p>
+        </>
+      )}
       {ata.audio_seconds ? <p className="text-[11px] text-ink-muted">Duração: {duracaoLegivel(ata.audio_seconds)}</p> : null}
 
       {!status &&
-        (transcricaoPaga ? (
+        (transcricaoPaga && !idNoDrive ? (
           <Button size="sm" variant="secondary" type="button" onClick={transcrever} disabled={ocupado !== null}>
             {ocupado === "transcrever" ? "Enviando..." : "Transcrever a gravação"}
           </Button>
         ) : (
           <p className="text-[11px] text-ink-muted">
-            Sem transcrição. A transcrição grátis é feita ao vivo, enquanto você grava pelo d.hub (Chrome, Edge ou Safari).
+            {idNoDrive
+              ? "Sem transcrição: a transcrição automática não lê gravação guardada no Google Drive. A transcrição grátis é feita ao vivo, enquanto você grava pelo d.hub (Chrome, Edge ou Safari)."
+              : "Sem transcrição. A transcrição grátis é feita ao vivo, enquanto você grava pelo d.hub (Chrome, Edge ou Safari)."}
           </p>
         ))}
 
@@ -164,7 +190,7 @@ export default function TranscricaoDaAta({
       {status === "erro" && (
         <div className="space-y-2">
           <p className="text-xs text-danger">{ata.transcricao_erro ?? "A transcrição falhou."}</p>
-          {transcricaoPaga && (
+          {transcricaoPaga && !idNoDrive && (
             <Button size="sm" variant="secondary" type="button" onClick={transcrever} disabled={ocupado !== null}>
               {ocupado === "transcrever" ? "Enviando..." : "Tentar transcrever de novo"}
             </Button>

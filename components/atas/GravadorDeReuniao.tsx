@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BUCKET_DAS_GRAVACOES, duracaoLegivel, LIMITE_DA_GRAVACAO_MB } from "@/lib/atas";
+import { BUCKET_DAS_GRAVACOES, caminhoDaGravacaoNoDrive, duracaoLegivel, LIMITE_DA_GRAVACAO_MB } from "@/lib/atas";
+import { enviarAnexoParaODrive } from "@/lib/drive-upload";
+import { descartarAnexoDoDrive } from "@/lib/actions/drive";
 import { Button } from "../ui/Button";
 import { DownloadIcon } from "../ui/icons";
 import { useTranscricaoAoVivo } from "./useTranscricaoAoVivo";
@@ -57,6 +59,7 @@ export default function GravadorDeReuniao({
   const [estado, setEstado] = useState<Estado>("parado");
   const [segundos, setSegundos] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
+  const [progresso, setProgresso] = useState<string | null>(null);
   const [pendente, setPendente] = useState<{ blob: Blob; mime: string; segundos: number | null; transcricao?: string } | null>(null);
   // O relógio do onstop e da transcrição precisa do valor atual.
   const segundosRef = useRef(0);
@@ -206,27 +209,46 @@ export default function GravadorDeReuniao({
       setEstado("parado");
       return;
     }
+    let caminho = "";
+    let idNoDrive: string | null = null;
     if (blob.size > LIMITE_DA_GRAVACAO_MB * 1024 * 1024) {
-      setPendente({ blob, mime, segundos: duracao, transcricao });
-      setErro(`A gravação passou de ${LIMITE_DA_GRAVACAO_MB} MB e não dá pra enviar. Baixe o arquivo pra não perder.`);
-      setEstado("parado");
-      return;
-    }
-    const caminho = `${ataId}/${Date.now()}-gravacao.${extensao(mime)}`;
-    const { error } = await createClient()
-      .storage.from(BUCKET_DAS_GRAVACOES)
-      .upload(caminho, blob, { contentType: mime || "audio/webm" });
-    if (error) {
-      setPendente({ blob, mime, segundos: duracao, transcricao });
-      setErro(
-        /bucket|not found/i.test(error.message)
-          ? "As gravações ainda não estão liberadas no banco (migration 0082). Baixe o arquivo pra não perder."
-          : "Não deu pra enviar a gravação. Tente de novo (ou baixe o arquivo pra não perder)."
+      // Não cabe no Supabase: vai pro Google Drive do d.hub (direto do navegador).
+      setProgresso("Enviando a gravação pro Google Drive... 0%");
+      const arquivo = new File([blob], `gravacao-da-reuniao.${extensao(mime)}`, { type: mime || "audio/webm" });
+      const r = await enviarAnexoParaODrive(arquivo, (f) =>
+        setProgresso(`Enviando a gravação pro Google Drive... ${Math.round(f * 100)}%`)
       );
-      setEstado("parado");
-      return;
+      setProgresso(null);
+      if ("erro" in r) {
+        setPendente({ blob, mime, segundos: duracao, transcricao });
+        setErro(
+          r.naoConfigurado
+            ? `A gravação passou de ${LIMITE_DA_GRAVACAO_MB} MB e o Google Drive do d.hub não está ligado. Baixe o arquivo pra não perder.`
+            : `${r.erro} Tente de novo (ou baixe o arquivo pra não perder).`
+        );
+        setEstado("parado");
+        return;
+      }
+      idNoDrive = r.id;
+      caminho = caminhoDaGravacaoNoDrive(ataId, r.id);
+    } else {
+      caminho = `${ataId}/${Date.now()}-gravacao.${extensao(mime)}`;
+      const { error } = await createClient()
+        .storage.from(BUCKET_DAS_GRAVACOES)
+        .upload(caminho, blob, { contentType: mime || "audio/webm" });
+      if (error) {
+        setPendente({ blob, mime, segundos: duracao, transcricao });
+        setErro(
+          /bucket|not found/i.test(error.message)
+            ? "As gravações ainda não estão liberadas no banco (migration 0082). Baixe o arquivo pra não perder."
+            : "Não deu pra enviar a gravação. Tente de novo (ou baixe o arquivo pra não perder)."
+        );
+        setEstado("parado");
+        return;
+      }
     }
     const falha = await aoGravado({ path: caminho, mime, size: blob.size, segundos: duracao, transcricao });
+    if (falha && idNoDrive) await descartarAnexoDoDrive(idNoDrive).catch(() => {});
     if (falha) {
       setPendente({ blob, mime, segundos: duracao, transcricao });
       setErro(falha);
@@ -331,16 +353,14 @@ export default function GravadorDeReuniao({
         </div>
       )}
 
-      {estado === "enviando" && <p className="text-sm text-ink-muted">Enviando a gravação...</p>}
+      {estado === "enviando" && <p className="text-sm text-ink-muted">{progresso ?? "Enviando a gravação..."}</p>}
 
       {erro && <p className="mt-2 text-xs text-danger">{erro}</p>}
       {pendente && estado === "parado" && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {pendente.blob.size <= LIMITE_DA_GRAVACAO_MB * 1024 * 1024 && (
-            <Button size="sm" type="button" onClick={() => void enviar(pendente.blob, pendente.mime, pendente.segundos, pendente.transcricao)}>
-              Tentar enviar de novo
-            </Button>
-          )}
+          <Button size="sm" type="button" onClick={() => void enviar(pendente.blob, pendente.mime, pendente.segundos, pendente.transcricao)}>
+            Tentar enviar de novo
+          </Button>
           <Button size="sm" variant="secondary" type="button" onClick={baixarPendente}>
             <DownloadIcon className="h-3.5 w-3.5" />
             Baixar a gravação

@@ -40,7 +40,7 @@ import PublicarNoInstagram from "./posts/PublicarNoInstagram";
 import ArquivosParaBaixar from "./posts/ArquivosParaBaixar";
 import { BaixarItem, BaixarTodos } from "./posts/BaixarDoForm";
 import { subirMiniatura } from "@/lib/miniatura-de-imagem";
-import { descartarVideosDoDrive, enviarVideoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
+import { descartarVideosDoDrive, enviarMidiaParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import MiniaturaDeVideo from "./posts/MiniaturaDeVideo";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
@@ -441,7 +441,7 @@ export default function PostsManager({
   const tipoDoItem = (item: ItemDeMidia) => (item.salva ? item.salva.type : item.nova.tipo);
   const midiasDoForm: MidiaDoPreview[] = itens.map((item) =>
     item.salva && ehDoDrive(item.salva)
-      ? { url: "", tipo: "video", driveId: item.salva.drive_id }
+      ? { url: "", tipo: item.salva.type, driveId: item.salva.drive_id }
       : {
           url: item.salva ? links[item.salva.path] ?? "" : item.nova.url,
           tipo: tipoDoItem(item),
@@ -487,13 +487,13 @@ export default function PostsManager({
 
   // Vídeo grande: sobe pro Google Drive (direto do navegador, com progresso) e
   // vira um item do Drive no post.
-  async function mandarProDrive(arquivo: File, rotulo: string, postId: string) {
+  async function mandarProDrive(arquivo: File, tipo: "image" | "video", rotulo: string, postId: string) {
     setSalvando(`Enviando ${rotulo} pro Google Drive... 0%`);
-    const r = await enviarVideoParaODrive(arquivo, (f) =>
+    const r = await enviarMidiaParaODrive(arquivo, tipo, (f) =>
       setSalvando(`Enviando ${rotulo} pro Google Drive... ${Math.round(f * 100)}%`)
     );
     if ("erro" in r) return r;
-    return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size) };
+    return { media: midiaDoDrive(projectId, postId, r.id, arquivo.name, arquivo.size, tipo) };
   }
 
   async function salvar(enviarAoCliente: boolean) {
@@ -549,9 +549,9 @@ export default function PostsManager({
       const rotulo = aSubir > 1 ? `o arquivo ${feitos} de ${aSubir}` : "o arquivo";
       setSalvando(`Enviando ${rotulo}...`);
 
-      // Vídeo acima do limite do Supabase: vai direto pro Google Drive.
-      if (tipo === "video" && arquivo.size > LIMITE_DO_SUPABASE) {
-        const r = await mandarProDrive(arquivo, rotulo, postId);
+      // Arquivo (vídeo ou imagem) acima do limite do Supabase: vai direto pro Google Drive.
+      if (arquivo.size > LIMITE_DO_SUPABASE) {
+        const r = await mandarProDrive(arquivo, tipo, rotulo, postId);
         if ("media" in r) {
           midias.push(r.media);
           noDrive.push(r.media.drive_id as string);
@@ -570,8 +570,8 @@ export default function PostsManager({
         .upload(caminho, arquivo, { contentType: tipoDoArquivo(arquivo) || undefined });
       if (error) {
         // O Supabase recusou por tamanho: se o Drive estiver configurado, vai pra lá.
-        if (erroDeArquivoGrande(error.message) && tipo === "video") {
-          const r = await mandarProDrive(arquivo, rotulo, postId);
+        if (erroDeArquivoGrande(error.message)) {
+          const r = await mandarProDrive(arquivo, tipo, rotulo, postId);
           if ("media" in r) {
             midias.push(r.media);
           noDrive.push(r.media.drive_id as string);
