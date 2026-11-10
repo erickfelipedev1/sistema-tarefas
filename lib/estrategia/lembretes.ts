@@ -44,6 +44,8 @@ export function calcularLembretes(e: EntradaDosLembretes): Lembrete[] {
   const { hoje } = e;
   const proximoUtil = proximoDiaUtil(somarDias(hoje, 1));
   const segunda = segundaDaSemana(hoje);
+  // A análise de segunda é da semana que acabou (a de hoje ainda não tem números).
+  const semanaDaAnalise = somarDias(segunda, -7);
   const ehPrimeiroDiaUtilDaSemana = ehDiaUtil(hoje) && proximoDiaUtil(segunda) === hoje;
   const mesAnterior = somarMeses(hoje.slice(0, 7), -1);
   const diaUtilDoMes = ehDiaUtil(hoje) ? indiceDoDiaUtilNoMes(hoje) : 0;
@@ -97,16 +99,16 @@ export function calcularLembretes(e: EntradaDosLembretes): Lembrete[] {
 
     // Segunda de análise: primeiro dia útil da semana, se a semana ainda não tem números.
     if (ehPrimeiroDiaUtilDaSemana) {
-      const jaTem = e.semanas.some((s) => s.mapeamento_id === m.id && s.semana === segunda && Object.keys(s.numeros).length > 0);
+      const jaTem = e.semanas.some((s) => s.mapeamento_id === m.id && s.semana === semanaDaAnalise && Object.keys(s.numeros).length > 0);
       if (!jaTem) {
         lembretes.push({
           grupo: `semana:${m.id}`,
           tipo: "semana",
           cliente,
-          chave: `semana:${m.id}:${segunda}`,
+          chave: `semana:${m.id}:${semanaDaAnalise}`,
           destinatarios: responsavel,
           titulo: `${cliente}: análise semanal`,
-          corpo: "Registre os números e o check-in da semana e cruze com a IA.",
+          corpo: "Registre os números e o check-in da semana que passou (dá pra puxar do Reportei) e cruze com a IA.",
           url,
           mapeamentoId: m.id,
         });

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { decidirSugestao, gerarAnaliseDaSemana, marcarAviso, salvarSemana } from "@/lib/actions/estrategia-rotina";
+import { decidirSugestao, puxarNumerosDaSemana, gerarAnaliseDaSemana, marcarAviso, salvarSemana } from "@/lib/actions/estrategia-rotina";
 import { paraISO } from "@/lib/estrategia/dias-uteis";
 import { CHECKIN_DA_SEMANA, NUMEROS_DA_SEMANA, segundaDaSemana, somarDias, type SugestaoDaSemana } from "@/lib/estrategia/rotina";
 import type { EstPeca, EstSemana } from "@/lib/estrategia/tipos";
@@ -77,7 +77,8 @@ export default function RotinaDaSemana({
   const [esta, setEsta] = useState<string | null>(null);
   const [segunda, setSegunda] = useState<string | null>(null);
   useEffect(() => {
-    const s = segundaDaSemana(paraISO(new Date()));
+    // A análise é da semana que acabou (a de hoje ainda não tem números).
+    const s = somarDias(segundaDaSemana(paraISO(new Date())), -7);
     setEsta(s);
     setSegunda(s);
   }, []);
@@ -98,7 +99,7 @@ export default function RotinaDaSemana({
             Próxima ›
           </Button>
           <Button size="sm" variant="secondary" onClick={() => esta && setSegunda(esta)} disabled={segunda === esta}>
-            Esta semana
+            Semana passada
           </Button>
         </div>
         <p className="text-sm font-semibold text-ink" aria-live="polite">
@@ -142,7 +143,17 @@ function SemanaDaVez({
   const [checkin, setCheckin] = useState<Record<string, string>>(linha?.checkin ?? {});
   const [aviso, setAviso] = useState(linha?.aviso_interno ?? "");
   const [mensagem, setMensagem] = useState(linha?.mensagem_cliente ?? "");
-  const [fase, setFase] = useState<null | "salvando" | "cruzando" | "avisando">(null);
+  const [fase, setFase] = useState<null | "salvando" | "cruzando" | "avisando" | "puxando">(null);
+  // O que o Reportei trouxe (ainda sem salvar): de onde veio cada número e os avisos da consulta.
+  const [doReportei, setDoReportei] = useState<{
+    origem: Record<string, string>;
+    preenchidos: number;
+    mantidos: number;
+    parcial: boolean;
+    periodo: { inicio: string; fim: string };
+    avisos: string[];
+    semCanal: string[];
+  } | null>(null);
   const [ocupadoComDecisao, setOcupadoComDecisao] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
@@ -198,6 +209,35 @@ function SemanaDaVez({
       router.refresh();
     } catch {
       setErro("Não deu pra salvar agora. Tente de novo.");
+    } finally {
+      setFase(null);
+    }
+  }
+
+  // Coloca os números do Reportei só nos campos vazios (o que a pessoa já digitou não é trocado).
+  async function puxar() {
+    setErro(null);
+    setSalvo(false);
+    setDoReportei(null);
+    setFase("puxando");
+    try {
+      const r = await puxarNumerosDaSemana({ mapeamentoId, semana: segunda });
+      if ("erro" in r) return setErro(r.erro);
+      let preenchidos = 0;
+      let mantidos = 0;
+      const novos = { ...atualRef.current.numeros };
+      for (const [chave, valor] of Object.entries(r.numeros)) {
+        if ((novos[chave] ?? "").trim() === "") {
+          novos[chave] = valor;
+          preenchidos += 1;
+        } else if (novos[chave].trim() !== valor) {
+          mantidos += 1;
+        }
+      }
+      setNumeros(novos);
+      setDoReportei({ origem: r.origem, preenchidos, mantidos, parcial: r.parcial, periodo: r.periodo, avisos: r.avisos, semCanal: r.semCanal });
+    } catch {
+      setErro("Não deu pra falar com o Reportei agora. Tente de novo.");
     } finally {
       setFase(null);
     }
@@ -268,6 +308,29 @@ function SemanaDaVez({
         <h2 id={`${id}-t1`} className="text-sm font-semibold text-ink">
           1 · Números da semana
         </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={puxar} disabled={travado || ocupado}>
+            {fase === "puxando" ? "Buscando no Reportei..." : "Puxar do Reportei"}
+          </Button>
+          <p className="text-xs text-ink-muted">
+            Preenche os campos vazios com Instagram e anúncios (Meta e Google). Qualificados, propostas e vendas vêm do CRM do cliente: preencha à mão.
+          </p>
+        </div>
+        {doReportei && (
+          <div role="status" className="space-y-1 rounded-lg bg-canvas px-3 py-2 text-xs text-ink">
+            <p>
+              Reportei, {formatarDataBR(doReportei.periodo.inicio)} a {formatarDataBR(doReportei.periodo.fim)}: {doReportei.preenchidos} número(s) preenchido(s)
+              {doReportei.mantidos > 0 ? `, ${doReportei.mantidos} mantido(s) porque você já tinha digitado outro valor` : ""}. Confira e clique em Salvar.
+            </p>
+            {doReportei.parcial && <p className="text-warning">A semana ainda não acabou: os números são parciais.</p>}
+            {doReportei.semCanal.length > 0 && <p>Sem canal ativo no Reportei: {doReportei.semCanal.join(", ")}.</p>}
+            {doReportei.avisos.map((t) => (
+              <p key={t} className="text-warning">
+                {t}
+              </p>
+            ))}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {NUMEROS_DA_SEMANA.map(([chave, rotulo]) => (
             <div key={chave}>
@@ -287,6 +350,7 @@ function SemanaDaVez({
               />
               <p id={`${id}-numero-${chave}-dica`} className="mt-1 text-[11px] text-ink-muted">
                 Semana anterior: {anterior?.numeros?.[chave] || "—"}
+                {doReportei?.origem[chave] ? ` · Reportei: ${doReportei.origem[chave]}` : ""}
               </p>
             </div>
           ))}

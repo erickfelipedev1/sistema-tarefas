@@ -61,7 +61,7 @@ async function tratar(req: Request) {
   const projetos = Array.from(new Set((mapeamentos ?? []).map((m) => m.project_id as string)));
   const [etapas, semanas, meses, otimizacoes, clientes, direcao] = await Promise.all([
     admin.from("est_etapas").select("id, mapeamento_id, codigo, status, vence_em").in("mapeamento_id", ids),
-    admin.from("est_semanas").select("mapeamento_id, semana, numeros").in("mapeamento_id", ids).eq("semana", segundaDaSemana(hoje)),
+    admin.from("est_semanas").select("mapeamento_id, semana, numeros").in("mapeamento_id", ids).eq("semana", somarDias(segundaDaSemana(hoje), -7)),
     admin.from("est_meses").select("mapeamento_id, mes, status").in("mapeamento_id", ids).eq("mes", somarMeses(hoje.slice(0, 7), -1)),
     admin.from("est_otimizacoes").select("id, mapeamento_id, titulo, updated_at").in("mapeamento_id", ids).eq("status", "cliente_avisado").lte("updated_at", `${somarDias(hoje, -7)}T23:59:59Z`),
     admin.from("projects").select("id, name").in("id", projetos),

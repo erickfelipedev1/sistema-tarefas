@@ -32,6 +32,9 @@ import {
   type SugestaoDaSemana,
 } from "@/lib/estrategia/rotina";
 import { COLUNAS_DA_SEMANA, type ConteudoDaEtapa, type EstSemana } from "@/lib/estrategia/tipos";
+import { ErroReportei, reporteiConfigurado } from "@/lib/reportei";
+import { periodoDaSemanaParaOReportei } from "@/lib/estrategia/numeros-externos";
+import { puxarNumerosDoReportei } from "@/lib/estrategia/numeros-do-reportei";
 import {
   ErroDaIA,
   ErroDeAvaliacao,
@@ -131,6 +134,54 @@ function pecaParaARotina(p: Record<string, unknown>): PecaParaARotina {
 }
 
 // ---------------------------------------------------------------- semana
+
+// Preenche (sem salvar) os números da semana a partir do Reportei do cliente.
+// A tela só coloca os valores nos campos vazios: a pessoa revisa e salva.
+export async function puxarNumerosDaSemana(dados: { mapeamentoId: string; semana: string }): Promise<
+  | {
+      ok: true;
+      numeros: Record<string, string>;
+      origem: Record<string, string>;
+      avisos: string[];
+      semCanal: string[];
+      parcial: boolean;
+      periodo: { inicio: string; fim: string };
+    }
+  | Erro
+> {
+  const a = await abrir(dados.mapeamentoId);
+  if ("erro" in a) return a;
+  if (!ehSegunda(String(dados.semana))) return { erro: "A semana começa numa segunda-feira." };
+  if (!reporteiConfigurado()) return { erro: "O Reportei ainda não foi ligado no d.hub (falta o REPORTEI_API_TOKEN na Vercel)." };
+
+  const { data: projeto } = await a.supabase.from("projects").select("reportei_project_id").eq("id", a.mapeamento.project_id).maybeSingle();
+  const reporteiId = Number((projeto as { reportei_project_id?: number | string | null } | null)?.reportei_project_id);
+  if (!Number.isInteger(reporteiId) || reporteiId <= 0) {
+    return { erro: "Este cliente não está vinculado ao Reportei. Vincule na aba Analytics do projeto dele." };
+  }
+
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const janela = periodoDaSemanaParaOReportei(dados.semana, hoje);
+  if ("erro" in janela) return janela;
+
+  try {
+    const r = await puxarNumerosDoReportei(reporteiId, janela.periodo);
+    if (Object.keys(r.numeros).length === 0) {
+      return { erro: r.avisos[0] ?? "O Reportei não devolveu nenhum número deste cliente para a semana. Preencha à mão." };
+    }
+    return {
+      ok: true,
+      numeros: r.numeros as Record<string, string>,
+      origem: r.origem as Record<string, string>,
+      avisos: r.avisos,
+      semCanal: r.semCanal,
+      parcial: janela.parcial,
+      periodo: { inicio: janela.periodo.inicio, fim: janela.periodo.fim },
+    };
+  } catch (e) {
+    return { erro: e instanceof ErroReportei ? e.message : "Não deu pra falar com o Reportei agora. Tente de novo." };
+  }
+}
 
 export async function salvarSemana(dados: {
   mapeamentoId: string;
