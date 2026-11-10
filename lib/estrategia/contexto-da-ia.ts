@@ -82,6 +82,11 @@ export function cortar(texto: string, limite: number): string {
   return t.length > limite ? `${t.slice(0, limite)}\n[…texto cortado para caber na análise]` : t;
 }
 
+const MATERIAL_PRINCIPAL: Record<string, string> = {
+  sistema_editorial: "SISTEMA EDITORIAL DESTA ETAPA (rascunho do estrategista)",
+  plano_do_periodo: "PLANO DO PERÍODO PARA ESTE CALENDÁRIO (relatório do fechamento do mês)",
+};
+
 export interface EtapaParaOPrompt {
   codigo: string;
   rotulo: string; // "D7 · Objetivo, KPIs e OKRs"
@@ -167,12 +172,12 @@ function montar(d: DadosDoPrompt, lim: Limites): { system: string; user: string 
   partes.push("", `INSUMOS DESTA ETAPA (${d.etapa.rotulo})`, insumosDaEtapa(d.etapa.codigo, d.etapa.rotulo, d.etapa.campos, lim));
   for (const [chave, texto] of Object.entries(d.etapa.apoio)) {
     if (chave !== d.acao.id && texto.trim() !== "") {
-      // O sistema editorial (D10B) é o material principal do calendário: cabe inteiro e tem título próprio.
-      const editorial = chave === "sistema_editorial";
+      // Material principal do calendário (D10B e fechamento do mês): cabe inteiro e tem título próprio.
+      const principal = Object.hasOwn(MATERIAL_PRINCIPAL, chave) ? MATERIAL_PRINCIPAL[chave] : undefined;
       partes.push(
         "",
-        editorial ? "SISTEMA EDITORIAL DESTA ETAPA (rascunho do estrategista)" : `MATERIAL DE APOIO JÁ GERADO NESTA ETAPA (${chave})`,
-        limpar(cortar(texto, editorial ? 12000 : 4000))
+        principal ?? `MATERIAL DE APOIO JÁ GERADO NESTA ETAPA (${chave})`,
+        limpar(cortar(texto, principal ? 12000 : 4000))
       );
     }
   }

@@ -259,11 +259,12 @@ function esquemaDoCalendario(formatos: readonly string[]) {
   } as const;
 }
 
-// Mesma lógica da geração de texto, mas a resposta é o JSON do calendário (sem
-// validar o conteúdo: quem chama passa por normalizarPecas).
-export async function gerarCalendarioDaIA(
+// Chamada que devolve JSON no esquema pedido (calendário, análise semanal). Mesma
+// lógica da geração de texto; o conteúdo só é conferido por quem chama.
+async function gerarJsonDaIA(
   prompt: { system: string; user: string },
-  formatos: readonly string[]
+  schema: object,
+  avisoSeCortou: string
 ): Promise<{ bruto: unknown; uso: UsoDaIA }> {
   let mensagem: Anthropic.Beta.BetaMessage;
   try {
@@ -272,7 +273,7 @@ export async function gerarCalendarioDaIA(
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: "medium", format: { type: "json_schema", schema: esquemaDoCalendario(formatos) } },
+      output_config: { effort: "medium", format: { type: "json_schema", schema: schema as Record<string, unknown> } },
       system: prompt.system,
       messages: [{ role: "user", content: prompt.user }],
     }, { timeout: 240_000, maxRetries: 0 });
@@ -287,9 +288,7 @@ export async function gerarCalendarioDaIA(
   if (mensagem.stop_reason === "refusal") {
     throw new ErroDeAvaliacao("A IA não respondeu a este pedido. Reveja os insumos.", uso);
   }
-  if (mensagem.stop_reason === "max_tokens") {
-    throw new ErroDeAvaliacao("O calendário ficou grande demais e foi cortado. Reduza o período ou a capacidade e tente de novo.", uso);
-  }
+  if (mensagem.stop_reason === "max_tokens") throw new ErroDeAvaliacao(avisoSeCortou, uso);
   const texto = mensagem.content
     .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
     .map((b) => b.text)
@@ -297,6 +296,55 @@ export async function gerarCalendarioDaIA(
   try {
     return { bruto: JSON.parse(texto), uso };
   } catch {
-    throw new ErroDeAvaliacao("A IA devolveu o calendário fora do formato. Tente de novo.", uso);
+    throw new ErroDeAvaliacao("A IA devolveu a resposta fora do formato. Tente de novo.", uso);
   }
+}
+
+export function gerarCalendarioDaIA(
+  prompt: { system: string; user: string },
+  formatos: readonly string[]
+): Promise<{ bruto: unknown; uso: UsoDaIA }> {
+  return gerarJsonDaIA(
+    prompt,
+    esquemaDoCalendario(formatos),
+    "O calendário ficou grande demais e foi cortado. Reduza o período ou a capacidade e tente de novo."
+  );
+}
+
+// ---------------------------------------------------------------- análise semanal
+
+export const PROMPT_DA_SEMANA = { chave: "analise_semanal", versao: VERSAO_DO_GUIA } as const;
+export const PROMPT_DO_RELATORIO_MENSAL = { chave: "relatorio_mensal", versao: VERSAO_DO_GUIA } as const;
+
+const ESQUEMA_DA_SEMANA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["leitura", "sugestoes", "aviso_interno", "mensagem_cliente"],
+  properties: {
+    leitura: TEXTO_CURTO("Markdown curto: ## O que aconteceu, ## Sinais (percepção, comportamento, resultado), ## Em relação ao objetivo, ## Atenção."),
+    sugestoes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["titulo", "area", "sinal", "hipotese", "ajuste", "peca", "muda_peca_aprovada", "indicador"],
+        properties: {
+          titulo: TEXTO_CURTO("Título curto do ajuste."),
+          area: { type: "string", enum: ["mensagem", "prova", "cta", "formato", "horario", "tema", "midia", "comercial", "outro"] },
+          sinal: TEXTO_CURTO("O dado ou a fala que motiva o ajuste."),
+          hipotese: TEXTO_CURTO("Hipótese em linguagem provisória (\"pode estar...\")."),
+          ajuste: TEXTO_CURTO("O que mudar e em qual peça."),
+          peca: TEXTO_CURTO("Data e tema da peça afetada, ou vazio."),
+          muda_peca_aprovada: { type: "boolean" },
+          indicador: TEXTO_CURTO("O que observar na próxima semana."),
+        },
+      },
+    },
+    aviso_interno: TEXTO_CURTO("2 a 4 linhas para o responsável interno."),
+    mensagem_cliente: TEXTO_CURTO("Mensagem de WhatsApp curta, próxima e objetiva, no tom da Now D.gital, explicando os ajustes da semana e o porquê."),
+  },
+} as const;
+
+export function gerarAnaliseDaSemanaDaIA(prompt: { system: string; user: string }): Promise<{ bruto: unknown; uso: UsoDaIA }> {
+  return gerarJsonDaIA(prompt, ESQUEMA_DA_SEMANA, "A análise ficou grande demais e foi cortada. Tente de novo.");
 }

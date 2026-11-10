@@ -7,10 +7,16 @@ import {
   COLUNAS_DA_ETAPA,
   COLUNAS_DA_PECA,
   COLUNAS_DA_RESPOSTA,
+  COLUNAS_DA_OTIMIZACAO,
+  COLUNAS_DA_SEMANA,
   COLUNAS_DO_MAPEAMENTO,
+  COLUNAS_DO_MES,
   type EstEtapa,
   type EstMapeamento,
+  type EstMes,
+  type EstOtimizacao,
   type EstPeca,
+  type EstSemana,
   type EstResposta,
 } from "@/lib/estrategia/tipos";
 
@@ -61,6 +67,14 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
     .eq("mapeamento_id", id)
     .order("data", { ascending: true, nullsFirst: false });
 
+  // Rotina do ciclo (semanas, ajustes, meses). Se as tabelas ainda não existem (migration 0109), a página abre sem elas.
+  const [{ data: semanas, error: erroDasSemanas }, { data: otimizacoes, error: erroDasOtimizacoes }, { data: meses, error: erroDosMeses }] =
+    await Promise.all([
+      supabase.from("est_semanas").select(COLUNAS_DA_SEMANA).eq("mapeamento_id", id).order("semana", { ascending: false }).limit(60),
+      supabase.from("est_otimizacoes").select(COLUNAS_DA_OTIMIZACAO).eq("mapeamento_id", id).order("created_at", { ascending: false }).limit(200),
+      supabase.from("est_meses").select(COLUNAS_DO_MES).eq("mapeamento_id", id).order("mes", { ascending: false }).limit(24),
+    ]);
+
   return (
     <Coreografia>
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -80,6 +94,9 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
           souDirecao={perfil?.ve_tudo === true}
           respostas={respostasLidas(erroDasRespostas ? [] : respostas ?? [])}
           pecas={(pecas ?? []) as unknown as EstPeca[]}
+          semanas={erroDasSemanas ? [] : ((semanas ?? []) as unknown as EstSemana[])}
+          otimizacoes={erroDasOtimizacoes ? [] : ((otimizacoes ?? []) as unknown as EstOtimizacao[])}
+          meses={erroDosMeses ? [] : ((meses ?? []) as unknown as EstMes[])}
           iaLigada={!!process.env.ANTHROPIC_API_KEY}
         />
       </main>

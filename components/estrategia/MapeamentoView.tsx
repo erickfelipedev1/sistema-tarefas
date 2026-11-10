@@ -24,13 +24,35 @@ import {
 } from "@/lib/estrategia/etapas";
 import { paraISO } from "@/lib/estrategia/dias-uteis";
 import { AREAS, areasAbaixoDoMinimo, calcularScore, NOTA_MINIMA_DA_AREA } from "@/lib/estrategia/perguntas";
-import type { EstEtapa, EstMapeamento, EstPeca, EstResposta, ItemDoChecklist, StatusDoMapeamento } from "@/lib/estrategia/tipos";
+import type {
+  EstEtapa,
+  EstMapeamento,
+  EstMes,
+  EstOtimizacao,
+  EstPeca,
+  EstResposta,
+  EstSemana,
+  ItemDoChecklist,
+  StatusDoMapeamento,
+} from "@/lib/estrategia/tipos";
 import { formatarDataBR } from "@/lib/format";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronDownIcon, Trash2Icon } from "../ui/icons";
 import KickoffPanel from "./KickoffPanel";
 import CalendarioDasPecas from "./CalendarioDasPecas";
+import RotinaDaSemana from "./RotinaDaSemana";
+import PainelDeOtimizacao from "./PainelDeOtimizacao";
+import FechamentoDoMes from "./FechamentoDoMes";
+
+type Aba = "etapas" | "semana" | "otimizacao" | "mes";
+
+const ABAS: { id: Aba; rotulo: string }[] = [
+  { id: "etapas", rotulo: "Etapas" },
+  { id: "semana", rotulo: "Semana" },
+  { id: "otimizacao", rotulo: "Otimização" },
+  { id: "mes", rotulo: "Mês" },
+];
 
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 read-only:bg-canvas read-only:text-ink-muted disabled:cursor-not-allowed disabled:bg-canvas disabled:text-ink-muted";
@@ -103,6 +125,9 @@ export default function MapeamentoView({
   souDirecao,
   respostas,
   pecas,
+  semanas,
+  otimizacoes,
+  meses,
   iaLigada,
 }: {
   mapeamento: EstMapeamento;
@@ -112,9 +137,13 @@ export default function MapeamentoView({
   souDirecao: boolean;
   respostas: EstResposta[];
   pecas: EstPeca[];
+  semanas: EstSemana[];
+  otimizacoes: EstOtimizacao[];
+  meses: EstMes[];
   iaLigada: boolean;
 }) {
   const router = useRouter();
+  const [aba, setAba] = useState<Aba>("etapas");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   // A data de hoje vem do navegador (o servidor pode estar em outro fuso).
@@ -141,6 +170,8 @@ export default function MapeamentoView({
     () => modelosDoServico(mapeamento.servico).some((m) => m.codigo === "d10c") && porCodigo.get("d10c")?.status !== "aprovada",
     [mapeamento.servico, porCodigo]
   );
+
+  const d13Aprovada = porCodigo.get("d13")?.status === "aprovada";
 
   const status = mapeamento.status;
   const responsavel = mapeamento.responsavel_id ? nomeDaPessoa.get(mapeamento.responsavel_id) : null;
@@ -228,7 +259,59 @@ export default function MapeamentoView({
         )}
       </div>
 
-      <div className="space-y-5">
+      <div role="tablist" aria-label="Seções do mapeamento" className="mb-4 flex flex-wrap gap-1 border-b border-line">
+        {ABAS.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            role="tab"
+            id={`aba-${a.id}`}
+            aria-selected={aba === a.id}
+            aria-controls={`painel-${a.id}`}
+            onClick={() => setAba(a.id)}
+            className={`-mb-px rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+              aba === a.id ? "border-brand text-ink" : "border-transparent text-ink-muted hover:text-ink"
+            }`}
+          >
+            {a.rotulo}
+          </button>
+        ))}
+      </div>
+
+      {aba !== "etapas" && (
+        <div role="tabpanel" id={`painel-${aba}`} aria-labelledby={`aba-${aba}`} className="space-y-3">
+          {!d13Aprovada && (
+            <p className="text-xs text-ink-muted">
+              A rotina do ciclo começa depois da reunião de apresentação (D13); você já pode usar estas abas para testar.
+            </p>
+          )}
+          {aba === "semana" && (
+            <RotinaDaSemana
+              mapeamentoId={mapeamento.id}
+              semanas={semanas}
+              pecas={pecas}
+              mapeamentoAtivo={status === "ativo"}
+              iaLigada={iaLigada}
+            />
+          )}
+          {aba === "otimizacao" && <PainelDeOtimizacao mapeamentoId={mapeamento.id} otimizacoes={otimizacoes} />}
+          {aba === "mes" && (
+            <FechamentoDoMes
+              mapeamentoId={mapeamento.id}
+              servico={mapeamento.servico}
+              meses={meses}
+              semanas={semanas}
+              otimizacoes={otimizacoes}
+              pecas={pecas}
+              mapeamentoAtivo={status === "ativo"}
+              iaLigada={iaLigada}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Fica montado (só escondido) para não perder o texto digitado nas etapas ao trocar de aba. */}
+      <div role={aba === "etapas" ? "tabpanel" : undefined} id="painel-etapas" aria-labelledby="aba-etapas" hidden={aba !== "etapas"} className="space-y-5">
         {grupos.map((g, i) => (
           <section key={g.grupo} aria-label={`Grupo ${i + 1}`}>
             <p className="mb-1.5 flex flex-wrap items-baseline gap-x-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
@@ -426,7 +509,7 @@ function EtapaCard({
   }
 
   async function gerar(acao: AcaoDaEtapa) {
-    if (acao.calendario && pecas.some((p) => p.gerada_por_ia && p.status === "planejada" && !p.enviado_em)) {
+    if (acao.calendario && pecas.some((p) => p.origem === "d10b" && p.gerada_por_ia &&p.status === "planejada" && !p.enviado_em)) {
       if (!window.confirm("Gerar de novo substitui as peças da IA deste período que ainda estão \"planejadas\" e ninguém editou. As peças que você criou ou editou à mão, as de outros períodos e as já enviadas ao d.hub ficam. Continuar?")) return;
     }
     if (acao.id === "main" && resultado.trim() !== "") {
@@ -705,7 +788,7 @@ function EtapaCard({
                 <CalendarioDasPecas
                   mapeamentoId={mapeamento.id}
                   servico={mapeamento.servico}
-                  pecas={pecas}
+                  pecas={pecas.filter((p) => p.origem === "d10b")}
                   mapeamentoAtivo={mapeamentoAtivo}
                   d10bAprovada={aprovada}
                   perfilPendente={perfilPendente}

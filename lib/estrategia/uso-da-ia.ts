@@ -16,6 +16,7 @@ export interface PedidoDeUso {
   modelo: string;
   entradaHash: string;
   porMapeamento: number; // máximo de chamadas deste tipo por mapeamento
+  janelaDoMapeamentoEmDias?: number; // se informado, o teto por mapeamento conta só os últimos N dias
   porPessoaPorDia: number; // máximo de chamadas deste tipo por pessoa em 24 h
   mensagemDoMapeamento: string;
   mensagemDaPessoa: string;
@@ -25,8 +26,10 @@ const ERRO_AO_CONTAR = "Não deu pra conferir o limite de uso da IA agora. Tente
 
 async function contar(admin: SupabaseClient, d: PedidoDeUso) {
   const desde = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const desdeDoMapeamento = d.janelaDoMapeamentoEmDias ? new Date(Date.now() - d.janelaDoMapeamentoEmDias * 86_400_000).toISOString() : null;
+  const consultaDoMapeamento = admin.from("est_geracoes").select("id", { count: "exact", head: true }).eq("mapeamento_id", d.mapeamentoId).eq("tipo", d.tipo);
   const [porMapeamento, porPessoa] = await Promise.all([
-    admin.from("est_geracoes").select("id", { count: "exact", head: true }).eq("mapeamento_id", d.mapeamentoId).eq("tipo", d.tipo),
+    desdeDoMapeamento ? consultaDoMapeamento.gte("created_at", desdeDoMapeamento) : consultaDoMapeamento,
     admin
       .from("est_geracoes")
       .select("id", { count: "exact", head: true })

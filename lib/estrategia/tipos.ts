@@ -2,6 +2,7 @@
 // devolve (snake_case).
 import type { ServicoId, StatusDaEtapa, TipoDeNegocio } from "@/lib/estrategia/etapas";
 import type { NotasDaResposta } from "@/lib/estrategia/perguntas";
+import type { SugestaoDaSemana, StatusDaOtimizacao } from "@/lib/estrategia/rotina";
 
 export type StatusDoMapeamento = "ativo" | "pausado" | "concluido";
 
@@ -103,3 +104,66 @@ export const COLUNAS_DO_MAPEAMENTO =
 
 export const COLUNAS_DA_ETAPA =
   "id, mapeamento_id, codigo, status, vence_em, conteudo, decisao_previa, checklist, justificativa, aprovado_por, aprovado_em, created_at, updated_at";
+
+// ---------------------------------------------------------------- rotina do ciclo (Fase 5)
+
+export interface EstSemana {
+  id: string;
+  mapeamento_id: string;
+  semana: string; // segunda-feira (AAAA-MM-DD)
+  numeros: Record<string, string>;
+  checkin: Record<string, string>;
+  leitura: string;
+  sugestoes: SugestaoDaSemana[];
+  aviso_interno: string;
+  mensagem_cliente: string;
+  interno_avisado: boolean;
+  cliente_avisado: boolean;
+  status: "aberta" | "decisoes" | "concluida";
+  gerado_em: string | null;
+  updated_at: string;
+}
+
+export const COLUNAS_DA_SEMANA =
+  "id, mapeamento_id, semana, numeros, checkin, leitura, sugestoes, aviso_interno, mensagem_cliente, interno_avisado, cliente_avisado, status, gerado_em, updated_at";
+
+export interface EstOtimizacao {
+  id: string;
+  mapeamento_id: string;
+  semana: string;
+  titulo: string;
+  area: string;
+  sinal: string;
+  hipotese: string;
+  ajuste: string;
+  peca: string;
+  muda_peca_aprovada: boolean;
+  indicador: string;
+  decisao: "aceito" | "editado";
+  justificativa: string;
+  status: StatusDaOtimizacao;
+  resultado: string;
+  resultado_em: string | null;
+  created_at: string;
+}
+
+export const COLUNAS_DA_OTIMIZACAO =
+  "id, mapeamento_id, semana, titulo, area, sinal, hipotese, ajuste, peca, muda_peca_aprovada, indicador, decisao, justificativa, status, resultado, resultado_em, created_at";
+
+export interface EstMes {
+  id: string;
+  mapeamento_id: string;
+  mes: string; // AAAA-MM
+  checkin: Record<string, string>;
+  periodo_inicio: string | null;
+  periodo_fim: string | null;
+  relatorio: string;
+  relatorio_em: string | null;
+  status: "aberto" | "aprovado";
+  justificativa: string;
+  aprovado_em: string | null;
+  updated_at: string;
+}
+
+export const COLUNAS_DO_MES =
+  "id, mapeamento_id, mes, checkin, periodo_inicio, periodo_fim, relatorio, relatorio_em, status, justificativa, aprovado_em, updated_at";

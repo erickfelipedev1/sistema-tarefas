@@ -67,6 +67,8 @@ export default function CalendarioDasPecas({
   mapeamentoAtivo,
   d10bAprovada,
   perfilPendente,
+  origem = "d10b",
+  bloqueio,
 }: {
   mapeamentoId: string;
   servico: ServicoId;
@@ -75,6 +77,10 @@ export default function CalendarioDasPecas({
   d10bAprovada: boolean;
   // O serviço tem D10C (implementação do perfil) e ele ainda não foi aprovado.
   perfilPendente: boolean;
+  // De onde vêm as peças novas: "d10b" (primeiro período) ou "mes-AAAA-MM" (fechamento do mês).
+  origem?: string;
+  // Texto de por que o envio ainda está fechado (padrão: aguardando a aprovação do D10B).
+  bloqueio?: string;
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -99,7 +105,7 @@ export default function CalendarioDasPecas({
     setAviso(null);
     setOcupado(true);
     try {
-      const r = await enviarPecasAoDhub(mapeamentoId);
+      const r = await enviarPecasAoDhub(mapeamentoId, origem);
       if ("erro" in r) return setErro(r.erro);
       setAviso(
         `${r.tarefas} tarefa(s) criada(s) e ${r.posts} post(s) em rascunho.${r.faltaram > 0 ? ` ${r.faltaram} peça(s) não foram enviadas: tente de novo.` : ""}`
@@ -147,7 +153,7 @@ export default function CalendarioDasPecas({
       </div>
 
       {!d10bAprovada && pecas.length > 0 && (
-        <p className="text-xs text-ink-muted">O envio ao d.hub abre depois que a Direção aprovar o D10B.</p>
+        <p className="text-xs text-ink-muted">{bloqueio ?? "O envio ao d.hub abre depois que a Direção aprovar o D10B."}</p>
       )}
       {d10bAprovada && perfilPendente && (
         <p className="text-xs text-ink-muted">O envio ao d.hub abre depois do D10C (implementação do perfil): o perfil vem antes das peças.</p>
@@ -173,7 +179,7 @@ export default function CalendarioDasPecas({
           formatos={formatos}
           onCancelar={() => setCriando(false)}
           onSalvar={async (d) => {
-            const r = await adicionarPeca(mapeamentoId, d);
+            const r = await adicionarPeca(mapeamentoId, d, origem);
             if ("ok" in r) {
               setCriando(false);
               router.refresh();

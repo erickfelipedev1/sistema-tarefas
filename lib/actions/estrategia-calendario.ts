@@ -1,12 +1,9 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MODELOS_DE_ETAPA, modelosDoServico, situacaoDasEtapas, tituloDaEtapa, type ServicoId, type StatusDaEtapa, type TipoDeNegocio } from "@/lib/estrategia/etapas";
-import { acaoDaEtapa, guiaDaEtapa, instrucaoDaAcao } from "@/lib/estrategia/guia-das-etapas";
-import { cortar, limpar, montarPromptDaEtapa, type EtapaParaOPrompt } from "@/lib/estrategia/contexto-da-ia";
-import { devolverReservaDaIA, registrarCustoDaIA, reservarUsoDaIA } from "@/lib/estrategia/uso-da-ia";
+import { modelosDoServico, situacaoDasEtapas, type ServicoId, type TipoDeNegocio } from "@/lib/estrategia/etapas";
+import { gerarPecasDoPeriodo, type LinhaDeEtapa } from "@/lib/estrategia/gerar-pecas";
 import {
   JORNADAS,
   STATUS_DA_PECA,
@@ -15,12 +12,10 @@ import {
   dataValida,
   descricaoDaTarefaDaPeca,
   formatosDoServico,
-  normalizarPecas,
   tituloDaTarefaDaPeca,
   type StatusDaPeca,
 } from "@/lib/estrategia/calendario";
 import { COLUNAS_DA_PECA, type ConteudoDaEtapa, type EstPeca } from "@/lib/estrategia/tipos";
-import { ErroDaIA, ErroDeAvaliacao, ErroSemCusto, MODELO_DA_GERACAO, PROMPT_DO_CALENDARIO, gerarCalendarioDaIA } from "@/lib/ia-estrategia";
 
 // Calendário de peças do D10B (Fase 4). Só equipe logada. Gerar o calendário
 // grava peças em est_pecas (rascunho editável); só depois que a Direção aprova o
@@ -35,8 +30,6 @@ const MAXIMO_DE_DIAS_DO_PERIODO = 62;
 const MAXIMO_POR_ENVIO = 60;
 
 type Erro = { erro: string };
-
-const sha256 = (texto: string) => createHash("sha256").update(texto).digest("hex");
 
 async function sessao() {
   const supabase = await createClient();
@@ -84,11 +77,6 @@ export async function gerarCalendario(dados: {
   }
 
   const servico = mapeamento.servico as ServicoId;
-  const tipo = mapeamento.tipo_negocio as TipoDeNegocio;
-  const guia = guiaDaEtapa("d10b");
-  const acao = acaoDaEtapa("d10b", "cal");
-  if (!guia || !acao) return { erro: "Esta etapa não tem a ação do calendário." };
-
   const conteudo = (etapa.conteudo ?? {}) as ConteudoDaEtapa;
   const inicio = conteudo.campos?.inicio ?? "";
   const fim = conteudo.campos?.fim ?? "";
@@ -102,110 +90,23 @@ export async function gerarCalendario(dados: {
   }
 
   const { data: todas } = await supabase.from("est_etapas").select("codigo, status, conteudo").eq("mapeamento_id", etapa.mapeamento_id);
-  const linhas = (todas ?? []) as { codigo: string; status: StatusDaEtapa; conteudo: ConteudoDaEtapa | null }[];
+  const linhas = (todas ?? []) as LinhaDeEtapa[];
   const situacao = situacaoDasEtapas(servico, linhas)[etapa.codigo];
   if (!situacao || situacao.situacao === "bloqueada") return { erro: "Esta etapa ainda está bloqueada." };
 
-  const rotuloDe = (codigo: string) => {
-    const m = MODELOS_DE_ETAPA.find((x) => x.codigo === codigo);
-    return m ? `${m.rotuloDoDia} · ${tituloDaEtapa(m, servico)}` : codigo.toUpperCase();
-  };
-  const paraOPrompt = (linha: { codigo: string; status: StatusDaEtapa; conteudo: ConteudoDaEtapa | null }): EtapaParaOPrompt => ({
-    codigo: linha.codigo,
-    rotulo: rotuloDe(linha.codigo),
-    status: linha.status,
-    resultado: linha.conteudo?.resultado ?? "",
-    campos: linha.conteudo?.campos ?? {},
-    apoio: linha.conteudo?.apoio ?? {},
-    decisaoPrevia: null,
-  });
-  const anteriores = guia.deps
-    .map((codigo) => linhas.find((l) => l.codigo === codigo))
-    .filter((l): l is (typeof linhas)[number] => !!l)
-    .map(paraOPrompt);
-
-  const formatos = formatosDoServico(servico);
-  const { data: cliente } = await supabase.from("projects").select("name").eq("id", mapeamento.project_id).maybeSingle();
-  const instrucao = [
-    instrucaoDaAcao(acao, servico),
-    "",
-    `PERÍODO DO CALENDÁRIO: de ${inicio} a ${fim} (use só datas dentro dele, no formato AAAA-MM-DD).`,
-    `FORMATOS PERMITIDOS: ${formatos.join(", ")}.`,
-  ].join("\n");
   // O sistema editorial é texto livre (material de trabalho): entra como dado, fora da <tarefa>.
-  const sistemaEditorial = limpar(cortar(conteudo.resultado ?? "", 12000));
-  const prompt = montarPromptDaEtapa({
-    clienteNome: (cliente?.name as string | undefined) ?? "",
-    servico,
-    tipo,
-    etapa: paraOPrompt({
-      codigo: etapa.codigo,
-      status: etapa.status as StatusDaEtapa,
-      conteudo: { ...conteudo, apoio: { ...(conteudo.apoio ?? {}), sistema_editorial: sistemaEditorial } },
-    }),
-    anteriores,
-    kickoff: null,
-    acao: { ...acao, instr: instrucao },
-  });
-
-  const admin = createAdminClient();
-  const reserva = await reservarUsoDaIA(admin, {
-    mapeamentoId: etapa.mapeamento_id,
+  return gerarPecasDoPeriodo({
+    supabase,
     usuarioId: user.id,
-    tipo: "calendario",
-    promptChave: PROMPT_DO_CALENDARIO.chave,
-    promptVersao: PROMPT_DO_CALENDARIO.versao,
-    modelo: MODELO_DA_GERACAO,
-    entradaHash: sha256(`${prompt.system}\n${prompt.user}`),
-    porMapeamento: LIMITE_DE_CALENDARIOS_POR_MAPEAMENTO,
-    porPessoaPorDia: LIMITE_DE_CALENDARIOS_POR_PESSOA_POR_DIA,
-    mensagemDoMapeamento: "Este mapeamento chegou ao limite de calendários gerados pela IA. Monte as peças à mão ou fale com a Direção.",
-    mensagemDaPessoa: "Você chegou ao limite de calendários da IA por hoje. Monte as peças à mão ou volte amanhã.",
+    mapeamento: { id: mapeamento.id, project_id: mapeamento.project_id, servico, tipo_negocio: mapeamento.tipo_negocio as TipoDeNegocio },
+    linhas,
+    inicio,
+    fim,
+    origem: "d10b",
+    tipoDeUso: "calendario",
+    limites: { porMapeamento: LIMITE_DE_CALENDARIOS_POR_MAPEAMENTO, porPessoaPorDia: LIMITE_DE_CALENDARIOS_POR_PESSOA_POR_DIA },
+    extras: { sistema_editorial: conteudo.resultado ?? "" },
   });
-  if ("erro" in reserva) return { erro: reserva.erro };
-
-  let gerado;
-  try {
-    gerado = await gerarCalendarioDaIA(prompt, formatos);
-  } catch (e) {
-    if (e instanceof ErroDeAvaliacao) await registrarCustoDaIA(admin, reserva.id, e.uso);
-    else if (e instanceof ErroSemCusto) await devolverReservaDaIA(admin, reserva.id);
-    if (e instanceof ErroDaIA) return { erro: e.message };
-    return { erro: "Não deu pra gerar agora. Tente de novo." };
-  }
-  await registrarCustoDaIA(admin, reserva.id, gerado.uso);
-
-  const { pecas, descartadas } = normalizarPecas(gerado.bruto, { servico, inicio, fim });
-  if (pecas.length === 0) return { erro: "A IA não devolveu peças aproveitáveis. Tente de novo ou monte as peças à mão." };
-
-  // Troca só as peças que a IA gerou, que ninguém editou, ainda "planejadas", não
-  // enviadas ao d.hub e dentro deste período (ou sem data). As feitas ou editadas
-  // à mão, as de outro período e as já enviadas ficam como estão.
-  const { data: antigas, error: erroAoLer } = await supabase
-    .from("est_pecas")
-    .select("id, data")
-    .eq("mapeamento_id", etapa.mapeamento_id)
-    .eq("origem", "d10b")
-    .eq("status", "planejada")
-    .eq("gerada_por_ia", true)
-    .is("enviado_em", null);
-  if (erroAoLer) return { erro: "Não deu pra guardar o calendário. Tente de novo." };
-  const { error: erroAoGravar } = await supabase
-    .from("est_pecas")
-    .insert(pecas.map((p) => ({ ...p, mapeamento_id: etapa.mapeamento_id, origem: "d10b", gerada_por_ia: true })));
-  if (erroAoGravar) {
-    return { erro: /300 peças/.test(erroAoGravar.message) ? erroAoGravar.message : "Não deu pra guardar o calendário. Tente de novo." };
-  }
-  const antigasIds = (antigas ?? [])
-    .filter((p) => !p.data || (p.data as string >= inicio && p.data as string <= fim))
-    .map((p) => p.id as string);
-  if (antigasIds.length > 0) {
-    const { error: erroAoTrocar } = await supabase.from("est_pecas").delete().in("id", antigasIds).is("enviado_em", null);
-    if (erroAoTrocar) {
-      return { erro: "O calendário novo foi guardado, mas não deu pra remover o anterior: apague as peças repetidas à mão." };
-    }
-  }
-  return { ok: true, total: pecas.length, descartadas };
 }
 
 // ---------------------------------------------------------------- editar peças
@@ -265,16 +166,17 @@ export async function salvarPeca(id: string, dados: DadosDaPeca): Promise<{ ok: 
   return { ok: true };
 }
 
-export async function adicionarPeca(mapeamentoId: string, dados: DadosDaPeca): Promise<{ ok: true } | Erro> {
+export async function adicionarPeca(mapeamentoId: string, dados: DadosDaPeca, origem = "d10b"): Promise<{ ok: true } | Erro> {
   const { supabase, user } = await sessao();
   if (!user) return { erro: "Sessão expirada. Entre de novo." };
   if (!UUID.test(String(mapeamentoId))) return { erro: "Mapeamento inválido." };
+  if (!/^(d10b|mes-[0-9]{4}-(0[1-9]|1[0-2]))$/.test(String(origem))) return { erro: "Origem da peça inválida." };
   const { data: m } = await supabase.from("est_mapeamentos").select("id, servico, status").eq("id", mapeamentoId).maybeSingle();
   if (!m) return { erro: "Mapeamento não encontrado." };
   if (m.status !== "ativo") return { erro: "Mapeamento pausado ou concluído: reative antes de editar." };
   const v = validarPeca(dados, m.servico as ServicoId);
   if ("erro" in v) return v;
-  const { error } = await supabase.from("est_pecas").insert({ ...v.linha, mapeamento_id: mapeamentoId, origem: "d10b" });
+  const { error } = await supabase.from("est_pecas").insert({ ...v.linha, mapeamento_id: mapeamentoId, origem });
   if (error) return { erro: /300 peças/.test(error.message) ? error.message : "Não deu pra criar a peça. Tente de novo." };
   return { ok: true };
 }
@@ -304,10 +206,11 @@ export async function excluirPeca(id: string): Promise<{ ok: true } | Erro> {
 
 // ---------------------------------------------------------------- enviar ao d.hub
 
-export async function enviarPecasAoDhub(mapeamentoId: string): Promise<{ ok: true; tarefas: number; posts: number; faltaram: number } | Erro> {
+export async function enviarPecasAoDhub(mapeamentoId: string, origem = "d10b"): Promise<{ ok: true; tarefas: number; posts: number; faltaram: number } | Erro> {
   const { supabase, user } = await sessao();
   if (!user) return { erro: "Sessão expirada. Entre de novo." };
   if (!UUID.test(String(mapeamentoId))) return { erro: "Mapeamento inválido." };
+  if (!/^(d10b|mes-[0-9]{4}-(0[1-9]|1[0-2]))$/.test(String(origem))) return { erro: "Origem das peças inválida." };
 
   const { data: m } = await supabase
     .from("est_mapeamentos")
@@ -336,10 +239,17 @@ export async function enviarPecasAoDhub(mapeamentoId: string): Promise<{ ok: tru
     .is("task_id", null)
     .lt("enviado_em", new Date(Date.now() - 5 * 60_000).toISOString());
 
+  // Peças de um mês só vão depois que o cliente aprovou o plano daquele mês.
+  if (origem !== "d10b") {
+    const { data: mes } = await supabase.from("est_meses").select("status").eq("mapeamento_id", mapeamentoId).eq("mes", origem.slice(4)).maybeSingle();
+    if (mes?.status !== "aprovado") return { erro: "Registre a aprovação do plano deste mês antes de enviar as peças ao d.hub." };
+  }
+
   const { data: lista } = await supabase
     .from("est_pecas")
     .select("id")
     .eq("mapeamento_id", mapeamentoId)
+    .eq("origem", origem)
     .is("enviado_em", null)
     .neq("status", "nao_publicada")
     .order("data", { ascending: true, nullsFirst: false })
@@ -377,6 +287,7 @@ export async function enviarPecasAoDhub(mapeamentoId: string): Promise<{ ok: tru
       .update({ enviado_em: new Date().toISOString() })
       .eq("id", id)
       .is("enviado_em", null)
+      .eq("origem", origem)
       .neq("status", "nao_publicada")
       .select(COLUNAS_DA_PECA);
     if (!reservada || reservada.length === 0) continue;
