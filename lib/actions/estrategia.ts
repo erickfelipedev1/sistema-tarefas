@@ -206,6 +206,22 @@ export async function aprovarEtapa(id: string): Promise<Ok | Erro> {
   const falta = oQueFaltaParaAprovar(modelo, situacao, c.etapa.checklist, c.etapa.justificativa ?? "");
   if (falta) return { erro: falta };
 
+  // Kickoff: só aprova com o roteiro respondido e todas as notas conferidas por uma pessoa.
+  if (c.etapa.codigo === "d1") {
+    const { data: respostas } = await supabase
+      .from("est_respostas")
+      .select("texto, notas, confirmada_em")
+      .eq("mapeamento_id", c.etapa.mapeamento_id);
+    const respondidas = (respostas ?? []).filter((r) => r.texto.trim() !== "");
+    if (respondidas.length === 0) return { erro: "Registre as respostas do kickoff antes de aprovar." };
+    const semNotas = respondidas.filter((r) => !r.notas).length;
+    if (semNotas > 0) return { erro: `Faltam as notas de ${semNotas} resposta${semNotas === 1 ? "" : "s"} do kickoff.` };
+    const naoConfirmadas = respondidas.filter((r) => !r.confirmada_em).length;
+    if (naoConfirmadas > 0) {
+      return { erro: `Confirme as notas de ${naoConfirmadas} resposta${naoConfirmadas === 1 ? "" : "s"} do kickoff antes de aprovar.` };
+    }
+  }
+
   const { data, error } = await supabase.from("est_etapas").update({ status: "aprovada" }).eq("id", id).select("id");
   if (error) return { erro: mensagemDoBanco(error.message, "Não deu pra aprovar a etapa. Tente de novo.") };
   if (!data || data.length === 0) return { erro: "Não deu pra aprovar a etapa." };

@@ -1,6 +1,7 @@
 // Tipos das tabelas do d.estratégia (migration 0104). Linhas como o Supabase
 // devolve (snake_case).
 import type { ServicoId, StatusDaEtapa, TipoDeNegocio } from "@/lib/estrategia/etapas";
+import type { NotasDaResposta } from "@/lib/estrategia/perguntas";
 
 export type StatusDoMapeamento = "ativo" | "pausado" | "concluido";
 
@@ -46,6 +47,21 @@ export interface EstEtapa {
   created_at: string;
   updated_at: string;
 }
+
+// Resposta do cliente a uma pergunta do kickoff (migration 0106).
+export interface EstResposta {
+  id: string;
+  mapeamento_id: string;
+  pergunta_codigo: string;
+  texto: string;
+  notas: NotasDaResposta | null;
+  confirmada_por: string | null;
+  confirmada_em: string | null;
+  updated_at: string;
+}
+
+export const COLUNAS_DA_RESPOSTA =
+  "id, mapeamento_id, pergunta_codigo, texto, notas, confirmada_por, confirmada_em, updated_at";
 
 export const COLUNAS_DO_MAPEAMENTO =
   "id, project_id, servico, tipo_negocio, status, inicio, prazo_interno, prazo_cliente, responsavel_id, created_by, created_at, updated_at";

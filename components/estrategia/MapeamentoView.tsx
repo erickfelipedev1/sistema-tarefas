@@ -20,11 +20,13 @@ import {
   type SituacaoDaEtapa,
 } from "@/lib/estrategia/etapas";
 import { paraISO } from "@/lib/estrategia/dias-uteis";
-import type { EstEtapa, EstMapeamento, ItemDoChecklist, StatusDoMapeamento } from "@/lib/estrategia/tipos";
+import { AREAS, areasAbaixoDoMinimo, calcularScore, NOTA_MINIMA_DA_AREA } from "@/lib/estrategia/perguntas";
+import type { EstEtapa, EstMapeamento, EstResposta, ItemDoChecklist, StatusDoMapeamento } from "@/lib/estrategia/tipos";
 import { formatarDataBR } from "@/lib/format";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronDownIcon, Trash2Icon } from "../ui/icons";
+import KickoffPanel from "./KickoffPanel";
 
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 read-only:bg-canvas read-only:text-ink-muted";
@@ -67,12 +69,16 @@ export default function MapeamentoView({
   cliente,
   profiles,
   souDirecao,
+  respostas,
+  iaLigada,
 }: {
   mapeamento: EstMapeamento;
   etapas: EstEtapa[];
   cliente: { id: string; name: string };
   profiles: Pessoa[];
   souDirecao: boolean;
+  respostas: EstResposta[];
+  iaLigada: boolean;
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -207,6 +213,9 @@ export default function MapeamentoView({
                       hoje={hoje}
                       souDirecao={souDirecao}
                       mapeamentoAtivo={status === "ativo"}
+                      mapeamento={mapeamento}
+                      respostas={respostas}
+                      iaLigada={iaLigada}
                       nomeDeQuemAprovou={etapa.aprovado_por ? nomeDaPessoa.get(etapa.aprovado_por) ?? "Alguém da equipe" : null}
                     />
                   </li>
@@ -229,6 +238,9 @@ function EtapaCard({
   hoje,
   souDirecao,
   mapeamentoAtivo,
+  mapeamento,
+  respostas,
+  iaLigada,
   nomeDeQuemAprovou,
 }: {
   modelo: ModeloDeEtapa;
@@ -239,6 +251,9 @@ function EtapaCard({
   hoje: string | null;
   souDirecao: boolean;
   mapeamentoAtivo: boolean;
+  mapeamento: EstMapeamento;
+  respostas: EstResposta[];
+  iaLigada: boolean;
   nomeDeQuemAprovou: string | null;
 }) {
   const router = useRouter();
@@ -273,6 +288,25 @@ function EtapaCard({
   const atrasada = !aprovada && hoje !== null && etapa.vence_em < hoje;
   const semPermissao = modelo.pontoDeControle && !souDirecao;
   const faltaTexto = `falta aprovar: ${falta.map((c) => c.toUpperCase()).join(", ")}`;
+
+  // D2: as áreas do kickoff com lacuna (só respostas com texto contam como resposta).
+  const avisoDoD2 = useMemo(() => {
+    if (modelo.codigo !== "d2") return null;
+    const respondidas = respostas.filter((r) => r.texto.trim() !== "");
+    if (respondidas.length === 0) return "Responda o kickoff (D1) para ver as áreas com lacuna.";
+    const score = calcularScore(
+      mapeamento.servico,
+      mapeamento.tipo_negocio,
+      respostas.map((r) => ({ pergunta_codigo: r.pergunta_codigo, texto: r.texto, notas: r.notas }))
+    );
+    const abaixo = areasAbaixoDoMinimo(score);
+    if (abaixo.length === 0) {
+      return `Nenhuma área abaixo de ${NOTA_MINIMA_DA_AREA}: se o score é suficiente, aprove com a justificativa "Score suficiente".`;
+    }
+    return `Áreas abaixo de ${NOTA_MINIMA_DA_AREA} no kickoff: ${abaixo
+      .map((a) => `${AREAS[a]} (${score[a]})`)
+      .join(", ")}. Pergunte só o que falta, em até 45 minutos.`;
+  }, [modelo.codigo, respostas, mapeamento.servico, mapeamento.tipo_negocio]);
 
   const tomDaSituacao = { bloqueada: "neutral", liberada: "brand", em_andamento: "warning", aprovada: "success" } as const;
   const rotuloDaSituacao = { bloqueada: "Bloqueada", liberada: "Liberada", em_andamento: "Em andamento", aprovada: "Aprovada" } as const;
@@ -366,6 +400,22 @@ function EtapaCard({
                   A orientação passo a passo desta etapa (por quê, o quê, como) chega na Fase 2.
                 </p>
               )}
+
+              {modelo.codigo === "d1" && (
+                <KickoffPanel
+                  mapeamento={{
+                    id: mapeamento.id,
+                    servico: mapeamento.servico,
+                    tipo_negocio: mapeamento.tipo_negocio,
+                    status: mapeamento.status,
+                  }}
+                  respostas={respostas}
+                  iaLigada={iaLigada}
+                  editavel={mapeamentoAtivo && situacao !== "aprovada"}
+                />
+              )}
+
+              {avisoDoD2 && <p className="rounded-lg bg-canvas px-3 py-2 text-sm text-ink">{avisoDoD2}</p>}
 
               <div>
                 <label htmlFor={`${id}-resultado`} className="mb-1 block text-xs font-medium text-ink-muted">
