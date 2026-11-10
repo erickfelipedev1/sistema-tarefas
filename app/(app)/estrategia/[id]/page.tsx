@@ -5,10 +5,12 @@ import MapeamentoView from "@/components/estrategia/MapeamentoView";
 import { normalizarNotas } from "@/lib/estrategia/perguntas";
 import {
   COLUNAS_DA_ETAPA,
+  COLUNAS_DA_PECA,
   COLUNAS_DA_RESPOSTA,
   COLUNAS_DO_MAPEAMENTO,
   type EstEtapa,
   type EstMapeamento,
+  type EstPeca,
   type EstResposta,
 } from "@/lib/estrategia/tipos";
 
@@ -52,6 +54,13 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
   const kickoffForaDoBanco =
     !!erroDasRespostas && (erroDasRespostas.code === "42P01" || /does not exist/i.test(erroDasRespostas.message ?? ""));
 
+  // Peças do calendário (D10B). Se a tabela ainda não existe (migration 0108), a página abre sem elas.
+  const { data: pecas } = await supabase
+    .from("est_pecas")
+    .select(COLUNAS_DA_PECA)
+    .eq("mapeamento_id", id)
+    .order("data", { ascending: true, nullsFirst: false });
+
   return (
     <Coreografia>
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -70,6 +79,7 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
           profiles={profiles ?? []}
           souDirecao={perfil?.ve_tudo === true}
           respostas={respostasLidas(erroDasRespostas ? [] : respostas ?? [])}
+          pecas={(pecas ?? []) as unknown as EstPeca[]}
           iaLigada={!!process.env.ANTHROPIC_API_KEY}
         />
       </main>

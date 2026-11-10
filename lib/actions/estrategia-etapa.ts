@@ -69,6 +69,7 @@ export async function gerarComIA(dados: {
   const guia = guiaDaEtapa(etapa.codigo);
   const acao = acaoDaEtapa(etapa.codigo, dados.acaoId);
   if (!guia || !acao) return { erro: "Esta etapa não tem essa ação de IA." };
+  if (acao.calendario) return { erro: "O calendário é gerado pelo botão do calendário." };
 
   const { data: todas } = await supabase
     .from("est_etapas")

@@ -224,3 +224,79 @@ export async function gerarTextoDaEtapa(prompt: {
   if (!texto) throw new ErroDeAvaliacao("A IA não devolveu texto. Tente de novo com menos material.", uso);
   return { texto, truncado: mensagem.stop_reason === "max_tokens", uso };
 }
+
+// ---------------------------------------------------------------- calendário (D10B)
+
+export const PROMPT_DO_CALENDARIO = { chave: "calendario_d10b", versao: VERSAO_DO_GUIA } as const;
+
+const TEXTO_CURTO = (descricao: string) => ({ type: "string", description: descricao });
+
+// Peças do calendário em JSON. O formato aceito depende do serviço (Aquisição: anúncio).
+function esquemaDoCalendario(formatos: readonly string[]) {
+  const campos = {
+    data: TEXTO_CURTO("Data de publicação, AAAA-MM-DD, dentro do período."),
+    formato: { type: "string", enum: [...formatos] },
+    tema: TEXTO_CURTO("Tema editorial."),
+    funcao: TEXTO_CURTO("Função da peça (por que ela existe)."),
+    jornada: { type: "string", enum: ["descoberta", "exploracao", "comparacao", "decisao", "experiencia", "continuidade"] },
+    mensagem: TEXTO_CURTO("Mensagem principal."),
+    argumento: TEXTO_CURTO("Argumento que sustenta a mensagem."),
+    prova: TEXTO_CURTO("Prova usada (do banco de provas). Se não houver, \"Não confirmado\"."),
+    cta: TEXTO_CURTO("Chamada para ação."),
+    limite: TEXTO_CURTO("O que a peça não pode dizer ou fazer."),
+    resultado_esperado: TEXTO_CURTO("O que se espera medir ou mudar com a peça."),
+  };
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["pecas"],
+    properties: {
+      pecas: {
+        type: "array",
+        items: { type: "object", additionalProperties: false, required: Object.keys(campos), properties: campos },
+      },
+    },
+  } as const;
+}
+
+// Mesma lógica da geração de texto, mas a resposta é o JSON do calendário (sem
+// validar o conteúdo: quem chama passa por normalizarPecas).
+export async function gerarCalendarioDaIA(
+  prompt: { system: string; user: string },
+  formatos: readonly string[]
+): Promise<{ bruto: unknown; uso: UsoDaIA }> {
+  let mensagem: Anthropic.Beta.BetaMessage;
+  try {
+    mensagem = await cliente().beta.messages.create({
+      model: MODELO_DA_GERACAO,
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "medium", format: { type: "json_schema", schema: esquemaDoCalendario(formatos) } },
+      system: prompt.system,
+      messages: [{ role: "user", content: prompt.user }],
+    }, { timeout: 240_000, maxRetries: 0 });
+  } catch (e) {
+    throw erroDaChamada(e);
+  }
+
+  const tokensIn = mensagem.usage.input_tokens + (mensagem.usage.cache_creation_input_tokens ?? 0) + (mensagem.usage.cache_read_input_tokens ?? 0);
+  const tokensOut = mensagem.usage.output_tokens;
+  const uso: UsoDaIA = { modelo: mensagem.model, tokensIn, tokensOut, custoUsd: custoDaChamada(mensagem.model, tokensIn, tokensOut) };
+
+  if (mensagem.stop_reason === "refusal") {
+    throw new ErroDeAvaliacao("A IA não respondeu a este pedido. Reveja os insumos.", uso);
+  }
+  if (mensagem.stop_reason === "max_tokens") {
+    throw new ErroDeAvaliacao("O calendário ficou grande demais e foi cortado. Reduza o período ou a capacidade e tente de novo.", uso);
+  }
+  const texto = mensagem.content
+    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+  try {
+    return { bruto: JSON.parse(texto), uso };
+  } catch {
+    throw new ErroDeAvaliacao("A IA devolveu o calendário fora do formato. Tente de novo.", uso);
+  }
+}

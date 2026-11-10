@@ -71,6 +71,33 @@ export interface EstResposta {
 export const COLUNAS_DA_RESPOSTA =
   "id, mapeamento_id, pergunta_codigo, texto, notas, confirmada_por, confirmada_em, updated_at";
 
+// Peça do calendário (D10B), ligada à tarefa e ao post do d.hub quando enviada.
+export interface EstPeca {
+  id: string;
+  mapeamento_id: string;
+  origem: string;
+  data: string | null;
+  formato: string;
+  tema: string;
+  funcao: string;
+  jornada: string | null;
+  mensagem: string;
+  argumento: string;
+  prova: string;
+  cta: string;
+  limite: string;
+  resultado_esperado: string;
+  status: string;
+  task_id: string | null;
+  post_id: string | null;
+  enviado_em: string | null;
+  gerada_por_ia: boolean;
+  updated_at: string;
+}
+
+export const COLUNAS_DA_PECA =
+  "id, mapeamento_id, origem, data, formato, tema, funcao, jornada, mensagem, argumento, prova, cta, limite, resultado_esperado, status, task_id, post_id, enviado_em, gerada_por_ia, updated_at";
+
 export const COLUNAS_DO_MAPEAMENTO =
   "id, project_id, servico, tipo_negocio, status, inicio, prazo_interno, prazo_cliente, responsavel_id, created_by, created_at, updated_at";
 

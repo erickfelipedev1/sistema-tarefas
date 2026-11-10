@@ -1,8 +1,8 @@
 // Guia passo a passo de cada etapa do d.estratégia (Fase 3): por que fazer, o
 // que fazer, como fazer, o que o responsável digita, o que a Direção revisa e
 // as ações de IA com seus prompts. O conteúdo vem do protótipo (sem mudar o
-// texto); a ação de calendário em JSON do D10B fica pra Fase 4 (calendário
-// ligado aos posts). Funções puras: sem rede e sem banco.
+// texto); a ação "cal" do D10B (calendário em JSON, Fase 4) é nova e gera as
+// peças que viram tarefa e post no d.hub. Funções puras: sem rede e sem banco.
 import type { ServicoId } from "@/lib/estrategia/etapas";
 
 // Sobe quando um texto de prompt muda: vai junto de cada chamada de IA no
@@ -29,6 +29,8 @@ export interface AcaoDaEtapa {
   instr: Instrucao;
   apoio?: boolean; // gera material pra usar fora (roteiro, checklist), não o resultado
   copiar?: boolean; // o resultado é um prompt pra copiar e usar em outra ferramenta
+  calendario?: boolean; // gera as peças do calendário (JSON) em vez de texto: lib/actions/estrategia-calendario.ts
+  precisa?: string; // id da ação que precisa ter gerado (ou a pessoa escrito) o resultado antes
 }
 
 export interface GuiaDaEtapa {
@@ -964,6 +966,18 @@ export const GUIA_DAS_ETAPAS: Record<string, GuiaDaEtapa> =
           "padrao": "TAREFA: sistema editorial.\nEntregue ## Temas editoriais (5 a 8: o que reúne, argumento principal, crença enfrentada, função principal e secundária) ## Priorização (0 a 2 em posicionamento, gargalo, decisão, provas e recorrência; total/10; central, alta ou média prioridade) ## Mapa mensagem → tema ## Banco de provas (tabela | Prova | Tipo | Tema | Força | Uso: público ou não usar |) ## Fronteiras editoriais (temas centrais, de apoio, fora do ciclo, nunca comunicar) ## Lacunas (provas e conteúdos a produzir) ## Direção do período (objetivo do ciclo, mudança de percepção, jornada dominante, crença enfrentada, CTA principal, distribuição dos temas em % e quantidade conforme a capacidade).",
           "porServico": {
             "aquisicao": "TAREFA: plano de aquisição do período.\nEntregue ## Campanhas (objetivo, público, oferta, ângulo, % sugerido da verba) ## Estrutura de testes ## Critérios de corte (custo por lead máximo, qualidade do lead) ## Rotina de leitura com o Radar comercial ## Distribuição dos criativos no período."
+          }
+        }
+      },
+      {
+        "id": "cal",
+        "botao": "Gerar calendário do período",
+        "calendario": true,
+        "precisa": "main",
+        "instr": {
+          "padrao": "TAREFA: calendário do período.\nDistribua as peças pelos dias úteis do período, em sequência lógica (cada peça prepara a próxima), seguindo a direção do período e a distribuição dos temas do sistema editorial abaixo e respeitando a capacidade de produção. Stories entram como UMA peça por semana, representando a sequência da semana (não uma peça por story). No máximo 60 peças. Não escreva legendas nem roteiros. Cada peça leva o briefing estratégico: tema, função, jornada, mensagem, argumento, prova, CTA, limite e resultado esperado.",
+          "porServico": {
+            "aquisicao": "TAREFA: plano de criativos do período.\nDistribua os anúncios pelas datas do período, seguindo as campanhas e a estrutura de testes do plano de aquisição abaixo. Cada peça é um criativo de anúncio com o briefing estratégico: tema, função, jornada, mensagem, argumento, prova, CTA, limite e resultado esperado. No máximo 60 peças. Não escreva textos finais de anúncio."
           }
         }
       }

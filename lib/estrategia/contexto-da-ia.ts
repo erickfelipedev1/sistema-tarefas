@@ -61,7 +61,7 @@ const FOCO_DO_TIPO: Record<TipoDeNegocio, string> = {
 
 // Texto de cliente ou da equipe antes de entrar no prompt: sem dados pessoais e
 // sem < e >, pra ele não conseguir fechar a marcação (<tarefa>) e escrever fora dela.
-function limpar(texto: string): string {
+export function limpar(texto: string): string {
   return sanitizar(texto).replace(/</g, "‹").replace(/>/g, "›");
 }
 
@@ -167,7 +167,13 @@ function montar(d: DadosDoPrompt, lim: Limites): { system: string; user: string 
   partes.push("", `INSUMOS DESTA ETAPA (${d.etapa.rotulo})`, insumosDaEtapa(d.etapa.codigo, d.etapa.rotulo, d.etapa.campos, lim));
   for (const [chave, texto] of Object.entries(d.etapa.apoio)) {
     if (chave !== d.acao.id && texto.trim() !== "") {
-      partes.push("", `MATERIAL DE APOIO JÁ GERADO NESTA ETAPA (${chave})`, limpar(cortar(texto, 4000)));
+      // O sistema editorial (D10B) é o material principal do calendário: cabe inteiro e tem título próprio.
+      const editorial = chave === "sistema_editorial";
+      partes.push(
+        "",
+        editorial ? "SISTEMA EDITORIAL DESTA ETAPA (rascunho do estrategista)" : `MATERIAL DE APOIO JÁ GERADO NESTA ETAPA (${chave})`,
+        limpar(cortar(texto, editorial ? 12000 : 4000))
+      );
     }
   }
   if (guiaDaEtapa(d.etapa.codigo)?.decisao && d.etapa.decisaoPrevia?.trim()) {

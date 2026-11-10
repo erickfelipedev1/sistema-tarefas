@@ -11,6 +11,7 @@ import {
   salvarEtapa,
 } from "@/lib/actions/estrategia";
 import { gerarComIA } from "@/lib/actions/estrategia-etapa";
+import { gerarCalendario } from "@/lib/actions/estrategia-calendario";
 import { guiaDaEtapa, type AcaoDaEtapa, type CampoDaEtapa } from "@/lib/estrategia/guia-das-etapas";
 import {
   SERVICOS,
@@ -23,12 +24,13 @@ import {
 } from "@/lib/estrategia/etapas";
 import { paraISO } from "@/lib/estrategia/dias-uteis";
 import { AREAS, areasAbaixoDoMinimo, calcularScore, NOTA_MINIMA_DA_AREA } from "@/lib/estrategia/perguntas";
-import type { EstEtapa, EstMapeamento, EstResposta, ItemDoChecklist, StatusDoMapeamento } from "@/lib/estrategia/tipos";
+import type { EstEtapa, EstMapeamento, EstPeca, EstResposta, ItemDoChecklist, StatusDoMapeamento } from "@/lib/estrategia/tipos";
 import { formatarDataBR } from "@/lib/format";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronDownIcon, Trash2Icon } from "../ui/icons";
 import KickoffPanel from "./KickoffPanel";
+import CalendarioDasPecas from "./CalendarioDasPecas";
 
 const campoClasse =
   "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 read-only:bg-canvas read-only:text-ink-muted disabled:cursor-not-allowed disabled:bg-canvas disabled:text-ink-muted";
@@ -100,6 +102,7 @@ export default function MapeamentoView({
   profiles,
   souDirecao,
   respostas,
+  pecas,
   iaLigada,
 }: {
   mapeamento: EstMapeamento;
@@ -108,6 +111,7 @@ export default function MapeamentoView({
   profiles: Pessoa[];
   souDirecao: boolean;
   respostas: EstResposta[];
+  pecas: EstPeca[];
   iaLigada: boolean;
 }) {
   const router = useRouter();
@@ -131,6 +135,12 @@ export default function MapeamentoView({
     }
     return lista;
   }, [mapeamento.servico]);
+
+  // O serviço tem D10C (implementação do perfil) e ele ainda não foi aprovado.
+  const perfilPendente = useMemo(
+    () => modelosDoServico(mapeamento.servico).some((m) => m.codigo === "d10c") && porCodigo.get("d10c")?.status !== "aprovada",
+    [mapeamento.servico, porCodigo]
+  );
 
   const status = mapeamento.status;
   const responsavel = mapeamento.responsavel_id ? nomeDaPessoa.get(mapeamento.responsavel_id) : null;
@@ -245,6 +255,8 @@ export default function MapeamentoView({
                       mapeamentoAtivo={status === "ativo"}
                       mapeamento={mapeamento}
                       respostas={respostas}
+                      pecas={pecas}
+                      perfilPendente={perfilPendente}
                       iaLigada={iaLigada}
                       nomeDeQuemAprovou={etapa.aprovado_por ? nomeDaPessoa.get(etapa.aprovado_por) ?? "Alguém da equipe" : null}
                     />
@@ -270,6 +282,8 @@ function EtapaCard({
   mapeamentoAtivo,
   mapeamento,
   respostas,
+  pecas,
+  perfilPendente,
   iaLigada,
   nomeDeQuemAprovou,
 }: {
@@ -283,6 +297,8 @@ function EtapaCard({
   mapeamentoAtivo: boolean;
   mapeamento: EstMapeamento;
   respostas: EstResposta[];
+  pecas: EstPeca[];
+  perfilPendente: boolean;
   iaLigada: boolean;
   nomeDeQuemAprovou: string | null;
 }) {
@@ -410,6 +426,9 @@ function EtapaCard({
   }
 
   async function gerar(acao: AcaoDaEtapa) {
+    if (acao.calendario && pecas.some((p) => p.gerada_por_ia && p.status === "planejada" && !p.enviado_em)) {
+      if (!window.confirm("Gerar de novo substitui as peças da IA deste período que ainda estão \"planejadas\" e ninguém editou. As peças que você criou ou editou à mão, as de outros períodos e as já enviadas ao d.hub ficam. Continuar?")) return;
+    }
     if (acao.id === "main" && resultado.trim() !== "") {
       if (!window.confirm("Gerar de novo substitui o resultado atual da etapa. Continuar?")) return;
     }
@@ -419,13 +438,16 @@ function EtapaCard({
     try {
       const salva = await salvarTudo();
       if ("erro" in salva) return setErro(salva.erro);
-      const r = await gerarComIA({ etapaId: etapa.id, acaoId: acao.id, atualizadoEm: salva.atualizadoEm });
+      const r = acao.calendario
+        ? await gerarCalendario({ etapaId: etapa.id, atualizadoEm: salva.atualizadoEm })
+        : await gerarComIA({ etapaId: etapa.id, acaoId: acao.id, atualizadoEm: salva.atualizadoEm });
       if ("erro" in r) {
         setErro(r.erro);
         if (/^(Outra pessoa|A etapa mudou)/.test(r.erro) && !temEdicaoPendente()) router.refresh();
         return;
       }
-      setVersao(r.atualizadoEm);
+      // O calendário vai para est_pecas e não mexe na linha da etapa: a versão continua a do último salvamento.
+      if ("atualizadoEm" in r) setVersao(r.atualizadoEm);
       router.refresh();
     } catch {
       setErro("Não deu pra gerar agora. Recarregue a página e confira se o texto chegou.");
@@ -630,7 +652,7 @@ function EtapaCard({
                           size="sm"
                           variant={acao.id === "main" ? "primary" : "secondary"}
                           onClick={() => gerar(acao)}
-                          disabled={!iaLigada || gerando !== null || ocupado}
+                          disabled={!iaLigada || gerando !== null || ocupado || (acao.precisa === "main" && resultado.trim() === "")}
                         >
                           {acao.botao}
                         </Button>
@@ -678,6 +700,17 @@ function EtapaCard({
                   </div>
                 )}
               </div>
+
+              {modelo.codigo === "d10b" && (
+                <CalendarioDasPecas
+                  mapeamentoId={mapeamento.id}
+                  servico={mapeamento.servico}
+                  pecas={pecas}
+                  mapeamentoAtivo={mapeamentoAtivo}
+                  d10bAprovada={aprovada}
+                  perfilPendente={perfilPendente}
+                />
+              )}
 
               <div>
                 <label htmlFor={`${id}-notas`} className="mb-1 block text-xs font-medium text-ink-muted">
