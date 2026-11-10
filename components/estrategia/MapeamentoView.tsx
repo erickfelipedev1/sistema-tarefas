@@ -278,7 +278,7 @@ function EtapaCard({
   const rotuloDaSituacao = { bloqueada: "Bloqueada", liberada: "Liberada", em_andamento: "Em andamento", aprovada: "Aprovada" } as const;
 
   function dados() {
-    return { id: etapa.id, resultado, notas, decisaoPrevia: decisao, checklist, justificativa };
+    return { id: etapa.id, atualizadoEm: etapa.updated_at, resultado, notas, decisaoPrevia: decisao, checklist, justificativa };
   }
 
   async function salvar() {
@@ -468,7 +468,7 @@ function EtapaCard({
                   </span>
                 )}
                 {aprovada ? (
-                  <Button variant="secondary" onClick={reabrir} disabled={ocupado || semPermissao}>
+                  <Button variant="secondary" onClick={reabrir} disabled={ocupado || semPermissao || !mapeamentoAtivo}>
                     {ocupado ? "Reabrindo..." : "Reabrir"}
                   </Button>
                 ) : (

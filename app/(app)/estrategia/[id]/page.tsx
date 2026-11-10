@@ -13,7 +13,7 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
   if (!UUID.test(id)) notFound();
 
   const supabase = await clienteDaRequisicao();
-  const [perfil, { data: mapeamento }, { data: etapas }, { data: profiles }] = await Promise.all([
+  const [perfil, { data: mapeamento }, { data: etapas, error: erroDasEtapas }, { data: profiles }] = await Promise.all([
     perfilAtual(),
     supabase.from("est_mapeamentos").select(COLUNAS_DO_MAPEAMENTO).eq("id", id).maybeSingle(),
     supabase.from("est_etapas").select(COLUNAS_DA_ETAPA).eq("mapeamento_id", id),
@@ -27,6 +27,11 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
   return (
     <Coreografia>
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+        {erroDasEtapas && (
+          <p className="mb-4 rounded-lg bg-danger-light px-3 py-2 text-sm text-danger" role="alert">
+            Não deu pra carregar as etapas agora. Recarregue a página antes de editar.
+          </p>
+        )}
         <MapeamentoView
           mapeamento={m}
           etapas={(etapas ?? []) as unknown as EstEtapa[]}

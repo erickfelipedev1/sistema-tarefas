@@ -58,8 +58,8 @@ export async function criarMapeamento(dados: {
   const { supabase, user } = await sessao();
   if (!user) return { erro: "Sessão expirada. Entre de novo." };
   if (!UUID.test(String(dados.projectId))) return { erro: "Escolha o cliente." };
-  if (!(dados.servico in SERVICOS)) return { erro: "Escolha o serviço." };
-  if (!(dados.tipoNegocio in TIPOS_DE_NEGOCIO)) return { erro: "Escolha o tipo de negócio." };
+  if (!Object.hasOwn(SERVICOS, String(dados.servico))) return { erro: "Escolha o serviço." };
+  if (!Object.hasOwn(TIPOS_DE_NEGOCIO, String(dados.tipoNegocio))) return { erro: "Escolha o tipo de negócio." };
   if (dados.responsavelId !== null && !UUID.test(String(dados.responsavelId))) return { erro: "Responsável inválido." };
   if (!dataValida(String(dados.inicio))) return { erro: "Data de início inválida." };
 
@@ -82,7 +82,9 @@ export async function criarMapeamento(dados: {
   if (error || !criado) {
     if (error?.code === "23505") return { erro: "Este cliente já tem um mapeamento em andamento deste serviço." };
     if (error?.code === "42P01") return { erro: "O d.estratégia ainda não está liberado no banco (migration 0104)." };
-    return { erro: "Não deu pra criar o mapeamento. Confira se você pode ver este cliente." };
+    if (error?.code === "23503") return { erro: "Cliente ou responsável não encontrado. Atualize a página e tente de novo." };
+    if (error?.code === "42501") return { erro: "Você não tem acesso a este cliente." };
+    return { erro: "Não deu pra criar o mapeamento. Tente de novo." };
   }
 
   const linhas = modelosDoServico(servico).map((m) => ({
@@ -94,7 +96,11 @@ export async function criarMapeamento(dados: {
   const { error: erroEtapas } = await supabase.from("est_etapas").insert(linhas);
   if (erroEtapas) {
     // Não deixa um mapeamento sem etapas (quem cria nem sempre pode excluir).
-    await createAdminClient().from("est_mapeamentos").delete().eq("id", criado.id);
+    try {
+      await createAdminClient().from("est_mapeamentos").delete().eq("id", criado.id);
+    } catch (e) {
+      console.error("d.estratégia: não deu pra limpar o mapeamento sem etapas", criado.id, e);
+    }
     return { erro: "Não deu pra montar as etapas do mapeamento. Tente de novo." };
   }
   return { id: criado.id };
@@ -131,6 +137,8 @@ function checklistValido(c: unknown): ItemDoChecklist[] | null {
 // Guarda o que a pessoa digitou na etapa (e a abre: pendente -> em andamento).
 export async function salvarEtapa(dados: {
   id: string;
+  // O updated_at que a tela leu: se mudou, outra pessoa mexeu na etapa no meio.
+  atualizadoEm: string;
   resultado: string;
   notas: string;
   decisaoPrevia: string;
@@ -140,8 +148,11 @@ export async function salvarEtapa(dados: {
   const { supabase, user } = await sessao();
   if (!user) return { erro: "Sessão expirada. Entre de novo." };
   if (!UUID.test(String(dados.id))) return { erro: "Etapa inválida." };
-  const checklist = checklistValido(dados.checklist);
-  if (!checklist) return { erro: "Checklist inválido." };
+  if (typeof dados.atualizadoEm !== "string" || dados.atualizadoEm.length < 10 || dados.atualizadoEm.length > 40) {
+    return { erro: "Recarregue a página e tente de novo." };
+  }
+  const checklistRecebido = checklistValido(dados.checklist);
+  if (!checklistRecebido) return { erro: "Checklist inválido." };
   if ([dados.resultado, dados.notas].some((t) => typeof t !== "string" || t.length > 60000)) return { erro: "Texto grande demais." };
   if (typeof dados.decisaoPrevia !== "string" || dados.decisaoPrevia.length > 5000) return { erro: "A decisão prévia passou de 5.000 caracteres." };
   if (typeof dados.justificativa !== "string" || dados.justificativa.length > 2000) return { erro: "A justificativa passou de 2.000 caracteres." };
@@ -153,7 +164,16 @@ export async function salvarEtapa(dados: {
   const situacao = situacaoDasEtapas(c.servico, c.todas)[c.etapa.codigo];
   if (!situacao || situacao.situacao === "bloqueada") return { erro: "Esta etapa ainda está bloqueada." };
 
-  const { error } = await supabase
+  // O checklist vem do catálogo (o cliente só diz o que marcou, item por item):
+  // ponto de controle sempre tem o checklist completo; as outras etapas, nenhum.
+  const modelo = MODELOS_DE_ETAPA.find((m) => m.codigo === c.etapa.codigo);
+  const checklist: ItemDoChecklist[] = modelo?.pontoDeControle
+    ? CHECKLIST_PADRAO.map((texto, i) => ({ texto, marcado: checklistRecebido[i]?.marcado === true }))
+    : [];
+
+  // Só grava se a etapa continua como a tela leu (updated_at igual) e não foi
+  // aprovada no meio: evita apagar o texto de outra pessoa e reabrir sem querer.
+  const { data: gravou, error } = await supabase
     .from("est_etapas")
     .update({
       status: "em_andamento",
@@ -162,8 +182,14 @@ export async function salvarEtapa(dados: {
       checklist,
       justificativa: dados.justificativa.trim() || null,
     })
-    .eq("id", dados.id);
+    .eq("id", dados.id)
+    .eq("updated_at", dados.atualizadoEm)
+    .neq("status", "aprovada")
+    .select("id");
   if (error) return { erro: mensagemDoBanco(error.message, "Não deu pra salvar a etapa. Tente de novo.") };
+  if (!gravou || gravou.length === 0) {
+    return { erro: "Outra pessoa alterou esta etapa enquanto você editava. Copie o seu texto, recarregue a página e salve de novo." };
+  }
   return { ok: true };
 }
 
@@ -193,7 +219,8 @@ export async function reabrirEtapa(id: string): Promise<Ok | Erro> {
   const c = await carregarEtapa(supabase, id);
   if (!c) return { erro: "Etapa não encontrada." };
   if (c.etapa.status !== "aprovada") return { erro: "Esta etapa não está aprovada." };
-  const { data, error } = await supabase.from("est_etapas").update({ status: "em_andamento" }).eq("id", id).select("id");
+  if (c.statusDoMapeamento !== "ativo") return { erro: "Mapeamento pausado ou concluído: reative antes de reabrir." };
+  const { data, error } = await supabase.from("est_etapas").update({ status: "em_andamento" }).eq("id", id).eq("status", "aprovada").select("id");
   if (error) return { erro: mensagemDoBanco(error.message, "Não deu pra reabrir a etapa. Tente de novo.") };
   if (!data || data.length === 0) return { erro: "Não deu pra reabrir a etapa." };
   return { ok: true };

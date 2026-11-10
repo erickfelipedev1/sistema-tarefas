@@ -310,7 +310,7 @@ export default function ProjectsList({
       setProjects((current) => (current.some((p) => p.id === project.id) ? current : [...current, project]));
       window.alert(
         error.code === "23503"
-          ? `Não dá pra excluir "${project.name}": há serviços lançados no faturamento deste cliente.`
+          ? `Não dá pra excluir "${project.name}": o cliente tem serviços lançados no faturamento ou um mapeamento no d.estratégia.`
           : `Não foi possível excluir "${project.name}". Tenta de novo.`
       );
     }

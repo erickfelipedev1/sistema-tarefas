@@ -162,7 +162,7 @@ export function oQueFaltaParaAprovar(
   if (situacao === "bloqueada") return "Esta etapa ainda está bloqueada: aprove as anteriores primeiro.";
   if (situacao === "aprovada") return "Esta etapa já está aprovada.";
   if (modelo.pontoDeControle) {
-    if (checklist.length > 0 && checklist.some((c) => !c.marcado)) return "Marque todos os itens do checklist.";
+    if (checklist.length === 0 || checklist.some((c) => !c.marcado)) return "Marque todos os itens do checklist.";
     if (justificativa.trim().length < 10) return "Ponto de controle: escreva a justificativa da aprovação (pelo menos 10 caracteres).";
   }
   return null;
