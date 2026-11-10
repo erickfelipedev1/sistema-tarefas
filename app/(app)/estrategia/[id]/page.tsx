@@ -14,6 +14,9 @@ import {
 
 export const metadata = { title: "Estratégia · d.hub" };
 
+// A geração por IA pode levar minutos; as ações do servidor chamadas daqui herdam este limite.
+export const maxDuration = 300;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // As notas vêm de um jsonb: só passa o que tem a forma certa (um registro torto

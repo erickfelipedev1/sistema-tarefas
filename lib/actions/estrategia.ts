@@ -14,6 +14,8 @@ import {
   type TipoDeNegocio,
 } from "@/lib/estrategia/etapas";
 import { proximoDiaUtil, somarDiasUteis } from "@/lib/estrategia/dias-uteis";
+import { createHash } from "node:crypto";
+import { guiaDaEtapa, itensDoChecklist } from "@/lib/estrategia/guia-das-etapas";
 import { COLUNAS_DA_ETAPA, type EstEtapa, type ItemDoChecklist, type StatusDoMapeamento } from "@/lib/estrategia/tipos";
 
 // Server Actions do d.estratégia (Fase 1, sem IA). Só equipe logada. As regras
@@ -26,6 +28,15 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 type Erro = { erro: string };
 type Ok = { ok: true };
+type OkComData = { ok: true; atualizadoEm: string };
+
+// Checklist de revisão de um ponto de controle: o do guia da etapa (ou o padrão).
+function itensDoChecklistDaEtapa(codigo: string): string[] {
+  const itens = itensDoChecklist(codigo);
+  return itens.length > 0 ? itens : CHECKLIST_PADRAO;
+}
+
+const sha256 = (texto: string) => createHash("sha256").update(texto).digest("hex");
 
 async function sessao() {
   const supabase = await createClient();
@@ -91,7 +102,7 @@ export async function criarMapeamento(dados: {
     mapeamento_id: criado.id,
     codigo: m.codigo,
     vence_em: somarDiasUteis(d0, m.diaFim),
-    checklist: m.pontoDeControle ? CHECKLIST_PADRAO.map((texto) => ({ texto, marcado: false })) : [],
+    checklist: m.pontoDeControle ? itensDoChecklistDaEtapa(m.codigo).map((texto) => ({ texto, marcado: false })) : [],
   }));
   const { error: erroEtapas } = await supabase.from("est_etapas").insert(linhas);
   if (erroEtapas) {
@@ -144,7 +155,9 @@ export async function salvarEtapa(dados: {
   decisaoPrevia: string;
   checklist: ItemDoChecklist[];
   justificativa: string;
-}): Promise<Ok | Erro> {
+  // Insumos digitados, por id de campo do guia da etapa.
+  campos?: Record<string, string>;
+}): Promise<OkComData | Erro> {
   const { supabase, user } = await sessao();
   if (!user) return { erro: "Sessão expirada. Entre de novo." };
   if (!UUID.test(String(dados.id))) return { erro: "Etapa inválida." };
@@ -168,8 +181,33 @@ export async function salvarEtapa(dados: {
   // ponto de controle sempre tem o checklist completo; as outras etapas, nenhum.
   const modelo = MODELOS_DE_ETAPA.find((m) => m.codigo === c.etapa.codigo);
   const checklist: ItemDoChecklist[] = modelo?.pontoDeControle
-    ? CHECKLIST_PADRAO.map((texto, i) => ({ texto, marcado: checklistRecebido[i]?.marcado === true }))
+    ? itensDoChecklistDaEtapa(c.etapa.codigo).map((texto) => ({ texto, marcado: checklistRecebido.some((item) => item.texto === texto && item.marcado) }))
     : [];
+
+  // Insumos: só os campos que o guia da etapa define, texto de até 20.000 caracteres
+  // (data no formato AAAA-MM-DD). O que a IA gerou antes (ia, apoio) segue como estava.
+  const guia = guiaDaEtapa(c.etapa.codigo);
+  let campos: Record<string, string> = c.etapa.conteudo?.campos ?? {};
+  if (dados.campos !== undefined) {
+    if (!dados.campos || typeof dados.campos !== "object" || Array.isArray(dados.campos)) return { erro: "Campos inválidos." };
+    campos = {};
+    for (const campo of guia?.campos ?? []) {
+      const v = (dados.campos as Record<string, unknown>)[campo.id];
+      if (v === undefined || v === null || v === "") continue;
+      if (typeof v !== "string" || v.length > 20000) return { erro: `O campo "${campo.label}" passou de 20.000 caracteres.` };
+      if (campo.tipo === "date" && !DATA.test(v)) return { erro: `Data inválida em "${campo.label}".` };
+      campos[campo.id] = v;
+    }
+  }
+  // "Editado": o resultado veio da IA e a pessoa mexeu depois.
+  const ia = c.etapa.conteudo?.ia;
+  const conteudoNovo = {
+    ...(c.etapa.conteudo ?? {}),
+    resultado: dados.resultado,
+    notas: dados.notas,
+    campos,
+    ...(ia ? { editado: sha256(dados.resultado) !== ia.hash } : {}),
+  };
 
   // Só grava se a etapa continua como a tela leu (updated_at igual) e não foi
   // aprovada no meio: evita apagar o texto de outra pessoa e reabrir sem querer.
@@ -177,7 +215,7 @@ export async function salvarEtapa(dados: {
     .from("est_etapas")
     .update({
       status: "em_andamento",
-      conteudo: { resultado: dados.resultado, notas: dados.notas },
+      conteudo: conteudoNovo,
       decisao_previa: dados.decisaoPrevia.trim() || null,
       checklist,
       justificativa: dados.justificativa.trim() || null,
@@ -185,12 +223,12 @@ export async function salvarEtapa(dados: {
     .eq("id", dados.id)
     .eq("updated_at", dados.atualizadoEm)
     .neq("status", "aprovada")
-    .select("id");
+    .select("id, updated_at");
   if (error) return { erro: mensagemDoBanco(error.message, "Não deu pra salvar a etapa. Tente de novo.") };
   if (!gravou || gravou.length === 0) {
     return { erro: "Outra pessoa alterou esta etapa enquanto você editava. Copie o seu texto, recarregue a página e salve de novo." };
   }
-  return { ok: true };
+  return { ok: true, atualizadoEm: gravou[0].updated_at as string };
 }
 
 export async function aprovarEtapa(id: string): Promise<Ok | Erro> {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ErroDaIA } from "@/lib/ia-atas";
 import { AJUDA_DO_CRITERIO, CRITERIOS, ROTULO_DO_CRITERIO, normalizarNotas, type NotasDaResposta } from "@/lib/estrategia/perguntas";
 import { SERVICOS, TIPOS_DE_NEGOCIO, type ServicoId, type TipoDeNegocio } from "@/lib/estrategia/etapas";
+import { VERSAO_DO_GUIA } from "@/lib/estrategia/guia-das-etapas";
 
 // IA do d.estratégia (Fase 2): avalia UMA resposta do kickoff e sugere as cinco
 // notas. Quem chama é o servidor (lib/actions/estrategia-kickoff.ts), que já
@@ -52,6 +53,43 @@ Vai receber a pergunta feita, por que ela é feita, o serviço contratado e a re
 Dê notas de 0 a 5 em cinco critérios:
 ${CRITERIOS.map((c) => `- ${c} (${ROTULO_DO_CRITERIO[c]}): ${AJUDA_DO_CRITERIO[c]}`).join("\n")}
 Resposta genérica ("todo mundo", "atendimento humanizado") recebe nota baixa. Diga se a resposta é só um sintoma e sugira UMA pergunta curta de aprofundamento. Escreva em português do Brasil. Não invente fatos que não estejam na resposta.`;
+
+// Falha antes de a IA processar (chave, limite, pedido grande, erro do servidor):
+// não gera cobrança, então a vaga reservada no controle de custo é devolvida.
+export class ErroSemCusto extends ErroDaIA {}
+
+function erroDaChamada(e: unknown): ErroDaIA {
+  if (e instanceof ErroDaIA) return e;
+  if (e instanceof Anthropic.APIConnectionTimeoutError) {
+    return new ErroDaIA("A IA demorou demais para responder. Tente de novo; se repetir, reduza o texto dos insumos.");
+  }
+  if (e instanceof Anthropic.AuthenticationError) {
+    return new ErroSemCusto("A chave da IA (ANTHROPIC_API_KEY) não foi aceita. Confira na Vercel.");
+  }
+  if (e instanceof Anthropic.RateLimitError) return new ErroSemCusto("A IA está ocupada agora. Tente de novo em um minuto.");
+  if (e instanceof Anthropic.BadRequestError && /too long|prompt is too long|context/i.test(e.message)) {
+    return new ErroSemCusto("O material ficou grande demais para uma análise. Encurte os textos colados.");
+  }
+  if (e instanceof Anthropic.APIError && e.status) {
+    return new ErroSemCusto(`A IA não conseguiu responder (erro ${e.status}). Tente de novo.`);
+  }
+  return new ErroDaIA("Não deu pra falar com a IA. Tente de novo.");
+}
+
+// Preço de tabela por milhão de tokens (entrada, saída). O servidor pode atender
+// com outro modelo (fallback): o custo registrado usa o modelo que respondeu.
+const PRECO_POR_MILHAO_DE_TOKENS: Record<string, [number, number]> = {
+  "claude-sonnet-5-5": [2, 10],
+  "claude-sonnet-5": [2, 10],
+  "claude-opus-5-5": [4, 20],
+  "claude-opus-5": [5, 25],
+  "claude-opus-4-8": [5, 25],
+};
+
+function custoDaChamada(modelo: string, tokensIn: number, tokensOut: number): number {
+  const [entrada, saida] = PRECO_POR_MILHAO_DE_TOKENS[modelo] ?? [USD_POR_MILHAO_DE_ENTRADA, USD_POR_MILHAO_DE_SAIDA];
+  return (tokensIn * entrada + tokensOut * saida) / 1_000_000;
+}
 
 function cliente(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -111,24 +149,14 @@ export async function avaliarResposta(dados: {
       ],
     });
   } catch (e) {
-    if (e instanceof ErroDaIA) throw e;
-    if (e instanceof Anthropic.AuthenticationError) {
-      throw new ErroDaIA("A chave da IA (ANTHROPIC_API_KEY) não foi aceita. Confira na Vercel.");
-    }
-    if (e instanceof Anthropic.RateLimitError) {
-      throw new ErroDaIA("A IA está ocupada agora. Tente de novo em um minuto.");
-    }
-    if (e instanceof Anthropic.APIError) {
-      throw new ErroDaIA(`A IA não conseguiu responder (erro ${e.status ?? "de conexão"}). Tente de novo.`);
-    }
-    throw new ErroDaIA("Não deu pra falar com a IA. Tente de novo.");
+    throw erroDaChamada(e);
   }
 
   // A chamada já foi cobrada: o uso vai junto de qualquer erro daqui pra frente,
   // pra o registro de custo ficar certo mesmo quando a resposta não presta.
   const tokensIn = mensagem.usage.input_tokens + (mensagem.usage.cache_creation_input_tokens ?? 0) + (mensagem.usage.cache_read_input_tokens ?? 0);
   const tokensOut = mensagem.usage.output_tokens;
-  const custoUsd = (tokensIn * USD_POR_MILHAO_DE_ENTRADA + tokensOut * USD_POR_MILHAO_DE_SAIDA) / 1_000_000;
+  const custoUsd = custoDaChamada(mensagem.model, tokensIn, tokensOut);
   const uso: UsoDaIA = { modelo: mensagem.model, tokensIn, tokensOut, custoUsd };
 
   if (mensagem.stop_reason === "refusal") {
@@ -151,4 +179,48 @@ export async function avaliarResposta(dados: {
   if (!notas) throw new ErroDeAvaliacao("A IA devolveu uma avaliação fora do formato. Tente de novo.", uso);
 
   return { notas, uso };
+}
+
+// ---------------------------------------------------------------- geração de etapa
+
+// Geração do texto de uma etapa (mapa do negócio, diagnóstico, posicionamento...).
+// Mesmo modelo da avaliação: Sonnet 5.5 a $2 / $10 por milhão de tokens. Esforço
+// "medium": raciocina o bastante pra cruzar o material, sem encarecer à toa.
+export const MODELO_DA_GERACAO = "claude-sonnet-5-5";
+export const PROMPT_DA_GERACAO = { chave: "geracao_etapa", versao: VERSAO_DO_GUIA } as const;
+
+export async function gerarTextoDaEtapa(prompt: {
+  system: string;
+  user: string;
+}): Promise<{ texto: string; truncado: boolean; uso: UsoDaIA }> {
+  let mensagem: Anthropic.Beta.BetaMessage;
+  try {
+    mensagem = await cliente().beta.messages.create({
+      model: MODELO_DA_GERACAO,
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "medium" },
+      system: prompt.system,
+      messages: [{ role: "user", content: prompt.user }],
+    }, { timeout: 240_000, maxRetries: 0 });
+  } catch (e) {
+    throw erroDaChamada(e);
+  }
+
+  const tokensIn = mensagem.usage.input_tokens + (mensagem.usage.cache_creation_input_tokens ?? 0) + (mensagem.usage.cache_read_input_tokens ?? 0);
+  const tokensOut = mensagem.usage.output_tokens;
+  const custoUsd = custoDaChamada(mensagem.model, tokensIn, tokensOut);
+  const uso: UsoDaIA = { modelo: mensagem.model, tokensIn, tokensOut, custoUsd };
+
+  if (mensagem.stop_reason === "refusal") {
+    throw new ErroDeAvaliacao("A IA não respondeu a este pedido. Reveja os insumos.", uso);
+  }
+  const texto = mensagem.content
+    .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+  if (!texto) throw new ErroDeAvaliacao("A IA não devolveu texto. Tente de novo com menos material.", uso);
+  return { texto, truncado: mensagem.stop_reason === "max_tokens", uso };
 }

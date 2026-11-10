@@ -6,7 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizarNotas, perguntasDoKickoff, type NotasDaResposta } from "@/lib/estrategia/perguntas";
 import type { ServicoId, TipoDeNegocio } from "@/lib/estrategia/etapas";
 import { sanitizar } from "@/lib/estrategia/sanitizar";
-import { avaliarResposta, ErroDaIA, ErroDeAvaliacao, MODELO_DA_AVALIACAO, PROMPT_DA_AVALIACAO, type UsoDaIA } from "@/lib/ia-estrategia";
+import { devolverReservaDaIA, registrarCustoDaIA, reservarUsoDaIA } from "@/lib/estrategia/uso-da-ia";
+import { avaliarResposta, ErroDaIA, ErroDeAvaliacao, ErroSemCusto, MODELO_DA_AVALIACAO, PROMPT_DA_AVALIACAO, type UsoDaIA } from "@/lib/ia-estrategia";
 
 // Server Actions do kickoff (D1) do d.estratégia: guardar a resposta do
 // cliente, pedir a avaliação da IA e confirmar as notas. Só equipe logada. As
@@ -113,56 +114,24 @@ export async function avaliarRespostaComIA(dados: { mapeamentoId: string; pergun
     .maybeSingle();
   if (!resposta || resposta.texto.trim().length < 5) return { erro: "Registre a resposta do cliente antes de avaliar." };
 
-  // Tetos de uso: contam as linhas de est_geracoes. Falha ao contar = bloqueia
-  // (não libera no escuro).
+  // Tetos de uso (reserva a vaga antes de chamar a IA): lib/estrategia/uso-da-ia.ts.
   const admin = createAdminClient();
-  const desde = new Date(Date.now() - 24 * 3600_000).toISOString();
-  async function contarUso() {
-    const [porMapeamento, porPessoa] = await Promise.all([
-      admin.from("est_geracoes").select("id", { count: "exact", head: true }).eq("mapeamento_id", dados.mapeamentoId).eq("tipo", "avaliacao_resposta"),
-      admin.from("est_geracoes").select("id", { count: "exact", head: true }).eq("usuario_id", user!.id).gte("created_at", desde),
-    ]);
-    if (porMapeamento.error || porPessoa.error) return null;
-    return { mapeamento: porMapeamento.count ?? 0, pessoa: porPessoa.count ?? 0 };
-  }
-  const MENSAGEM_DO_LIMITE_DO_MAPEAMENTO = "Este mapeamento chegou ao limite de avaliações da IA. Dê as notas à mão ou fale com a Direção.";
-  const MENSAGEM_DO_LIMITE_DA_PESSOA = "Você chegou ao limite de avaliações da IA por hoje. Dê as notas à mão ou volte amanhã.";
-  const antes = await contarUso();
-  if (!antes) return { erro: "Não deu pra conferir o limite de uso da IA agora. Tente de novo." };
-  if (antes.mapeamento >= LIMITE_DE_AVALIACOES_POR_MAPEAMENTO) return { erro: MENSAGEM_DO_LIMITE_DO_MAPEAMENTO };
-  if (antes.pessoa >= LIMITE_DE_AVALIACOES_POR_PESSOA_POR_DIA) return { erro: MENSAGEM_DO_LIMITE_DA_PESSOA };
-
-  // Reserva a vaga ANTES de chamar a IA e confere de novo: chamadas em paralelo
-  // não passam todas pelo teto. O custo entra na mesma linha, depois.
   const sanitizada = sanitizar(resposta.texto);
-  const { data: reserva, error: erroDaReserva } = await admin
-    .from("est_geracoes")
-    .insert({
-      mapeamento_id: dados.mapeamentoId,
-      usuario_id: user.id,
-      tipo: "avaliacao_resposta",
-      prompt_chave: PROMPT_DA_AVALIACAO.chave,
-      prompt_versao: PROMPT_DA_AVALIACAO.versao,
-      modelo: MODELO_DA_AVALIACAO,
-      entrada_hash: createHash("sha256").update(sanitizada).digest("hex"),
-    })
-    .select("id")
-    .single();
-  if (erroDaReserva || !reserva) return { erro: "Não deu pra registrar o uso da IA agora. Tente de novo." };
-  const depois = await contarUso();
-  if (!depois || depois.mapeamento > LIMITE_DE_AVALIACOES_POR_MAPEAMENTO || depois.pessoa > LIMITE_DE_AVALIACOES_POR_PESSOA_POR_DIA) {
-    await admin.from("est_geracoes").delete().eq("id", reserva.id);
-    if (!depois) return { erro: "Não deu pra conferir o limite de uso da IA agora. Tente de novo." };
-    return { erro: depois.mapeamento > LIMITE_DE_AVALIACOES_POR_MAPEAMENTO ? MENSAGEM_DO_LIMITE_DO_MAPEAMENTO : MENSAGEM_DO_LIMITE_DA_PESSOA };
-  }
-
-  async function registrarUso(uso: UsoDaIA) {
-    const { error: erroDoRegistro } = await admin
-      .from("est_geracoes")
-      .update({ modelo: uso.modelo || MODELO_DA_AVALIACAO, tokens_in: uso.tokensIn, tokens_out: uso.tokensOut, custo_usd: uso.custoUsd })
-      .eq("id", reserva!.id);
-    if (erroDoRegistro) console.error("d.estratégia: não deu pra registrar o custo da geração", erroDoRegistro.message);
-  }
+  const reserva = await reservarUsoDaIA(admin, {
+    mapeamentoId: dados.mapeamentoId,
+    usuarioId: user.id,
+    tipo: "avaliacao_resposta",
+    promptChave: PROMPT_DA_AVALIACAO.chave,
+    promptVersao: PROMPT_DA_AVALIACAO.versao,
+    modelo: MODELO_DA_AVALIACAO,
+    entradaHash: createHash("sha256").update(sanitizada).digest("hex"),
+    porMapeamento: LIMITE_DE_AVALIACOES_POR_MAPEAMENTO,
+    porPessoaPorDia: LIMITE_DE_AVALIACOES_POR_PESSOA_POR_DIA,
+    mensagemDoMapeamento: "Este mapeamento chegou ao limite de avaliações da IA. Dê as notas à mão ou fale com a Direção.",
+    mensagemDaPessoa: "Você chegou ao limite de avaliações da IA por hoje. Dê as notas à mão ou volte amanhã.",
+  });
+  if ("erro" in reserva) return { erro: reserva.erro };
+  const registrarUso = (uso: UsoDaIA) => registrarCustoDaIA(admin, reserva.id, uso);
 
   let resultado;
   try {
@@ -176,6 +145,7 @@ export async function avaliarRespostaComIA(dados: { mapeamentoId: string; pergun
   } catch (e) {
     // A IA respondeu e cobrou, mas a resposta não serviu: o custo fica registrado.
     if (e instanceof ErroDeAvaliacao) await registrarUso(e.uso);
+    else if (e instanceof ErroSemCusto) await devolverReservaDaIA(admin, reserva.id);
     if (e instanceof ErroDaIA) return { erro: e.message };
     return { erro: "Não deu pra avaliar agora. Tente de novo." };
   }

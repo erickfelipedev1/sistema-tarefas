@@ -30,6 +30,14 @@ export interface ItemDoChecklist {
 export interface ConteudoDaEtapa {
   resultado?: string;
   notas?: string;
+  // Insumos digitados, por id de campo do guia da etapa (lib/estrategia/guia-das-etapas.ts).
+  campos?: Record<string, string>;
+  // Material de apoio gerado pela IA (roteiros, checklists), por id da ação.
+  apoio?: Record<string, string>;
+  // Quando o resultado veio da IA: quando, com qual modelo, quem pediu, se foi
+  // cortado e o hash do texto gerado (pra saber se a pessoa editou depois).
+  ia?: { em: string; modelo: string; usuario: string; truncado: boolean; hash: string };
+  editado?: boolean;
 }
 
 export interface EstEtapa {

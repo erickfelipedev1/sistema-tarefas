@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -10,6 +10,8 @@ import {
   reabrirEtapa,
   salvarEtapa,
 } from "@/lib/actions/estrategia";
+import { gerarComIA } from "@/lib/actions/estrategia-etapa";
+import { guiaDaEtapa, type AcaoDaEtapa, type CampoDaEtapa } from "@/lib/estrategia/guia-das-etapas";
 import {
   SERVICOS,
   TIPOS_DE_NEGOCIO,
@@ -29,7 +31,7 @@ import { ChevronDownIcon, Trash2Icon } from "../ui/icons";
 import KickoffPanel from "./KickoffPanel";
 
 const campoClasse =
-  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 read-only:bg-canvas read-only:text-ink-muted";
+  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 read-only:bg-canvas read-only:text-ink-muted disabled:cursor-not-allowed disabled:bg-canvas disabled:text-ink-muted";
 
 type Pessoa = { id: string; username: string | null; name: string | null; ativo?: boolean | null };
 
@@ -59,6 +61,34 @@ function dataDoInstante(instante: string | null): string {
   if (!instante) return "";
   const d = new Date(instante);
   return Number.isNaN(d.getTime()) ? "" : formatarDataBR(paraISO(d));
+}
+
+// Só os insumos preenchidos (é o que vai pro servidor).
+function camposPreenchidos(campos: Record<string, string>): Record<string, string> {
+  const saida: Record<string, string> = {};
+  for (const [k, v] of Object.entries(campos)) if (v.trim() !== "") saida[k] = v;
+  return saida;
+}
+
+// Assinatura dos campos editáveis: serve pra saber se há texto digitado ainda não salvo.
+function assinatura(v: {
+  resultado: string;
+  notas: string;
+  decisao: string;
+  checklist: ItemDoChecklist[];
+  justificativa: string;
+  campos: Record<string, string>;
+}): string {
+  const campos = camposPreenchidos(v.campos);
+  return JSON.stringify([v.resultado, v.notas, v.decisao, v.checklist, v.justificativa, Object.keys(campos).sort().map((k) => [k, campos[k]])]);
+}
+
+// "dd/mm/aaaa às HH:mm" (fuso do navegador) de um instante ISO.
+function dataEHoraDoInstante(instante: string): string {
+  const d = new Date(instante);
+  if (Number.isNaN(d.getTime())) return "";
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return `${formatarDataBR(paraISO(d))} às ${hora}`;
 }
 
 // O mapeamento de um cliente: cabeçalho com prazos e status, e as etapas do
@@ -261,19 +291,49 @@ function EtapaCard({
   const [resultado, setResultado] = useState(etapa.conteudo?.resultado ?? "");
   const [notas, setNotas] = useState(etapa.conteudo?.notas ?? "");
   const [decisao, setDecisao] = useState(etapa.decisao_previa ?? "");
-  const [checklist, setChecklist] = useState<ItemDoChecklist[]>(etapa.checklist ?? []);
+  const [checklist, setChecklist] = useState<ItemDoChecklist[]>(() => checklistDoGuia(etapa.codigo, etapa.checklist ?? []));
   const [justificativa, setJustificativa] = useState(etapa.justificativa ?? "");
+  const [campos, setCampos] = useState<Record<string, string>>(etapa.conteudo?.campos ?? {});
   const [ocupado, setOcupado] = useState(false);
+  const [gerando, setGerando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
-  // Quando a etapa muda no servidor (salvou, aprovou, reabriu), recarrega os campos.
+  const guia = useMemo(() => guiaDaEtapa(etapa.codigo), [etapa.codigo]);
+  // Aberto enquanto a etapa não tem resultado nem insumos (decidido na primeira exibição).
+  const [guiaAberto, setGuiaAberto] = useState(
+    () => !(etapa.conteudo?.resultado ?? "").trim() && Object.keys(camposPreenchidos(etapa.conteudo?.campos ?? {})).length === 0
+  );
+
+  // Último updated_at conhecido (o da tela ou o devolvido pelo nosso último salvamento).
+  const [versao, setVersao] = useState(etapa.updated_at);
+  // O que está salvo/carregado, pra saber se há texto digitado pendente.
+  const atual = { resultado, notas, decisao, checklist, justificativa, campos };
+  const atualRef = useRef(atual);
+  atualRef.current = atual;
+  const baseRef = useRef(assinatura(atual));
+  const temEdicaoPendente = () => assinatura(atualRef.current) !== baseRef.current;
+
+  // Quando a etapa muda no servidor (salvou, gerou, aprovou, reabriu), recarrega os campos,
+  // sem apagar o que a pessoa digitou depois do último salvamento.
   useEffect(() => {
+    if (temEdicaoPendente()) return;
+    const c = etapa.conteudo?.campos ?? {};
     setResultado(etapa.conteudo?.resultado ?? "");
     setNotas(etapa.conteudo?.notas ?? "");
     setDecisao(etapa.decisao_previa ?? "");
-    setChecklist(etapa.checklist ?? []);
+    setChecklist(checklistDoGuia(etapa.codigo, etapa.checklist ?? []));
     setJustificativa(etapa.justificativa ?? "");
+    setCampos(c);
+    setVersao(etapa.updated_at);
+    baseRef.current = assinatura({
+      resultado: etapa.conteudo?.resultado ?? "",
+      notas: etapa.conteudo?.notas ?? "",
+      decisao: etapa.decisao_previa ?? "",
+      checklist: checklistDoGuia(etapa.codigo, etapa.checklist ?? []),
+      justificativa: etapa.justificativa ?? "",
+      campos: c,
+    });
   }, [etapa.updated_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -285,6 +345,8 @@ function EtapaCard({
   const id = `etapa-${etapa.id}`;
   const aprovada = situacao === "aprovada";
   const bloqueada = situacao === "bloqueada";
+  // Insumos e decisão: travados com a etapa aprovada, o mapeamento parado ou a IA escrevendo.
+  const camposTravados = aprovada || !mapeamentoAtivo || gerando !== null;
   const atrasada = !aprovada && hoje !== null && etapa.vence_em < hoje;
   const semPermissao = modelo.pontoDeControle && !souDirecao;
   const faltaTexto = `falta aprovar: ${falta.map((c) => c.toUpperCase()).join(", ")}`;
@@ -312,25 +374,71 @@ function EtapaCard({
   const rotuloDaSituacao = { bloqueada: "Bloqueada", liberada: "Liberada", em_andamento: "Em andamento", aprovada: "Aprovada" } as const;
 
   function dados() {
-    return { id: etapa.id, atualizadoEm: etapa.updated_at, resultado, notas, decisaoPrevia: decisao, checklist, justificativa };
+    return {
+      id: etapa.id,
+      atualizadoEm: versao,
+      resultado,
+      notas,
+      decisaoPrevia: decisao,
+      checklist,
+      justificativa,
+      campos: camposPreenchidos(campos),
+    };
+  }
+
+  // Salva o formulário inteiro e guarda a versão devolvida (pra encadear outras ações).
+  async function salvarTudo() {
+    const enviado = dados();
+    const base = assinatura(atualRef.current);
+    const r = await salvarEtapa(enviado);
+    if ("ok" in r) {
+      setVersao(r.atualizadoEm);
+      baseRef.current = base;
+    }
+    return r;
   }
 
   async function salvar() {
     setErro(null);
     setSalvo(false);
     setOcupado(true);
-    const r = await salvarEtapa(dados());
+    const r = await salvarTudo();
     setOcupado(false);
     if ("erro" in r) return setErro(r.erro);
     setSalvo(true);
     router.refresh();
   }
 
+  async function gerar(acao: AcaoDaEtapa) {
+    if (acao.id === "main" && resultado.trim() !== "") {
+      if (!window.confirm("Gerar de novo substitui o resultado atual da etapa. Continuar?")) return;
+    }
+    setErro(null);
+    setSalvo(false);
+    setGerando(acao.id);
+    try {
+      const salva = await salvarTudo();
+      if ("erro" in salva) return setErro(salva.erro);
+      const r = await gerarComIA({ etapaId: etapa.id, acaoId: acao.id, atualizadoEm: salva.atualizadoEm });
+      if ("erro" in r) {
+        setErro(r.erro);
+        if (/^(Outra pessoa|A etapa mudou)/.test(r.erro) && !temEdicaoPendente()) router.refresh();
+        return;
+      }
+      setVersao(r.atualizadoEm);
+      router.refresh();
+    } catch {
+      setErro("Não deu pra gerar agora. Recarregue a página e confira se o texto chegou.");
+    } finally {
+      setGerando(null);
+    }
+  }
+
   async function aprovar() {
     setErro(null);
     setSalvo(false);
     setOcupado(true);
-    const salva = await salvarEtapa(dados());
+    const salva = await salvarTudo();
     if ("erro" in salva) {
       setOcupado(false);
       return setErro(salva.erro);
@@ -395,10 +503,41 @@ function EtapaCard({
             </p>
           ) : (
             <>
-              {!aprovada && (
-                <p className="rounded-lg bg-canvas px-3 py-2 text-sm text-ink-muted">
-                  A orientação passo a passo desta etapa (por quê, o quê, como) chega na Fase 2.
-                </p>
+              {guia && (
+                <details
+                  open={guiaAberto}
+                  onToggle={(e) => setGuiaAberto(e.currentTarget.open)}
+                  className="rounded-lg border border-line bg-canvas"
+                >
+                  <summary className="cursor-pointer select-none rounded-lg px-3 py-2 text-sm font-medium text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
+                    Como fazer esta etapa
+                  </summary>
+                  <div className="space-y-3 border-t border-line px-3 py-3 text-sm text-ink">
+                    <p className="text-xs text-ink-muted">
+                      <span className="font-semibold uppercase tracking-wide">Método</span> · {guia.metodo}
+                    </p>
+                    <div>
+                      <p className="mb-0.5 text-xs font-semibold text-ink-muted">Por que fazer</p>
+                      <p>{guia.porque}</p>
+                    </div>
+                    <div>
+                      <p className="mb-0.5 text-xs font-semibold text-ink-muted">O que fazer</p>
+                      <ul className="list-disc space-y-0.5 pl-5">
+                        {guia.fazer.map((t, i) => (
+                          <li key={i}>{t}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="mb-0.5 text-xs font-semibold text-ink-muted">Como fazer</p>
+                      <ul className="list-disc space-y-0.5 pl-5">
+                        {guia.como.map((t, i) => (
+                          <li key={i}>{t}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </details>
               )}
 
               {modelo.codigo === "d1" && (
@@ -417,6 +556,99 @@ function EtapaCard({
 
               {avisoDoD2 && <p className="rounded-lg bg-canvas px-3 py-2 text-sm text-ink">{avisoDoD2}</p>}
 
+              {guia && guia.campos.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {guia.campos.map((campo: CampoDaEtapa) => {
+                    const campoId = `${id}-campo-${campo.id}`;
+                    const valor = campos[campo.id] ?? "";
+                    const mudar = (v: string) => setCampos((c) => ({ ...c, [campo.id]: v }));
+                    return (
+                      <div key={campo.id} className={campo.largo ? "sm:col-span-2" : ""}>
+                        <label htmlFor={campoId} className="mb-1 block text-xs font-medium text-ink-muted">
+                          {campo.label}
+                        </label>
+                        {campo.tipo === "textarea" ? (
+                          <textarea
+                            id={campoId}
+                            value={valor}
+                            onChange={(e) => mudar(e.target.value)}
+                            disabled={camposTravados}
+                            rows={campo.grande ? 10 : 4}
+                            placeholder={campo.dica}
+                            className={`${campoClasse} resize-y`}
+                          />
+                        ) : (
+                          <input
+                            id={campoId}
+                            type={campo.tipo === "date" ? "date" : "text"}
+                            value={valor}
+                            onChange={(e) => mudar(e.target.value)}
+                            disabled={camposTravados}
+                            placeholder={campo.dica}
+                            className={campoClasse}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Sem guia, o campo de decisão prévia continua como era. */}
+              {(!guia || guia.decisao) && (
+                <div>
+                  <label htmlFor={`${id}-decisao`} className="mb-1 block text-xs font-medium text-ink-muted">
+                    {guia?.decisao ? guia.decisao.pergunta : "Decida antes de ver"}
+                  </label>
+                  <textarea
+                    id={`${id}-decisao`}
+                    value={decisao}
+                    onChange={(e) => setDecisao(e.target.value)}
+                    disabled={camposTravados}
+                    rows={2}
+                    placeholder={guia?.decisao?.dica}
+                    aria-describedby={`${id}-decisao-ajuda`}
+                    className={`${campoClasse} resize-y`}
+                  />
+                  <p id={`${id}-decisao-ajuda`} className="mt-1 text-[11px] text-ink-muted">
+                    {guia?.decisao ? "Registre a sua escolha antes de pedir o texto à IA." : "Escreva sua hipótese antes de olhar os dados."}
+                  </p>
+                </div>
+              )}
+
+              {guia && guia.acoes.length > 0 && !aprovada && mapeamentoAtivo && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {guia.acoes.map((acao) =>
+                      gerando === acao.id ? (
+                        <p key={acao.id} role="status" className="text-sm text-ink">
+                          <span className="font-medium">Gerando...</span> A IA está escrevendo. Leva de 30 segundos a alguns minutos; não feche esta página.
+                        </p>
+                      ) : (
+                        <Button
+                          key={acao.id}
+                          size="sm"
+                          variant={acao.id === "main" ? "primary" : "secondary"}
+                          onClick={() => gerar(acao)}
+                          disabled={!iaLigada || gerando !== null || ocupado}
+                        >
+                          {acao.botao}
+                        </Button>
+                      )
+                    )}
+                  </div>
+                  {!iaLigada && (
+                    <p className="text-xs text-ink-muted">A IA está desligada neste ambiente: escreva o resultado à mão.</p>
+                  )}
+                </div>
+              )}
+
+              {guia?.acoes
+                .filter((acao) => acao.apoio && (etapa.conteudo?.apoio?.[acao.id] ?? "").trim() !== "")
+                .map((acao) => (
+                  <MaterialDeApoio key={acao.id} idBase={`${id}-apoio-${acao.id}`} acao={acao} texto={etapa.conteudo?.apoio?.[acao.id] ?? ""} />
+                ))}
+
               <div>
                 <label htmlFor={`${id}-resultado`} className="mb-1 block text-xs font-medium text-ink-muted">
                   Resultado da etapa
@@ -425,10 +657,26 @@ function EtapaCard({
                   id={`${id}-resultado`}
                   value={resultado}
                   onChange={(e) => setResultado(e.target.value)}
-                  readOnly={aprovada}
-                  rows={10}
+                  readOnly={aprovada || !mapeamentoAtivo}
+                  disabled={gerando !== null}
+                  rows={12}
+                  aria-describedby={etapa.conteudo?.ia ? `${id}-resultado-meta` : undefined}
                   className={`${campoClasse} resize-y`}
                 />
+                {etapa.conteudo?.ia && (
+                  <div id={`${id}-resultado-meta`} className="mt-1 space-y-0.5 text-[11px] text-ink-muted">
+                    <p>
+                      Gerado pela IA em {dataEHoraDoInstante(etapa.conteudo.ia.em)}
+                      {etapa.conteudo.editado ? " · editado depois" : ""}
+                    </p>
+                    <p>Rascunho da IA: confira fatos, números e fontes antes de aprovar.</p>
+                    {etapa.conteudo.ia.truncado && (
+                      <p className="rounded-md bg-warning-light px-2 py-1 text-xs text-warning">
+                        A resposta da IA foi cortada por tamanho. Peça de novo ou complete à mão.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -439,28 +687,11 @@ function EtapaCard({
                   id={`${id}-notas`}
                   value={notas}
                   onChange={(e) => setNotas(e.target.value)}
-                  readOnly={aprovada}
+                  readOnly={aprovada || !mapeamentoAtivo}
+                  disabled={gerando !== null}
                   rows={4}
                   className={`${campoClasse} resize-y`}
                 />
-              </div>
-
-              <div>
-                <label htmlFor={`${id}-decisao`} className="mb-1 block text-xs font-medium text-ink-muted">
-                  Decida antes de ver
-                </label>
-                <textarea
-                  id={`${id}-decisao`}
-                  value={decisao}
-                  onChange={(e) => setDecisao(e.target.value)}
-                  readOnly={aprovada}
-                  rows={2}
-                  aria-describedby={`${id}-decisao-ajuda`}
-                  className={`${campoClasse} resize-y`}
-                />
-                <p id={`${id}-decisao-ajuda`} className="mt-1 text-[11px] text-ink-muted">
-                  Escreva sua hipótese antes de olhar os dados.
-                </p>
               </div>
 
               {modelo.pontoDeControle && (
@@ -475,7 +706,7 @@ function EtapaCard({
                               id={`${id}-check-${i}`}
                               type="checkbox"
                               checked={item.marcado}
-                              disabled={aprovada}
+                              disabled={aprovada || gerando !== null}
                               onChange={(e) => marcar(i, e.target.checked)}
                               className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-line accent-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                             />
@@ -496,6 +727,7 @@ function EtapaCard({
                       value={justificativa}
                       onChange={(e) => setJustificativa(e.target.value)}
                       readOnly={aprovada}
+                      disabled={gerando !== null}
                       rows={3}
                       minLength={10}
                       className={`${campoClasse} resize-y`}
@@ -518,15 +750,15 @@ function EtapaCard({
                   </span>
                 )}
                 {aprovada ? (
-                  <Button variant="secondary" onClick={reabrir} disabled={ocupado || semPermissao || !mapeamentoAtivo}>
+                  <Button variant="secondary" onClick={reabrir} disabled={ocupado || gerando !== null || semPermissao || !mapeamentoAtivo}>
                     {ocupado ? "Reabrindo..." : "Reabrir"}
                   </Button>
                 ) : (
                   <>
-                    <Button variant="secondary" onClick={salvar} disabled={ocupado || !mapeamentoAtivo}>
+                    <Button variant="secondary" onClick={salvar} disabled={ocupado || gerando !== null || !mapeamentoAtivo}>
                       {ocupado ? "Aguarde..." : "Salvar"}
                     </Button>
-                    <Button onClick={aprovar} disabled={ocupado || semPermissao || !mapeamentoAtivo}>
+                    <Button onClick={aprovar} disabled={ocupado || gerando !== null || semPermissao || !mapeamentoAtivo}>
                       Aprovar
                     </Button>
                   </>
@@ -543,4 +775,66 @@ function EtapaCard({
       )}
     </div>
   );
+}
+
+// Material auxiliar gerado pela IA (roteiro, checklist, prompt): texto puro, rolável, com "Copiar".
+function MaterialDeApoio({ idBase, acao, texto }: { idBase: string; acao: AcaoDaEtapa; texto: string }) {
+  const [copiado, setCopiado] = useState(false);
+  const [erroAoCopiar, setErroAoCopiar] = useState(false);
+
+  useEffect(() => {
+    if (!copiado) return;
+    const t = setTimeout(() => setCopiado(false), 2000);
+    return () => clearTimeout(t);
+  }, [copiado]);
+
+  async function copiar() {
+    setErroAoCopiar(false);
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+    } catch {
+      setErroAoCopiar(true);
+    }
+  }
+
+  return (
+    <details className="rounded-lg border border-line bg-canvas">
+      <summary className="cursor-pointer select-none rounded-lg px-3 py-2 text-sm font-medium text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40">
+        Material de apoio: {acao.botao}
+      </summary>
+      <div className="space-y-2 border-t border-line px-3 py-3">
+        {acao.copiar && (
+          <p id={`${idBase}-legenda`} className="text-xs text-ink-muted">
+            Cole este texto na ferramenta de pesquisa e traga o resultado para os insumos.
+          </p>
+        )}
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label={`Texto: ${acao.botao}`}
+          className="max-h-[24rem] overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        >
+          {texto}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant={acao.copiar ? "primary" : "secondary"} onClick={copiar}>
+            {copiado ? "Copiado" : "Copiar"}
+          </Button>
+          <span role="status" className="text-xs text-danger">
+            {erroAoCopiar ? "Não deu pra copiar: selecione o texto." : ""}
+          </span>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+// Os itens de revisão de um ponto de controle vêm do guia da etapa. Mapeamentos
+// criados antes do guia têm o checklist padrão guardado: a tela mostra os itens
+// do guia e mantém como marcado só o que tem o mesmo texto.
+function checklistDoGuia(codigo: string, guardado: ItemDoChecklist[]): ItemDoChecklist[] {
+  const itens = guiaDaEtapa(codigo)?.revisar ?? [];
+  if (guardado.length === 0 || itens.length === 0) return guardado;
+  return itens.map((texto) => ({ texto, marcado: guardado.some((g) => g.texto === texto && g.marcado) }));
 }
