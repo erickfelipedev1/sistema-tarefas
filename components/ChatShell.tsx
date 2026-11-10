@@ -53,7 +53,7 @@ export default function ChatShell({
           {children}
         </div>
       </div>
-      <NovoCanalModal />
+      <NovoCanalModal profiles={profiles} />
       <NovaMensagemModal profiles={profiles} />
     </ChatUIProvider>
   );

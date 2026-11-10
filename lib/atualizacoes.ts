@@ -12,6 +12,30 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-10",
+    area: "Mensagens",
+    titulo: "Canal privado: você escolhe quem faz parte",
+    texto: "Ao criar um canal em Mensagens, marque \"Canal privado\" e escolha as pessoas: só elas (e você) veem o canal e as mensagens, e ele não aparece pra mais ninguém. Quem criou o canal pode mudar os membros depois, pelo botão de pessoas no topo do canal.",
+  },
+  {
+    data: "2026-11-10",
+    area: "Clientes",
+    titulo: "Cor do cliente em qualquer HEX",
+    texto: "Na página do cliente, o botão Cor ganhou \"Outra cor\": um quadro de cores pra arrastar e escolher, ou o código HEX (como #1b3a6b), com o botão Aplicar. A cor vale no quadro, no calendário e na lista de clientes, e o texto muda sozinho pra branco ou escuro conforme o contraste. As 20 cores de antes continuam lá.",
+  },
+  {
+    data: "2026-11-10",
+    area: "Tarefas",
+    titulo: "Horário na subtarefa (opcional)",
+    texto: "A subtarefa agora tem hora de início e hora de fim, ao criar e na lista de subtarefas. Os dois campos são opcionais: dá pra deixar sem horário, como era. Com início e fim no mesmo dia, o início não pode ser depois do fim.",
+  },
+  {
+    data: "2026-11-10",
+    area: "Clientes",
+    titulo: "Link clicável na descrição dos projetos do cliente",
+    texto: "Os endereços (https://... ou www...) escritos na descrição de um projeto do cliente agora viram link, que abre em outra aba.",
+  },
+  {
     data: "2026-11-09",
     area: "Sistema",
     titulo: "Arquivo grande vai direto pro Google Drive em mais lugares",

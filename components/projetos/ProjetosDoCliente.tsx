@@ -17,6 +17,7 @@ import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
+import { TextoComLinks } from "../ui/TextoComLinks";
 import { ChevronLeftIcon, FolderIcon, LinkIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon, XIcon } from "../ui/icons";
 
 const ROTULO_DO_STATUS: Record<TaskStatus, string> = {
@@ -329,7 +330,9 @@ export default function ProjetosDoCliente({
             </div>
           </div>
           {aberto.description && (
-            <p className="mt-3 whitespace-pre-wrap break-words text-sm text-ink">{aberto.description}</p>
+            <p className="mt-3 whitespace-pre-wrap break-words text-sm text-ink">
+              <TextoComLinks texto={aberto.description} />
+            </p>
           )}
           <BarraDeAndamento {...a} className="mt-4" />
         </div>

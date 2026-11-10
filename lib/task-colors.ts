@@ -243,12 +243,45 @@ const CORES_AUTOMATICAS: TaskColor[] = [
   "steel",
 ];
 
+// Cor em HEX livre (#rrggbb), só pro cliente (migration 0110). É o que o seletor
+// de cor do navegador devolve; qualquer outra coisa é recusada, pra nada além de
+// uma cor chegar num style inline.
+const HEX_DA_COR = /^#[0-9a-fA-F]{6}$/;
+
+export function hexValido(valor: string | null | undefined): valor is string {
+  return typeof valor === "string" && HEX_DA_COR.test(valor);
+}
+
+function luminancia(hex: string): number {
+  const canal = (i: number) => {
+    const c = parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * canal(0) + 0.7152 * canal(1) + 0.0722 * canal(2);
+}
+
+// Branco ou grafite, o que tiver mais contraste (WCAG) sobre o fundo.
+export function textoSobre(hex: string): "#FFFFFF" | "#202124" {
+  const fundo = luminancia(hex);
+  const contrasteComBranco = 1.05 / (fundo + 0.05);
+  const contrasteComGrafite = (fundo + 0.05) / (luminancia("#202124") + 0.05);
+  return contrasteComBranco >= contrasteComGrafite ? "#FFFFFF" : "#202124";
+}
+
+// A cor como as telas usam: da paleta, ou uma cor livre do cliente (key "livre").
+export type CorResolvida = Omit<(typeof CORES_TAREFA)[number], "key"> & { key: string };
+
 // A cor do cliente no cartão da tarefa: a que a equipe escolheu na página do
-// cliente (projects.color) ou, sem escolha, uma cor fixa calculada pelo id (o
-// mesmo cliente tem sempre a mesma cor). Sem cliente: cinza.
-export function corDoCliente(projeto: { id: string; color?: string | null } | null | undefined) {
+// cliente (projects.color: da paleta ou em HEX livre) ou, sem escolha, uma cor
+// fixa calculada pelo id (o mesmo cliente tem sempre a mesma cor). Sem cliente: cinza.
+export function corDoCliente(projeto: { id: string; color?: string | null } | null | undefined): CorResolvida {
   if (!projeto) return corTarefa("gray");
   if (projeto.color && CORES_TAREFA.some((c) => c.key === projeto.color)) return corTarefa(projeto.color);
+  if (hexValido(projeto.color)) {
+    const fundo = projeto.color.toLowerCase();
+    // Cor livre não tem as classes da paleta; as telas do cliente usam só fundo e texto (style inline).
+    return { key: "livre", nome: "Personalizada", dot: "", badge: "", borda: "", fundo, texto: textoSobre(fundo) };
+  }
   let h = 0;
   for (const ch of projeto.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return corTarefa(CORES_AUTOMATICAS[h % CORES_AUTOMATICAS.length]);

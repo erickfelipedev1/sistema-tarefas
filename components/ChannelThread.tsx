@@ -9,6 +9,7 @@ import { ChevronLeftIcon, LockIcon, SearchIcon, XIcon } from "@/components/ui/ic
 import ChatMensagens, { type EstadoEnvio } from "./ChatMensagens";
 import { apagarMensagem, enviarAnexo, pastaDoCanal, type AnexoEnviado } from "@/lib/chat-anexos";
 import ChatComposer from "./ChatComposer";
+import MembrosDoCanal, { type PessoaDoCanal } from "./MembrosDoCanal";
 import { avisarMensagemNova } from "@/lib/actions/push";
 
 type SenderInfo = {
@@ -26,6 +27,7 @@ export default function ChannelThread({
   totalMembros,
   privado = false,
   membrosIds,
+  gestaoDeMembros = null,
 }: {
   channelId: string;
   channelName: string;
@@ -35,6 +37,8 @@ export default function ChannelThread({
   totalMembros: number;
   privado?: boolean;
   membrosIds: string[];
+  // Só no canal privado criado pela pessoa logada: ela escolhe quem faz parte (migration 0111).
+  gestaoDeMembros?: { pessoas: PessoaDoCanal[] } | null;
 }) {
   const supabase = createClient();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -253,6 +257,9 @@ export default function ChannelThread({
             </p>
           </div>
         </div>
+        {gestaoDeMembros && (
+          <MembrosDoCanal channelId={channelId} pessoas={gestaoDeMembros.pessoas} membrosIds={membrosIds} criadorId={currentUserId} />
+        )}
         <button
           onClick={() => {
             setBuscaAberta((v) => !v);

@@ -7,6 +7,7 @@ import { nomeParaMencao, pessoaAtiva } from "@/lib/mencoes";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { STATUS_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
+import { erroDeHorario, hhmm } from "@/lib/horarios";
 import { XIcon } from "./ui/icons";
 
 const campo =
@@ -46,6 +47,9 @@ export default function SubtarefasTab({
   // Responsável já escolhido pra subtarefa que está sendo criada (opcional).
   const [novoResponsavel, setNovoResponsavel] = useState("");
   const [criando, setCriando] = useState(false);
+  // Horário da subtarefa nova (opcional): hora de início e de fim, "HH:MM".
+  const [novaHoraInicio, setNovaHoraInicio] = useState("");
+  const [novaHoraFim, setNovaHoraFim] = useState("");
 
   useEffect(() => {
     let ativo = true;
@@ -99,6 +103,11 @@ export default function SubtarefasTab({
     // Começa hoje e entrega junto com a tarefa principal (dá pra ajustar
     // depois, abrindo a subtarefa).
     const entrega = tarefa.due_date && tarefa.due_date >= hoje ? tarefa.due_date : hoje;
+    const erroDaHora = erroDeHorario(hoje, entrega, novaHoraInicio, novaHoraFim);
+    if (erroDaHora) {
+      setCriando(false);
+      return setErro(erroDaHora);
+    }
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -111,6 +120,9 @@ export default function SubtarefasTab({
         position: getNextPosition("todo"),
         start_date: hoje,
         due_date: entrega,
+        // O horário é opcional: sem preencher, a subtarefa fica sem hora.
+        start_time: novaHoraInicio || null,
+        due_time: novaHoraFim || null,
         repeat_rule: "none",
         color: tarefa.color,
         assigned_to: novoResponsavel ? [novoResponsavel] : [],
@@ -130,6 +142,8 @@ export default function SubtarefasTab({
     setItens((atual) => (atual.some((i) => i.id === criada.id) ? atual : [...atual, criada]));
     setNovo("");
     setNovoResponsavel("");
+    setNovaHoraInicio("");
+    setNovaHoraFim("");
     aoCriar(criada);
     aoMudar();
     // Push no celular de quem recebeu (o aviso do sininho vem do banco).
@@ -183,6 +197,25 @@ export default function SubtarefasTab({
     if (error) {
       setItens((atual) => atual.map((i) => (i.id === item.id ? antes : i)));
       return setErro("Não foi possível salvar a data. Tente de novo.");
+    }
+    setErro(null);
+    aoAtualizar(depois);
+  }
+
+  // Muda a hora de início ou de fim da subtarefa direto na lista. Vazio = sem hora.
+  // No mesmo dia, o início não pode ser depois do fim.
+  async function mudarHorario(item: Task, campo: "start_time" | "due_time", valor: string) {
+    const inicio = campo === "start_time" ? valor : hhmm(item.start_time);
+    const fim = campo === "due_time" ? valor : hhmm(item.due_time);
+    const erroDaHora = erroDeHorario(item.start_date ?? "", item.due_date ?? "", inicio, fim);
+    if (erroDaHora) return setErro(erroDaHora);
+    const antes = item;
+    const depois = { ...item, [campo]: valor || null };
+    setItens((atual) => atual.map((i) => (i.id === item.id ? depois : i)));
+    const { error } = await supabase.from("tasks").update({ [campo]: valor || null }).eq("id", item.id);
+    if (error) {
+      setItens((atual) => atual.map((i) => (i.id === item.id ? antes : i)));
+      return setErro("Não foi possível salvar o horário. Tente de novo.");
     }
     setErro(null);
     aoAtualizar(depois);
@@ -321,6 +354,26 @@ export default function SubtarefasTab({
                     className={campo}
                   />
                 </label>
+                <label className="inline-flex items-center gap-1">
+                  Hora início
+                  <input
+                    type="time"
+                    value={hhmm(item.start_time)}
+                    onChange={(e) => mudarHorario(item, "start_time", e.target.value)}
+                    aria-label="Hora de início da subtarefa (opcional)"
+                    className={campo}
+                  />
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  Hora fim
+                  <input
+                    type="time"
+                    value={hhmm(item.due_time)}
+                    onChange={(e) => mudarHorario(item, "due_time", e.target.value)}
+                    aria-label="Hora de fim da subtarefa (opcional)"
+                    className={campo}
+                  />
+                </label>
               </div>
             </li>
           );
@@ -351,6 +404,26 @@ export default function SubtarefasTab({
             </option>
           ))}
         </select>
+        <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
+          Início
+          <input
+            type="time"
+            value={novaHoraInicio}
+            onChange={(e) => setNovaHoraInicio(e.target.value)}
+            aria-label="Hora de início da nova subtarefa (opcional)"
+            className={campo}
+          />
+        </label>
+        <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
+          Fim
+          <input
+            type="time"
+            value={novaHoraFim}
+            onChange={(e) => setNovaHoraFim(e.target.value)}
+            aria-label="Hora de fim da nova subtarefa (opcional)"
+            className={campo}
+          />
+        </label>
         <button
           type="submit"
           disabled={criando}

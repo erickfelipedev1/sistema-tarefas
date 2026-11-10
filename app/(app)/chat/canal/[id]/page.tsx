@@ -53,6 +53,17 @@ export default async function ChannelPage({
       profilesById={profilesById}
       totalMembros={privado ? (membros ?? []).length : (allProfiles ?? []).length}
       privado={privado}
+      gestaoDeMembros={
+        privado && channel.created_by === user.id
+          ? {
+              pessoas: (allProfiles ?? []).map((p) => ({
+                id: p.id as string,
+                nome: ((p.name as string | null) || (p.username as string | null) || "Sem nome").trim(),
+                ativo: p.ativo !== false,
+              })),
+            }
+          : null
+      }
       membrosIds={
         privado
           ? (membros ?? []).map((m) => m.profile_id as string)

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CORES_TAREFA, corDoCliente } from "@/lib/task-colors";
+import { CORES_TAREFA, corDoCliente, hexValido } from "@/lib/task-colors";
 
 // A cor do cliente (migration 0073), na página dele: pinta o cabeçalho e a
 // lateral dos cartões de tarefa dele no quadro. Qualquer pessoa da equipe
@@ -17,6 +17,11 @@ export default function CorDoCliente({ projectId, cor }: { projectId: string; co
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const atual = corDoCliente({ id: projectId, color: escolhida });
+  // Cor livre em HEX: o quadro do seletor do navegador (arrastar) e o campo do código. Só vale ao clicar em Aplicar.
+  const [livre, setLivre] = useState(hexValido(cor) ? cor.toLowerCase() : atual.fundo);
+  const [codigo, setCodigo] = useState(livre);
+  const codigoOk = hexValido(codigo.startsWith("#") ? codigo : `#${codigo}`);
+  const codigoNormalizado = (codigo.startsWith("#") ? codigo : `#${codigo}`).toLowerCase();
 
   async function escolher(nova: string | null) {
     if (salvando) return;
@@ -27,7 +32,7 @@ export default function CorDoCliente({ projectId, cor }: { projectId: string; co
     if (error || !data || data.length === 0) {
       setErro(
         /color|column/i.test(error?.message ?? "")
-          ? "Confere se a migration 0073_cor_do_cliente.sql já foi rodada no Supabase."
+          ? "Confere se as migrations 0073 e 0110 (cor do cliente) já foram rodadas no Supabase."
           : "Não deu pra salvar a cor. Tente de novo."
       );
       return;
@@ -77,6 +82,41 @@ export default function CorDoCliente({ projectId, cor }: { projectId: string; co
                   style={{ backgroundColor: c.fundo }}
                 />
               ))}
+            </div>
+            <div className="mt-3 border-t border-line pt-3">
+              <p className="mb-2 text-xs font-medium text-ink-muted">Outra cor (qualquer HEX)</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={codigoOk ? codigoNormalizado : livre}
+                  onChange={(e) => {
+                    setLivre(e.target.value);
+                    setCodigo(e.target.value);
+                  }}
+                  aria-label="Escolher a cor arrastando no quadro de cores"
+                  className="h-9 w-12 cursor-pointer rounded-md border border-line bg-surface p-0.5"
+                />
+                <input
+                  type="text"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.trim())}
+                  maxLength={7}
+                  spellCheck={false}
+                  placeholder="#1b3a6b"
+                  aria-label="Código HEX da cor"
+                  aria-invalid={!codigoOk}
+                  className="w-24 rounded-md border border-line bg-surface px-2 py-1.5 font-mono text-xs text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
+                />
+                <button
+                  type="button"
+                  disabled={salvando || !codigoOk}
+                  onClick={() => escolher(codigoNormalizado)}
+                  className="rounded-md bg-brand px-2.5 py-1.5 text-xs font-medium text-navy hover:bg-brand-hover disabled:opacity-50"
+                >
+                  Aplicar
+                </button>
+              </div>
+              {!codigoOk && codigo !== "" && <p className="mt-1 text-[11px] text-danger">Use 6 dígitos, como #1b3a6b.</p>}
             </div>
             <button
               type="button"
