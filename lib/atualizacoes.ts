@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-12",
+    area: "Tarefas",
+    titulo: "Tarefa que se repete de verdade",
+    texto: "O campo Repetir (Diariamente, Semanalmente, Mensalmente) agora funciona: ao concluir a tarefa, a próxima é criada sozinha, com prazo 1 dia, 1 semana ou 1 mês depois (se a conclusão atrasar, vai pra primeira data futura). A cópia leva título, descrição, cliente, responsáveis, etiquetas e a checklist desmarcada; comentários, anexos e horas não vão. Só a tarefa principal repete, e reabrir e concluir de novo não cria outra cópia. Antes, o campo era só uma lembrança.",
+  },
+  {
+    data: "2026-11-12",
     area: "Posts",
     titulo: "Portal do cliente: os posts agora aparecem num calendário",
     texto: "Na aba Posts do portal, o cliente vê os posts enviados no dia previsto, como no nosso calendário de postagem, com a capa, o formato e a cor do status. Ao clicar no post, abre o conteúdo (preview, legenda e comentários) e ele comenta ou pede ajuste ali mesmo. Dia com vários posts abre uma lista; no celular o dia mostra pontinhos pelo status. Posts sem data ficam numa lista logo abaixo, e a visão em lista de antes continua num botão.",

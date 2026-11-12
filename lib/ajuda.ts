@@ -127,6 +127,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["duplicar", "copiar tarefa", "cópia", "repetir tarefa", "clonar"],
   },
   {
+    pergunta: "Como faço uma tarefa que se repete toda semana?",
+    resposta:
+      "Na tarefa, em Detalhes, escolha Repetir: Diariamente, Semanalmente ou Mensalmente. Quando a tarefa for concluída, a próxima é criada sozinha, com prazo 1 dia, 1 semana ou 1 mês depois (se a conclusão atrasar, vai pra primeira data futura). A cópia leva título, descrição, cliente, responsáveis, etiquetas e a checklist desmarcada; comentários, anexos e horas não vão. Só a tarefa principal repete (subtarefa não), e concluir de novo uma tarefa reaberta não cria outra cópia. Cancelar a tarefa não repete.",
+    palavras: ["repetir", "repete", "recorrente", "recorrência", "semanal", "semanalmente", "diária", "mensal", "toda semana", "automática"],
+  },
+  {
     pergunta: "Como filtro o calendário por cliente ou pessoa?",
     resposta:
       "No topo do Calendário, escolha o cliente (ou Sem cliente). Quem é da liderança também escolhe a pessoa, e os dois filtros funcionam juntos.",
