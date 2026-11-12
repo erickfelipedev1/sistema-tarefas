@@ -15,7 +15,7 @@ export const ATUALIZACOES: Atualizacao[] = [
     data: "2026-11-12",
     area: "Tarefas",
     titulo: "Tarefa que se repete de verdade",
-    texto: "O campo Repetir (Diariamente, Semanalmente, Mensalmente) agora funciona: ao concluir a tarefa, a próxima é criada sozinha, com prazo 1 dia, 1 semana ou 1 mês depois (se a conclusão atrasar, vai pra primeira data futura). A cópia leva título, descrição, cliente, responsáveis, etiquetas e a checklist desmarcada; comentários, anexos e horas não vão. Só a tarefa principal repete, e reabrir e concluir de novo não cria outra cópia. Antes, o campo era só uma lembrança.",
+    texto: "O campo Repetir (Diariamente, Semanalmente, Mensalmente) agora funciona. A próxima tarefa é criada sozinha quando o prazo da atual chega, todo dia às 6h, mesmo sem concluir; se você concluir antes do prazo, ela nasce na hora. O novo prazo é 1 dia, 1 semana ou 1 mês depois (na mensal o dia do mês se mantém: dia 31 vai pro 30 em mês curto e volta ao 31). A cópia leva título, descrição, cliente, responsáveis, etiquetas e a checklist desmarcada; comentários, anexos e horas não vão. Só a tarefa principal repete; sem prazo, repete só ao concluir; cancelar encerra a repetição. Antes, o campo era só uma lembrança.",
   },
   {
     data: "2026-11-12",

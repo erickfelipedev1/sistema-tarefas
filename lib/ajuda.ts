@@ -129,7 +129,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como faço uma tarefa que se repete toda semana?",
     resposta:
-      "Na tarefa, em Detalhes, escolha Repetir: Diariamente, Semanalmente ou Mensalmente. Quando a tarefa for concluída, a próxima é criada sozinha, com prazo 1 dia, 1 semana ou 1 mês depois (se a conclusão atrasar, vai pra primeira data futura). A cópia leva título, descrição, cliente, responsáveis, etiquetas e a checklist desmarcada; comentários, anexos e horas não vão. Só a tarefa principal repete (subtarefa não), e concluir de novo uma tarefa reaberta não cria outra cópia. Cancelar a tarefa não repete.",
+      "Na tarefa, em Detalhes, defina o Prazo e escolha Repetir: Diariamente, Semanalmente ou Mensalmente. A próxima é criada sozinha quando o prazo da tarefa chega (todo dia às 6h), mesmo que a atual não tenha sido concluída, e também na hora em que você conclui antes do prazo. O novo prazo é 1 dia, 1 semana ou 1 mês depois (na mensal o dia do mês se mantém: uma tarefa do dia 31 vai pro 30 em mês curto e volta ao 31). A cópia leva título, descrição, cliente, responsáveis, etiquetas e a checklist desmarcada; comentários, anexos e horas não vão. Só a tarefa principal repete (subtarefa não); sem prazo, repete só ao concluir; cancelar a tarefa encerra a repetição; e cada tarefa gera uma única próxima, então concluir depois de ela já ter nascido não cria outra.",
     palavras: ["repetir", "repete", "recorrente", "recorrência", "semanal", "semanalmente", "diária", "mensal", "toda semana", "automática"],
   },
   {

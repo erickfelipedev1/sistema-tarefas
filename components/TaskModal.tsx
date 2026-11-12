@@ -858,9 +858,9 @@ export default function TaskModal({
                 <p className="-mt-2 text-xs text-ink-muted">
                   {task?.parent_id
                     ? "Subtarefa não se repete sozinha: use Repetir na tarefa principal."
-                    : `Ao concluir esta tarefa, a próxima é criada sozinha, com prazo ${
+                    : `A próxima é criada sozinha quando o prazo desta chega (mesmo sem concluir), ${
                         repeatRule === "daily" ? "1 dia" : repeatRule === "weekly" ? "1 semana" : "1 mês"
-                      } depois (ou a primeira data futura, se a conclusão atrasar). Leva etiquetas, responsáveis e a checklist desmarcada; comentários, anexos e horas não vão.`}
+                      } depois, e também ao concluir antes. Sem prazo, só repete ao concluir. Cancelar encerra a repetição. Leva etiquetas, responsáveis e a checklist desmarcada; comentários, anexos e horas não vão.`}
                 </p>
               )}
 
