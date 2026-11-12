@@ -12,6 +12,18 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-12",
+    area: "Posts",
+    titulo: "Portal do cliente: os posts agora aparecem num calendário",
+    texto: "Na aba Posts do portal, o cliente vê os posts enviados no dia previsto, como no nosso calendário de postagem, com a capa, o formato e a cor do status. Ao clicar no post, abre o conteúdo (preview, legenda e comentários) e ele comenta ou pede ajuste ali mesmo. Dia com vários posts abre uma lista; no celular o dia mostra pontinhos pelo status. Posts sem data ficam numa lista logo abaixo, e a visão em lista de antes continua num botão.",
+  },
+  {
+    data: "2026-11-12",
+    area: "Tarefas",
+    titulo: "Responder a um comentário",
+    texto: "Nos comentários da tarefa, cada comentário tem o botão Responder. A resposta aparece com uma citação do comentário original (clicar na citação leva até ele), e quem escreveu o original recebe o aviso \"respondeu seu comentário\" no sininho e no celular. Se a resposta já menciona essa pessoa com @, vale só o aviso de menção. Se o comentário original for excluído, a resposta fica.",
+  },
+  {
     data: "2026-11-10",
     area: "Mensagens",
     titulo: "Canal privado: você escolhe quem faz parte",

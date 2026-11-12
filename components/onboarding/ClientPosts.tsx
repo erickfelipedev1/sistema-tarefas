@@ -7,6 +7,8 @@ import { CATEGORIAS, REDES, redesValidas, rotuloDoStatus, STATUS_DO_POST } from 
 import type { PostNetwork, PublicPost } from "@/lib/types";
 import PostPreview from "../posts/PostPreview";
 import BaixarDoPortal from "./BaixarDoPortal";
+import ClientPostsCalendario from "./ClientPostsCalendario";
+import JanelaDoPortal from "./JanelaDoPortal";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -17,10 +19,11 @@ function chaveNome(token: string) {
   return `client-portal:nome:${token}`;
 }
 
-// Aba "Posts" do portal do cliente: cada post que a equipe enviou, num
-// preview de como vai aparecer em cada rede, com a data prevista. O cliente
-// comenta e, se algo precisa mudar, pede ajuste — o texto é obrigatório nos
-// dois casos, pra equipe saber o que mudar. Os dados chegam prontos do
+// Aba "Posts" do portal do cliente: o calendário de postagem com cada post que
+// a equipe enviou no dia previsto (ou a lista, se o cliente preferir). Clicar
+// num post abre o conteúdo: preview de como vai aparecer em cada rede, legenda
+// e comentários. O cliente comenta e, se algo precisa mudar, pede ajuste — o
+// texto é obrigatório nos dois casos, pra equipe saber o que mudar. Os dados chegam prontos do
 // servidor (app/progresso/[token]/page.tsx); comentar passa pela server
 // action comentarNoPost, que confere o token do link.
 export function ClientPosts({
@@ -34,6 +37,8 @@ export function ClientPosts({
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [nome, setNome] = useState("Cliente");
+  const [visao, setVisao] = useState<"calendario" | "lista">("calendario");
+  const [abertoId, setAbertoId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -67,37 +72,78 @@ export function ClientPosts({
   }
 
   const esperando = posts.filter((p) => p.status === "enviado").length;
+  const aberto = abertoId ? posts.find((p) => p.id === abertoId) ?? null : null;
+
+  function registrarComentario(id: string, comentario: PublicPost["comments"][number], status: PublicPost["status"]) {
+    setPosts((atual) => atual.map((p) => (p.id === id ? { ...p, status, comments: [...p.comments, comentario] } : p)));
+  }
 
   return (
     <div>
       <div className="mb-5">
         <h2 className="text-lg font-semibold tracking-tight text-ink">Posts</h2>
         <p className="mt-0.5 text-sm text-ink-muted">
-          Veja como cada post vai ficar antes de ir ao ar e deixe o seu comentário.
+          Veja o calendário de postagem, abra um post para ver como vai ficar antes de ir ao ar e deixe o seu comentário.
           {esperando > 0 &&
             ` ${esperando === 1 ? "Um post espera" : `${esperando} posts esperam`} a sua opinião.`}
         </p>
       </div>
 
-      <div className="space-y-5">
-        {posts.map((post) => (
+      <div
+        className="mb-4 inline-flex gap-1 rounded-full border border-line bg-canvas p-1"
+        role="group"
+        aria-label="Como ver os posts"
+      >
+        {(
+          [
+            ["calendario", "Calendário"],
+            ["lista", "Lista"],
+          ] as const
+        ).map(([v, rotulo]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setVisao(v)}
+            aria-pressed={visao === v}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              visao === v ? "bg-brand text-navy" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
+
+      {visao === "calendario" ? (
+        <ClientPostsCalendario posts={posts} aoAbrir={(p) => setAbertoId(p.id)} />
+      ) : (
+        <div className="space-y-5">
+          {posts.map((post) => (
+            <PostDoCliente
+              key={post.id}
+              post={post}
+              token={token}
+              projectName={projectName}
+              nome={nome}
+              aoMudarNome={guardarNome}
+              aoComentar={(comentario, status) => registrarComentario(post.id, comentario, status)}
+            />
+          ))}
+        </div>
+      )}
+
+      {aberto && (
+        <JanelaDoPortal titulo="Post" larga aoFechar={() => setAbertoId(null)}>
           <PostDoCliente
-            key={post.id}
-            post={post}
+            post={aberto}
             token={token}
             projectName={projectName}
             nome={nome}
             aoMudarNome={guardarNome}
-            aoComentar={(comentario, status) =>
-              setPosts((atual) =>
-                atual.map((p) =>
-                  p.id === post.id ? { ...p, status, comments: [...p.comments, comentario] } : p
-                )
-              )
-            }
+            aoComentar={(comentario, status) => registrarComentario(aberto.id, comentario, status)}
           />
-        ))}
-      </div>
+        </JanelaDoPortal>
+      )}
     </div>
   );
 }
@@ -146,7 +192,7 @@ function PostDoCliente({
 
   return (
     <article className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 pr-10">
         <Badge tone="neutral">{CATEGORIAS[post.category].rotulo}</Badge>
         <Badge tone={STATUS_DO_POST[post.status].tom}>{rotuloDoStatus(post.status, post.sent_count, "cliente")}</Badge>
         <span className="text-xs text-ink-muted">

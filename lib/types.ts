@@ -70,13 +70,16 @@ export interface TaskComment {
   edited_at?: string | null;
   // Migration 0064: pessoas mencionadas com "@" no comentário.
   mentions?: string[];
+  // Migration 0112: o comentário a que este responde (nulo se não é resposta
+  // ou se o original foi excluído).
+  reply_to?: string | null;
 }
 
 // Aviso do sininho da equipe (migration 0064).
 export interface UserNotification {
   id: string;
   profile_id: string;
-  type: "mention" | "subtask" | "assigned" | "pedido" | "estrategia";
+  type: "mention" | "subtask" | "assigned" | "pedido" | "estrategia" | "reply";
   title: string;
   body: string;
   // Caminho dentro do d.hub pra onde o clique leva.

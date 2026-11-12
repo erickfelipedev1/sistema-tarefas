@@ -31,7 +31,7 @@ import {
   syncComentariosWiki,
 } from "@/lib/task-wiki-sync";
 import { carregarResumos, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
-import { avisarMencao, avisarMencaoNaDescricao, avisarTarefaAtribuida } from "@/lib/actions/push";
+import { avisarMencao, avisarMencaoNaDescricao, avisarResposta, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
 import StatusDaPostagemPicker from "./posts/StatusDaPostagemPicker";
 import VisualizadorDeArquivos, { tipoDoArquivoPeloNome } from "./VisualizadorDeArquivos";
@@ -1766,6 +1766,12 @@ function ComentariosTab({
   // Quem foi escolhido na lista do "@" (ao escrever e ao editar).
   const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const [escolhidosEdicao, setEscolhidosEdicao] = useState<string[]>([]);
+  // Comentário a que o próximo envio responde (migration 0112).
+  const [respondendoA, setRespondendoA] = useState<TaskComment | null>(null);
+  // Ao clicar em "Responder", o cursor vai pra caixa de texto.
+  useEffect(() => {
+    if (respondendoA) document.querySelector<HTMLElement>('[aria-label="Novo comentário"]')?.focus();
+  }, [respondendoA]);
 
   useEffect(() => {
     let ativo = true;
@@ -1886,6 +1892,7 @@ function ComentariosTab({
     if (!novoComentario.trim()) return;
     const texto = novoComentario.trim();
     const mencoes = idsMencionados(texto, pessoas, escolhidos);
+    const respondeu = respondendoA?.id ?? null;
     const { data, error } = await supabase
       .from("task_comments")
       .insert({
@@ -1893,11 +1900,24 @@ function ComentariosTab({
         content: texto,
         created_by_label: currentUserLabel,
         mentions: mencoes,
+        ...(respondeu ? { reply_to: respondeu } : {}),
       })
       .select()
       .single();
+    if (error && respondeu) {
+      if (error.code === "23503") {
+        // O original foi excluído enquanto a resposta era escrita.
+        window.alert("Não deu pra responder: o comentário original não existe mais. Envie como um comentário novo.");
+        setRespondendoA(null);
+      } else {
+        window.alert(`Não deu pra enviar a resposta: ${error.message}`);
+      }
+      return;
+    }
     if (!error && data) {
       if (mencoes.length > 0) avisarMencao(data.id).catch(() => {});
+      if (respondeu) avisarResposta(data.id).catch(() => {});
+      setRespondendoA(null);
       setEscolhidos([]);
       const proximos = comentarios.some((cm) => cm.id === data.id)
         ? comentarios
@@ -1911,8 +1931,27 @@ function ComentariosTab({
   return (
     <div>
       <div className={`mb-3 space-y-2 overflow-y-auto ${listaAlta ? "max-h-[52vh]" : "max-h-64"}`}>
-        {comentarios.map((c) => (
-          <div key={c.id} className="group rounded-lg bg-canvas px-3 py-2">
+        {comentarios.map((c) => {
+          const original = c.reply_to ? comentarios.find((x) => x.id === c.reply_to) : undefined;
+          return (
+          <div key={c.id} id={`comentario-${c.id}`} className="group rounded-lg bg-canvas px-3 py-2">
+            {original && (
+              <button
+                type="button"
+                onClick={() => {
+                  const alvo = document.getElementById(`comentario-${original.id}`);
+                  alvo?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                  alvo?.classList.add("ring-2", "ring-brand/40");
+                  window.setTimeout(() => alvo?.classList.remove("ring-2", "ring-brand/40"), 1400);
+                }}
+                title="Ir para o comentário original"
+                className="mb-1.5 block w-full truncate rounded-md border-l-2 border-brand/60 bg-surface px-2 py-1 text-left text-[11px] text-ink-muted hover:bg-surface-hover"
+              >
+                <span className="font-medium text-ink">↩ {original.created_by_label ?? "Alguém"}</span>
+                {": "}
+                {original.content.replace(/\s+/g, " ").slice(0, 110)}
+              </button>
+            )}
             {editandoId === c.id ? (
               <div>
                 <MencaoInput
@@ -1958,8 +1997,17 @@ function ComentariosTab({
                 {c.created_by_label ?? "Alguém"} · {new Date(c.created_at).toLocaleString("pt-BR")}
                 {c.edited_at && " · editado"}
               </p>
-              {podeMexer(c) && editandoId !== c.id && (
+              {editandoId !== c.id && (
                 <div className="flex gap-2 text-[11px] text-ink-muted">
+                  <button
+                    type="button"
+                    onClick={() => setRespondendoA(c)}
+                    className="hover:text-ink hover:underline"
+                  >
+                    Responder
+                  </button>
+                  {podeMexer(c) && (
+                    <>
                   <button
                     type="button"
                     onClick={() => {
@@ -1974,15 +2022,35 @@ function ComentariosTab({
                   <button type="button" onClick={() => excluir(c)} className="hover:text-red-500 hover:underline">
                     Excluir
                   </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
         {comentarios.length === 0 && (
           <p className="text-xs text-ink-muted">Nenhum comentário ainda.</p>
         )}
       </div>
+      {respondendoA && (
+        <div className="mb-1.5 flex items-center gap-2 rounded-md border-l-2 border-brand/60 bg-canvas px-2 py-1 text-[11px] text-ink-muted">
+          <span className="min-w-0 flex-1 truncate">
+            Respondendo a <span className="font-medium text-ink">{respondendoA.created_by_label ?? "Alguém"}</span>
+            {": "}
+            {respondendoA.content.replace(/\s+/g, " ").slice(0, 110)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setRespondendoA(null)}
+            aria-label="Cancelar resposta"
+            className="flex-shrink-0 rounded px-1 text-sm leading-none hover:bg-surface-hover hover:text-ink"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <form onSubmit={enviar} className="flex gap-2">
         <MencaoInput
           value={novoComentario}
@@ -1990,14 +2058,14 @@ function ComentariosTab({
           pessoas={pessoas}
           aoEscolher={(id) => setEscolhidos((atual) => [...atual, id])}
           ariaLabel="Novo comentário"
-          placeholder="Escreva um comentário... (use @ pra mencionar alguém)"
+          placeholder={respondendoA ? "Escreva sua resposta..." : "Escreva um comentário... (use @ pra mencionar alguém)"}
           className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink placeholder-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15"
         />
         <button
           type="submit"
           className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-navy hover:bg-brand-hover"
         >
-          Enviar
+          {respondendoA ? "Responder" : "Enviar"}
         </button>
       </form>
     </div>

@@ -206,6 +206,50 @@ export async function avisarMencao(commentId: string, apenas?: string[]) {
   });
 }
 
+// Depois de responder a um comentário: avisa no celular quem escreveu o
+// original. O aviso do sininho (type 'reply') já foi criado pelo banco
+// (migration 0112). Só quem respondeu dispara, e só vai push se o aviso ainda
+// não foi pro celular.
+export async function avisarResposta(commentId: string) {
+  const user = await usuarioAtual();
+  if (!user) return;
+  const admin = createAdminClient();
+  const { data: c } = await admin
+    .from("task_comments")
+    .select("id, task_id, content, created_by")
+    .eq("id", commentId)
+    .maybeSingle();
+  if (!c || c.created_by !== user.id) return;
+
+  const { data: pendentes } = await admin
+    .from("user_notifications")
+    .select("id, profile_id")
+    .eq("comment_id", commentId)
+    .eq("type", "reply")
+    .is("pushed_at", null);
+  const destinatarios = (pendentes ?? []).map((n) => n.profile_id as string);
+  if (destinatarios.length === 0) return;
+  await admin
+    .from("user_notifications")
+    .update({ pushed_at: new Date().toISOString() })
+    .in(
+      "id",
+      (pendentes ?? []).map((n) => n.id as string)
+    );
+
+  const [{ data: tarefa }, { data: autor }] = await Promise.all([
+    admin.from("tasks").select("title").eq("id", c.task_id).maybeSingle(),
+    admin.from("profiles").select("name, username").eq("id", user.id).maybeSingle(),
+  ]);
+  const nome = autor?.name || autor?.username || "Alguém";
+  await enviarPush(destinatarios, {
+    titulo: `${nome} respondeu seu comentário`,
+    corpo: `${tarefa?.title ? `${tarefa.title}: ` : ""}${c.content as string}`,
+    url: `/board?tarefa=${c.task_id}`,
+    tag: `resposta-${commentId}`,
+  });
+}
+
 // Depois de mencionar alguém na descrição de uma tarefa: avisa no celular. O
 // aviso do sininho já foi criado pelo banco (migration 0076). Só quem fez a
 // menção dispara (o aviso guarda quem foi) e só pra quem tem um aviso desta
