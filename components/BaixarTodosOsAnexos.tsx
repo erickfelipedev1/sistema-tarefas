@@ -22,7 +22,13 @@ function ehToque() {
 // tarefa pode ter centenas de MB em vídeo); o navegador pode pedir pra
 // permitir vários downloads. No celular abre o menu de compartilhar com todos
 // (Salvar imagens / Salvar no Arquivos), que precisa ter os arquivos em mãos.
-export default function BaixarTodosOsAnexos({ anexos: todos }: { anexos: AnexoParaBaixar[] }) {
+export default function BaixarTodosOsAnexos({
+  anexos: todos,
+  rotulo = "Baixar todos",
+}: {
+  anexos: AnexoParaBaixar[];
+  rotulo?: string;
+}) {
   const [progresso, setProgresso] = useState<string | null>(null);
   const [prontos, setProntos] = useState<File[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -81,7 +87,7 @@ export default function BaixarTodosOsAnexos({ anexos: todos }: { anexos: AnexoPa
         className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-hover disabled:opacity-60"
       >
         <DownloadIcon className="h-3.5 w-3.5" />
-        {progresso ?? (prontos ? `Salvar no celular (${prontos.length})` : `Baixar todos (${anexos.length})`)}
+        {progresso ?? (prontos ? `Salvar no celular (${prontos.length})` : `${rotulo} (${anexos.length})`)}
       </button>
       {noDrive > 0 && (
         <span className="text-xs text-ink-muted">

@@ -8,6 +8,8 @@ import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { STATUS_OPTIONS } from "@/lib/task-options";
 import { corTarefa } from "@/lib/task-colors";
 import { erroDeHorario, hhmm } from "@/lib/horarios";
+import { idDoDriveDoAnexo, linkParaBaixarAnexo } from "@/lib/anexos";
+import BaixarTodosOsAnexos, { type AnexoParaBaixar } from "./BaixarTodosOsAnexos";
 import { XIcon } from "./ui/icons";
 
 const campo =
@@ -232,8 +234,45 @@ export default function SubtarefasTab({
   const ativas = itens.filter((i) => i.status !== "cancelled");
   const concluidas = ativas.filter((i) => i.status === "done").length;
 
+  // Anexos de todas as subtarefas, pro "Baixar todos" desta aba. O nome leva o
+  // título da subtarefa na frente: duas subtarefas podem ter "logo.png".
+  const idsDasAtivas = ativas.map((i) => i.id).join(",");
+  const [anexosDasSubtarefas, setAnexosDasSubtarefas] = useState<AnexoParaBaixar[]>([]);
+  useEffect(() => {
+    if (!idsDasAtivas) {
+      setAnexosDasSubtarefas([]);
+      return;
+    }
+    let ativo = true;
+    supabase
+      .from("task_attachments")
+      .select("task_id, file_name, file_path")
+      .in("task_id", idsDasAtivas.split(","))
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (!ativo) return;
+        const tituloDe = new Map(itens.map((i) => [i.id, i.title]));
+        setAnexosDasSubtarefas(
+          (data ?? []).map((a) => ({
+            nome: `${tituloDe.get(a.task_id) ?? "Subtarefa"} - ${a.file_name}`,
+            url: linkParaBaixarAnexo(a.file_path, a.file_name),
+            noDrive: !!idDoDriveDoAnexo(a.file_path),
+          }))
+        );
+      });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsDasAtivas]);
+
   return (
     <div>
+      {anexosDasSubtarefas.length > 1 && (
+        <div className="mb-3 flex justify-end">
+          <BaixarTodosOsAnexos anexos={anexosDasSubtarefas} rotulo="Baixar anexos de todas as subtarefas" />
+        </div>
+      )}
       {ativas.length > 0 && (
         <div className="mb-3">
           <p className="mb-1 text-xs text-ink-muted">
