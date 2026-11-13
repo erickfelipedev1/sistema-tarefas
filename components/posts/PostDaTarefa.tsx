@@ -188,7 +188,7 @@ export default function PostDaTarefa({
     if (categoria === "estatico") return setErro("Post estático leva uma imagem. O Drive serve pra vídeo (reel, Shorts, YouTube ou carrossel).");
     if (itens.some((i) => i.salva?.drive_id === id)) return setErro("Esse vídeo do Drive já está no post.");
     if (regra.maximo > 1 && ocupadas >= regra.maximo) {
-      return setErro(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
+      return setErro(`${categoria === "story" ? "O story" : "O carrossel"} leva no máximo ${regra.maximo} arquivos.`);
     }
     const item: ItemDeMidia = {
       chave: `drive-${id}`,
@@ -673,6 +673,18 @@ export default function PostDaTarefa({
                   key={c}
                   ativo={c === categoria}
                   onClick={() => {
+                    // Arquivos que não cabem no novo formato saem: avisa antes.
+                    const ficariam = itens
+                      .filter((i) => arquivoAceito(c, tipoDoItem(i) === "video" ? "video/" : "image/"))
+                      .slice(0, CATEGORIAS[c].maximo).length;
+                    if (
+                      ficariam < itens.length &&
+                      !window.confirm(
+                        `Mudar para ${CATEGORIAS[c].rotulo} tira ${itens.length - ficariam} arquivo(s) que não cabem nesse formato. Continuar?`
+                      )
+                    ) {
+                      return;
+                    }
                     setCategoria(c);
                     // Shorts e vídeo do YouTube são do YouTube: já marca a rede.
                     if (c === "shorts" || c === "youtube") {
@@ -734,7 +746,7 @@ export default function PostDaTarefa({
 
           <div>
             <p className="mb-1 text-xs font-medium text-ink-muted">
-              {ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagem ou vídeo" : "Imagens e vídeos"}
+              {ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagens ou vídeos" : "Imagens e vídeos"}
             </p>
             <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
             {itens.length > 0 && (

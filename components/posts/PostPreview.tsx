@@ -84,8 +84,13 @@ function PostPreviewBase({
       <div className="relative mx-auto aspect-[9/16] w-full max-w-[340px] overflow-hidden rounded-2xl border border-line bg-black text-white">
         <Midias midias={midias} capa={null} preencher />
         <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent px-3 pb-8 pt-3">
-          <div className="h-0.5 w-full rounded-full bg-white/30">
-            <div className="h-full w-1/3 rounded-full bg-white" />
+          {/* Uma barrinha por story; a primeira "tocando". */}
+          <div className="flex gap-1">
+            {Array.from({ length: Math.max(midias.length, 1) }, (_, i) => (
+              <div key={i} className="h-0.5 flex-1 rounded-full bg-white/30">
+                {i === 0 && <div className="h-full w-1/3 rounded-full bg-white" />}
+              </div>
+            ))}
           </div>
           <div className="mt-2.5 flex items-center gap-2">
             <Inicial conta={conta} className="h-7 w-7 border border-white/70 bg-white/20 text-white" />

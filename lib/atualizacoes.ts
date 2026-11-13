@@ -12,6 +12,18 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-13",
+    area: "Clientes",
+    titulo: "O cliente comenta na solicitação",
+    texto: "Na área do cliente (/cliente), cada solicitação agora abre com os detalhes que ele mandou (descrição, tipo, prazo e link) e uma conversa: ele escreve comentários e vê as respostas da equipe. Quem recebeu a solicitação é avisado no sininho e no celular quando o cliente comenta, e o clique no aviso abre a solicitação com a conversa. Em Solicitações, o botão Comentários de cada cartão mostra a conversa e deixa responder (o cliente vê a resposta); aparece \"Cliente comentou\" quando a última mensagem é dele. Os comentários internos da tarefa continuam internos: o cliente só vê o que for escrito na solicitação.",
+  },
+  {
+    data: "2026-11-13",
+    area: "Posts",
+    titulo: "Mais de um story no mesmo post",
+    texto: "Na aba de postagens da tarefa (e na aba Posts do cliente), o formato Story agora aceita de 1 a 10 imagens e/ou vídeos, na ordem em que vão aparecer: cada arquivo é um story. O preview mostra uma barrinha por story e dá pra navegar entre eles. Atenção: a publicação direta no Instagram pelo d.hub continua sendo um story por vez; com mais de um arquivo, o botão avisa e o post sai pelo app do Instagram.",
+  },
+  {
     data: "2026-11-12",
     area: "Tarefas",
     titulo: "Tarefa que se repete de verdade",

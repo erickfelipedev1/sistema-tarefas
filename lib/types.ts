@@ -79,7 +79,7 @@ export interface TaskComment {
 export interface UserNotification {
   id: string;
   profile_id: string;
-  type: "mention" | "subtask" | "assigned" | "pedido" | "estrategia" | "reply";
+  type: "mention" | "subtask" | "assigned" | "pedido" | "estrategia" | "reply" | "solicitacao";
   title: string;
   body: string;
   // Caminho dentro do d.hub pra onde o clique leva.
@@ -567,6 +567,19 @@ export interface TaskRequest {
   urgency: string | null;
   due_date: string | null;
   drive_url: string | null;
+  // Preenchido quando a solicitação veio de um cliente (/cliente, migration 0032).
+  client_login_id?: string | null;
+}
+
+// Comentário numa solicitação (migration 0115): da equipe ou do cliente (/cliente).
+export interface TaskRequestComment {
+  id: string;
+  request_id: string;
+  sender_type: "team" | "client";
+  sender_id?: string | null;
+  sender_label: string;
+  content: string;
+  created_at: string;
 }
 
 export interface Channel {

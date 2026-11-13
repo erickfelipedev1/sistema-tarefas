@@ -458,7 +458,7 @@ export default function PostsManager({
     if (categoria === "estatico") return setErroForm("Post estático leva uma imagem. O Drive serve pra vídeo (reel, Shorts, YouTube ou carrossel).");
     if (itens.some((i) => i.salva?.drive_id === id)) return setErroForm("Esse vídeo do Drive já está no post.");
     if (regra.maximo > 1 && itens.length >= regra.maximo) {
-      return setErroForm(`O carrossel leva no máximo ${regra.maximo} arquivos.`);
+      return setErroForm(`${categoria === "story" ? "O story" : "O carrossel"} leva no máximo ${regra.maximo} arquivos.`);
     }
     const item: ItemDeMidia = {
       chave: `drive-${id}`,
@@ -829,7 +829,7 @@ export default function PostsManager({
                 </p>
               </Campo>
 
-              <Campo label={ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagem ou vídeo" : "Imagens e vídeos"} required>
+              <Campo label={ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagens ou vídeos" : "Imagens e vídeos"} required>
                 <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
                 {itens.length > 0 && (
                   <ul className="mb-3 flex flex-wrap gap-2">

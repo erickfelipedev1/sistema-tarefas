@@ -10,8 +10,8 @@ import {
   lerSessaoCliente,
   normalizarUsuarioCliente,
 } from "@/lib/client-auth";
-import { avisarTarefaParaResponsaveis } from "@/lib/push";
-import type { Task } from "@/lib/types";
+import { avisarTarefaParaResponsaveis, enviarPush } from "@/lib/push";
+import type { Task, TaskRequestComment } from "@/lib/types";
 
 // Server Actions da área do cliente (/cliente). Tudo roda com a service_role
 // — a autorização é o cookie assinado de lib/client-auth.ts, e toda leitura
@@ -161,4 +161,57 @@ export async function enviarSolicitacaoCliente(
 
   revalidatePath("/cliente");
   return { ok: true };
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// O cliente comenta na solicitação dele (migration 0115). Só vale em
+// solicitação enviada por este login (a conferência é aqui, no servidor: o
+// cliente não tem acesso direto ao banco). O limite contra spam (6 por minuto
+// na mesma solicitação, 20 por minuto no login, 300 por solicitação) é do
+// gatilho do banco, que não dá pra driblar com chamadas em paralelo. O aviso do
+// sininho de quem recebeu a solicitação também sai do banco; aqui só vai o
+// aviso no celular.
+export async function comentarNaSolicitacao(
+  pedidoId: string,
+  texto: string
+): Promise<{ ok: true; comentario: TaskRequestComment } | { erro: string }> {
+  const sessao = await lerSessaoCliente();
+  if (!sessao) return { erro: "Sua sessão expirou. Entre de novo." };
+  if (typeof pedidoId !== "string" || !UUID.test(pedidoId)) return { erro: "Solicitação inválida." };
+  const conteudo = limitar(typeof texto === "string" ? texto : "", 2000);
+  if (!conteudo) return { erro: "Escreva o comentário." };
+
+  const admin = createAdminClient();
+  const { data: pedido } = await admin
+    .from("task_requests")
+    .select("id, title, requested_to")
+    .eq("id", pedidoId)
+    .eq("client_login_id", sessao.loginId)
+    .maybeSingle();
+  if (!pedido) return { erro: "Solicitação não encontrada." };
+
+  const rotulo = `${sessao.username} (cliente)`;
+  const { data: comentario, error } = await admin
+    .from("task_request_comments")
+    .insert({ request_id: pedido.id, sender_type: "client", sender_label: rotulo, content: conteudo })
+    .select("id, request_id, sender_type, sender_label, content, created_at")
+    .single();
+  if (error || !comentario) {
+    // Os limites (por minuto e total) são do gatilho do banco: a mensagem já vem pronta.
+    if (error?.message?.includes("Muitos comentários") || error?.message?.includes("comentários demais")) {
+      return { erro: error.message };
+    }
+    return { erro: "Não foi possível enviar o comentário. Tente novamente." };
+  }
+
+  if (pedido.requested_to) {
+    await enviarPush([pedido.requested_to as string], {
+      titulo: `${rotulo} comentou na solicitação`,
+      corpo: `${pedido.title}: ${conteudo}`,
+      url: `/solicitacoes?pedido=${pedido.id}`,
+      tag: `solicitacao-${pedido.id}`,
+    }).catch(() => {});
+  }
+  return { ok: true, comentario: comentario as TaskRequestComment };
 }

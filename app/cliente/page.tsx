@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { lerSessaoCliente } from "@/lib/client-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STATUS_OPTIONS } from "@/lib/task-options";
-import { formatarDataHora } from "@/lib/format";
-import { Badge } from "@/components/ui/Badge";
+import type { TaskRequestComment } from "@/lib/types";
 import ClientRequestForm from "./ClientRequestForm";
+import SolicitacaoDoCliente from "./SolicitacaoDoCliente";
 import { Logo } from "@/components/ui/Logo";
 import { sairCliente } from "./actions";
 
@@ -32,7 +32,7 @@ export default async function ClientePage() {
   const admin = createAdminClient();
   const { data: pedidos } = await admin
     .from("task_requests")
-    .select("id, title, urgency, created_at, task_id")
+    .select("id, title, description, urgency, demand_type, due_date, drive_url, created_at, task_id")
     .eq("client_login_id", sessao.loginId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -42,6 +42,20 @@ export default async function ClientePage() {
     ? await admin.from("tasks").select("id, status").in("id", idsTarefas)
     : { data: [] as { id: string; status: string }[] };
   const statusPorTarefa = new Map((tarefas ?? []).map((t) => [t.id, t.status]));
+
+  // A conversa de cada solicitação (migration 0115): o que o cliente e a equipe escreveram.
+  const idsPedidos = (pedidos ?? []).map((p) => p.id as string);
+  const { data: comentarios } = idsPedidos.length
+    ? await admin
+        .from("task_request_comments")
+        .select("id, request_id, sender_type, sender_label, content, created_at")
+        .in("request_id", idsPedidos)
+        .order("created_at", { ascending: true })
+    : { data: [] as TaskRequestComment[] };
+  const comentariosPorPedido = new Map<string, TaskRequestComment[]>();
+  for (const c of (comentarios ?? []) as TaskRequestComment[]) {
+    comentariosPorPedido.set(c.request_id, [...(comentariosPorPedido.get(c.request_id) ?? []), c]);
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-canvas px-4 py-8 sm:px-6">
@@ -78,26 +92,24 @@ export default async function ClientePage() {
           <ul className="space-y-2.5">
             {(pedidos ?? []).map((p) => {
               const status = p.task_id ? statusPorTarefa.get(p.task_id) : undefined;
-              const rotulo =
-                STATUS_OPTIONS.find((s) => s.key === status)?.label ?? "Recebida";
+              const rotulo = STATUS_OPTIONS.find((s) => s.key === status)?.label ?? "Recebida";
               return (
-                <li
+                <SolicitacaoDoCliente
                   key={p.id}
-                  className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-line bg-surface p-4"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-ink">{p.title}</p>
-                    <p className="mt-1 text-xs text-ink-muted">
-                      Enviada em {formatarDataHora(p.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {p.urgency && <Badge tone="neutral">{p.urgency}</Badge>}
-                    <Badge tone={status ? TOM_STATUS[status] ?? "neutral" : "warning"}>
-                      {rotulo}
-                    </Badge>
-                  </div>
-                </li>
+                  pedido={{
+                    id: p.id,
+                    title: p.title,
+                    description: p.description,
+                    urgency: p.urgency,
+                    demandType: p.demand_type,
+                    dueDate: p.due_date,
+                    driveUrl: p.drive_url,
+                    createdAt: p.created_at,
+                    statusRotulo: rotulo,
+                    statusTom: status ? TOM_STATUS[status] ?? "neutral" : "warning",
+                  }}
+                  comentariosIniciais={comentariosPorPedido.get(p.id) ?? []}
+                />
               );
             })}
           </ul>

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { pessoaAtiva } from "@/lib/mencoes";
-import type { Profile, Project, Task, TaskRequest } from "@/lib/types";
+import type { Profile, Project, Task, TaskRequest, TaskRequestComment } from "@/lib/types";
 import { formatarDataHora } from "@/lib/format";
 import { avisarTarefaAtribuida } from "@/lib/actions/push";
 import { Badge } from "./ui/Badge";
@@ -13,6 +13,7 @@ import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
 import { InboxIcon, LinkIcon, PlusIcon, Trash2Icon } from "./ui/icons";
+import SolicitacaoComentarios from "./SolicitacaoComentarios";
 
 type Aba = "recebidas" | "enviadas";
 type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger";
@@ -47,18 +48,31 @@ export default function TaskRequests({
   currentUserId,
   currentUserLabel,
   initialRequests,
+  initialComments = [],
+  pedidoAberto = null,
   profiles,
   projects,
 }: {
   currentUserId: string;
   currentUserLabel: string;
   initialRequests: TaskRequest[];
+  // Conversa de cada solicitação (migration 0115).
+  initialComments?: TaskRequestComment[];
+  // Solicitação a abrir já com a conversa (vem do clique no aviso do sininho).
+  pedidoAberto?: string | null;
   profiles: Profile[];
   projects: Project[];
 }) {
   const supabase = createClient();
   const [requests, setRequests] = useState<TaskRequest[]>(initialRequests);
-  const [aba, setAba] = useState<Aba>("recebidas");
+  const [comentarios, setComentarios] = useState<TaskRequestComment[]>(initialComments);
+  const [conversasAbertas, setConversasAbertas] = useState<Set<string>>(
+    () => new Set(pedidoAberto ? [pedidoAberto] : [])
+  );
+  const [aba, setAba] = useState<Aba>(() => {
+    const alvo = pedidoAberto ? initialRequests.find((r) => r.id === pedidoAberto) : null;
+    return alvo && alvo.requested_to !== currentUserId && alvo.requested_by === currentUserId ? "enviadas" : "recebidas";
+  });
   const [mostrarForm, setMostrarForm] = useState(false);
   const [sucesso, setSucesso] = useState(false);
 
@@ -144,6 +158,50 @@ export default function TaskRequests({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
+
+  // Comentários da solicitação chegando e saindo ao vivo (cliente ou colega).
+  useEffect(() => {
+    const canal = supabase
+      .channel("task-request-comments-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_request_comments" }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          const novo = payload.new as TaskRequestComment;
+          setComentarios((atual) => (atual.some((c) => c.id === novo.id) ? atual : [...atual, novo]));
+        }
+        if (payload.eventType === "DELETE") {
+          const id = (payload.old as TaskRequestComment).id;
+          setComentarios((atual) => atual.filter((c) => c.id !== id));
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Vindo do aviso do sininho (também quando já se está nesta página): abre a
+  // conversa e leva até a solicitação.
+  useEffect(() => {
+    if (!pedidoAberto) return;
+    setConversasAbertas((atual) => (atual.has(pedidoAberto) ? atual : new Set(atual).add(pedidoAberto)));
+    const alvo = requests.find((r) => r.id === pedidoAberto);
+    if (alvo) setAba(alvo.requested_to !== currentUserId && alvo.requested_by === currentUserId ? "enviadas" : "recebidas");
+    const t = window.setTimeout(() => {
+      document.getElementById(`pedido-${pedidoAberto}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 150);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoAberto]);
+
+  function alternarConversa(id: string) {
+    setConversasAbertas((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
 
   const recebidas = requests.filter((r) => r.requested_to === currentUserId);
   const enviadas = requests.filter((r) => r.requested_by === currentUserId);
@@ -580,9 +638,13 @@ export default function TaskRequests({
         {lista.map((req) => {
           const s = statusInfo(req.status);
           const contexto = req.project_id ? projectsById[req.project_id]?.name : null;
+          const conversa = comentarios.filter((c) => c.request_id === req.id);
+          const conversaAberta = conversasAbertas.has(req.id);
+          const clienteComentouPorUltimo = conversa[conversa.length - 1]?.sender_type === "client";
           return (
             <div
               key={req.id}
+              id={`pedido-${req.id}`}
               data-mov="bloco"
               className="rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-ink-muted"
             >
@@ -598,18 +660,29 @@ export default function TaskRequests({
                       : `Pedido para ${nomeDe(req.requested_to)}`}
                   </p>
                   {req.description && (
-                    <p className="mt-2 line-clamp-2 text-sm text-ink-muted">
+                    <p className={`mt-2 whitespace-pre-wrap break-words text-sm text-ink-muted ${conversaAberta ? "" : "line-clamp-2"}`}>
                       {req.description}
                     </p>
                   )}
-                  {req.status === "accepted" && req.task_id && (
-                    <Link
-                      href={req.project_id ? `/projetos/${req.project_id}` : "/board"}
-                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-forte hover:underline"
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {req.status === "accepted" && req.task_id && (
+                      <Link
+                        href={req.project_id ? `/projetos/${req.project_id}` : "/board"}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-forte hover:underline"
+                      >
+                        Ver tarefa →
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => alternarConversa(req.id)}
+                      aria-expanded={conversaAberta}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-forte hover:underline"
                     >
-                      Ver tarefa →
-                    </Link>
-                  )}
+                      Comentários ({conversa.length})
+                      {clienteComentouPorUltimo && !conversaAberta && <Badge tone="brand">Cliente comentou</Badge>}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
@@ -635,6 +708,18 @@ export default function TaskRequests({
                   </button>
                 </div>
               </div>
+
+              {conversaAberta && (
+                <SolicitacaoComentarios
+                  requestId={req.id}
+                  comentarios={conversa}
+                  currentUserId={currentUserId}
+                  currentUserLabel={currentUserLabel}
+                  visivelAoCliente={!!req.client_login_id}
+                  aoCriar={(c) => setComentarios((atual) => (atual.some((x) => x.id === c.id) ? atual : [...atual, c]))}
+                  aoApagar={(id) => setComentarios((atual) => atual.filter((x) => x.id !== id))}
+                />
+              )}
 
               {confirmandoExclusao === req.id && (
                 <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-line pt-3">

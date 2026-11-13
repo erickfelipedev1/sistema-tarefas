@@ -3,7 +3,11 @@ import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
 import TaskRequests from "@/components/TaskRequests";
 import Coreografia from "@/components/movimento/Coreografia";
 
-export default async function SolicitacoesPage() {
+export default async function SolicitacoesPage({
+  searchParams,
+}: {
+  searchParams: { pedido?: string };
+}) {
   const supabase = await clienteDaRequisicao();
   const user = await usuarioAtual();
 
@@ -25,6 +29,24 @@ export default async function SolicitacoesPage() {
       supabase.from("projects").select("*").order("name", { ascending: true }),
     ]);
 
+  // A conversa das solicitações (migration 0115): só das que esta pessoa vê
+  // (recebeu ou enviou) e os comentários mais recentes.
+  const ids = (requests ?? [])
+    .filter((r) => r.requested_to === user.id || r.requested_by === user.id)
+    .slice(0, 200)
+    .map((r) => r.id as string);
+  const { data: comentariosRecentes } = ids.length
+    ? await supabase
+        .from("task_request_comments")
+        .select("*")
+        .in("request_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(1000)
+    : { data: [] };
+  const comentarios = [...(comentariosRecentes ?? [])].reverse();
+  const pedidoAberto =
+    typeof searchParams?.pedido === "string" && /^[0-9a-f-]{36}$/i.test(searchParams.pedido) ? searchParams.pedido : null;
+
   return (
     <Coreografia>
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
@@ -32,6 +54,8 @@ export default async function SolicitacoesPage() {
         currentUserId={user.id}
         currentUserLabel={userLabel}
         initialRequests={requests ?? []}
+        initialComments={comentarios ?? []}
+        pedidoAberto={pedidoAberto}
         profiles={profiles ?? []}
         projects={projects ?? []}
       />

@@ -6,7 +6,8 @@ import type { PostCategory, PostMedia, PostNetwork, PostStatus } from "@/lib/typ
 export const BUCKET_DOS_POSTS = "post-media";
 
 // O que cada categoria aceita de arquivo. Carrossel pode misturar imagem e
-// vídeo, como nas redes; reel é um vídeo só.
+// vídeo, como nas redes; reel é um vídeo só; story aceita de 1 a 10 (cada
+// arquivo é um story; o limite de 10 é o mesmo do banco, migration 0103).
 export const CATEGORIAS: Record<
   PostCategory,
   { rotulo: string; artigo: string; aceita: string; minimo: number; maximo: number; dica: string }
@@ -56,8 +57,8 @@ export const CATEGORIAS: Record<
     artigo: "um Story",
     aceita: "image/*,video/*",
     minimo: 1,
-    maximo: 1,
-    dica: "Uma imagem ou um vídeo na vertical (9:16). Some em 24 horas.",
+    maximo: 10,
+    dica: "De 1 a 10 imagens ou vídeos na vertical (9:16), um por story, na ordem em que vão aparecer. Some em 24 horas.",
   },
 };
 
@@ -253,7 +254,9 @@ export function oQueFaltaProEnvio(post: {
       : `Um carrossel precisa de pelo menos ${regra.minimo} arquivos.`;
   }
   if (post.quantasMidias > regra.maximo) {
-    return regra.maximo === 1 ? `${regra.rotulo} leva um arquivo só.` : `O carrossel leva no máximo ${regra.maximo} arquivos.`;
+    return regra.maximo === 1
+      ? `${regra.rotulo} leva um arquivo só.`
+      : `${post.category === "story" ? "O story" : "O carrossel"} leva no máximo ${regra.maximo} arquivos.`;
   }
   if (redesValidas(post.networks).length === 0) return "Marque pelo menos uma rede.";
   // Story não leva legenda (o Instagram ignora): não pede.
