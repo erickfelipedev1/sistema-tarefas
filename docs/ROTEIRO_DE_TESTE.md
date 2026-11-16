@@ -1,4 +1,4 @@
-# Roteiro de teste do d.hub (entregas de 12 a 16/11)
+# Roteiro de teste do d.hub (entregas de 12 a 17/11)
 
 Quem testa: Erick e/ou Emilly. Tempo total: cerca de 30 minutos.
 Use sempre um **cliente de teste** (não o de um cliente real) e um **perfil de Instagram de teste**.
@@ -80,6 +80,21 @@ Em 16/11, às 06h, a rotina criou sozinha as cópias de "Preenchimento do Relat�
 7. Exclua uma das tarefas criadas, direto no d.hub, e clique em **Criar no d.hub** outra vez. A tarefa excluída **não** volta. ✅/❌
 
 Esperado: o cliente vê o título e o prazo das tarefas no portal dele e recebe um aviso por tarefa.
+
+---
+
+## 6. Mais de um responsável por projeto do cliente
+
+Precisa de: um cliente com pelo menos um projeto na aba **Projetos** (ou crie um para o teste).
+
+1. Abra o cliente, aba **Projetos**, e clique em **Novo projeto** (ou abra um existente e clique em editar). No campo **Responsáveis** aparece uma lista com caixinhas, não mais uma lista de escolha única. ✅/❌
+2. Marque **duas pessoas** e salve. Aparece "2 pessoas marcadas" abaixo da lista antes de salvar. ✅/❌
+3. No cartão do projeto aparecem as fotos das duas pessoas e o nome da primeira com "+1". ✅/❌
+4. Abra o projeto. A linha **Responsáveis:** mostra as duas pessoas, cada uma com foto e nome. ✅/❌
+5. Edite de novo, desmarque uma pessoa e salve. Só a outra continua aparecendo. ✅/❌
+6. Edite e desmarque todas. O projeto fica sem responsável e salva sem erro. ✅/❌
+7. Abra um projeto **antigo** que já tinha um responsável. Essa pessoa já vem marcada na lista. ✅/❌
+8. Recarregue a página. As escolhas continuam como foram salvas. ✅/❌
 
 ---
 
