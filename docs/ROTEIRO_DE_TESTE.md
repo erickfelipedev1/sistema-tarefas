@@ -98,6 +98,23 @@ Precisa de: um cliente com pelo menos um projeto na aba **Projetos** (ou crie um
 
 ---
 
+## 7. d.estratégia: aviso de conta compartilhada no "Puxar do Reportei"
+
+Contexto: a **Jornada 4S** e a **NLG Comex** usam a mesma conta do Google Ads ("NLG", ligada duas vezes no Reportei). Por isso os números de Google Ads vêm iguais nos dois. O d.hub agora avisa isso na tela.
+
+Precisa de: um mapeamento do d.estratégia para a **Jornada 4S** ou para a **NLG Comex**. Hoje o único mapeamento existente é o da ADG Advogados, que não tem Google Ads, então é preciso criar um (em **Estratégia**, novo mapeamento do cliente). Não precisa da chave da IA.
+
+1. Abra o mapeamento e vá na aba **Semana**. Escolha uma semana que já terminou (segunda-feira). ✅/❌
+2. Clique em **Puxar do Reportei**. Os números aparecem (cliques, custo etc.) com a origem de cada um. ✅/❌
+3. Entre os avisos da consulta aparece: **"Google Ads: a mesma conta também está ligada a [o outro cliente] no Reportei. Os números podem ser da conta toda (somando os clientes): confira antes de usar."** ✅/❌
+4. Se o mapeamento é da Jornada 4S, o aviso cita a **NLG Comex** (e o contrário). ✅/❌
+5. Repita no mapeamento de um cliente com conta própria (por exemplo, a iPhone Litoral ou a Chloe Semi Joias). **Nenhum** aviso de conta compartilhada aparece. ✅/❌
+6. Com o mapeamento da **ADG Advogados** (sem Google Ads), os números do Instagram e do Meta vêm normalmente, sem esse aviso. ✅/❌
+
+Esperado: os números de Google Ads da Jornada 4S e da NLG Comex continuam iguais entre si (a conta é a mesma). O aviso serve para ninguém usar esse número como se fosse só de um cliente. Se for preciso separar, a correção é no Google Ads ou no Reportei (campanhas distintas ou relatório filtrado por campanha).
+
+---
+
 ## O que anotar quando algo falhar
 
 - Em qual passo foi.
