@@ -165,7 +165,16 @@ export async function puxarNumerosDaSemana(dados: { mapeamentoId: string; semana
   if ("erro" in janela) return janela;
 
   try {
-    const r = await puxarNumerosDoReportei(reporteiId, janela.periodo);
+    // Os outros clientes ligados ao Reportei, pra avisar de conta compartilhada entre eles.
+    const { data: outros } = await a.supabase
+      .from("projects")
+      .select("name, reportei_project_id")
+      .not("reportei_project_id", "is", null)
+      .neq("id", a.mapeamento.project_id);
+    const outrosClientes = ((outros ?? []) as { name: string; reportei_project_id: number | string | null }[])
+      .map((o) => ({ nome: o.name, reporteiProjetoId: Number(o.reportei_project_id) }))
+      .filter((o) => Number.isInteger(o.reporteiProjetoId) && o.reporteiProjetoId > 0);
+    const r = await puxarNumerosDoReportei(reporteiId, janela.periodo, outrosClientes);
     if (Object.keys(r.numeros).length === 0) {
       return { erro: r.avisos[0] ?? "O Reportei não devolveu nenhum número deste cliente para a semana. Preencha à mão." };
     }

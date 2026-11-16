@@ -29,6 +29,9 @@ export interface IntegracaoReportei {
   slug: string;
   status: string;
   project_id: number;
+  // Código da conta no canal (ex.: a conta do Google Ads). Duas integrações com o mesmo
+  // source_id são a mesma conta ligada em projetos diferentes do Reportei.
+  source_id?: string | number | null;
 }
 
 // Uma métrica do catálogo. Pra pedir os dados dela, a API quer o objeto
@@ -145,9 +148,16 @@ export const listarProjetosDoReportei = unstable_cache(
 export const listarIntegracoes = unstable_cache(
   async (projetoId: number): Promise<IntegracaoReportei[]> => {
     const integracoes = await listarTudo<IntegracaoReportei>(`/integrations?project_id=${projetoId}`);
-    return integracoes.map((i) => ({ id: i.id, name: i.name, slug: i.slug, status: i.status, project_id: i.project_id }));
+    return integracoes.map((i) => ({
+      id: i.id,
+      name: i.name,
+      slug: i.slug,
+      status: i.status,
+      project_id: i.project_id,
+      source_id: i.source_id ?? null,
+    }));
   },
-  ["reportei-integracoes"],
+  ["reportei-integracoes-v2"],
   { revalidate: 600 }
 );
 
