@@ -3,7 +3,7 @@
 //
 // Feriados nacionais e os pontos facultativos que a equipe costuma folgar
 // (Carnaval e Corpus Christi). Datas móveis calculadas pela Páscoa:
-// 2026 = 5/4, 2027 = 28/3. Depois de 2027 a lista precisa ser ampliada: fora
+// 2026 = 5/4, 2027 = 28/3, 2028 = 16/4, 2029 = 1/4, 2030 = 21/4. Depois de 2030 a lista precisa ser ampliada: fora
 // dela, só fim de semana é descontado (e a tela avisa, ver anoCoberto).
 
 export const FERIADOS: Record<string, string> = {
@@ -33,9 +33,48 @@ export const FERIADOS: Record<string, string> = {
   "2027-11-15": "Proclamação da República",
   "2027-11-20": "Consciência Negra",
   "2027-12-25": "Natal",
+  "2028-01-01": "Confraternização Universal",
+  "2028-02-28": "Carnaval",
+  "2028-02-29": "Carnaval",
+  "2028-04-14": "Sexta-feira Santa",
+  "2028-04-21": "Tiradentes",
+  "2028-05-01": "Dia do Trabalho",
+  "2028-06-15": "Corpus Christi",
+  "2028-09-07": "Independência",
+  "2028-10-12": "Nossa Senhora Aparecida",
+  "2028-11-02": "Finados",
+  "2028-11-15": "Proclamação da República",
+  "2028-11-20": "Consciência Negra",
+  "2028-12-25": "Natal",
+  "2029-01-01": "Confraternização Universal",
+  "2029-02-12": "Carnaval",
+  "2029-02-13": "Carnaval",
+  "2029-03-30": "Sexta-feira Santa",
+  "2029-04-21": "Tiradentes",
+  "2029-05-01": "Dia do Trabalho",
+  "2029-05-31": "Corpus Christi",
+  "2029-09-07": "Independência",
+  "2029-10-12": "Nossa Senhora Aparecida",
+  "2029-11-02": "Finados",
+  "2029-11-15": "Proclamação da República",
+  "2029-11-20": "Consciência Negra",
+  "2029-12-25": "Natal",
+  "2030-01-01": "Confraternização Universal",
+  "2030-03-04": "Carnaval",
+  "2030-03-05": "Carnaval",
+  "2030-04-19": "Sexta-feira Santa",
+  "2030-04-21": "Tiradentes",
+  "2030-05-01": "Dia do Trabalho",
+  "2030-06-20": "Corpus Christi",
+  "2030-09-07": "Independência",
+  "2030-10-12": "Nossa Senhora Aparecida",
+  "2030-11-02": "Finados",
+  "2030-11-15": "Proclamação da República",
+  "2030-11-20": "Consciência Negra",
+  "2030-12-25": "Natal",
 };
 
-const ULTIMO_ANO_COBERTO = 2027;
+const ULTIMO_ANO_COBERTO = 2030;
 
 // "AAAA-MM-DD" a partir de uma data (no calendário local, sem fuso).
 export function paraISO(d: Date): string {

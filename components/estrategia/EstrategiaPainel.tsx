@@ -341,7 +341,7 @@ function FormNovoMapeamento({
           Prazo do cliente (D15): <span className="font-medium text-ink">{formatarDataBR(previa.cliente)}</span>
           {!anoCoberto(previa.cliente) && (
             <span className="mt-1 block text-xs text-warning">
-              Esta data passa de 2027: os feriados ainda não estão cadastrados, só os fins de semana foram descontados.
+              Esta data passa de 2030: os feriados ainda não estão cadastrados, só os fins de semana foram descontados.
             </span>
           )}
         </p>
