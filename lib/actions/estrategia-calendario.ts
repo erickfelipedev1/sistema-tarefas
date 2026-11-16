@@ -237,6 +237,7 @@ export async function enviarPecasAoDhub(mapeamentoId: string, origem = "d10b"): 
     .update({ enviado_em: null })
     .eq("mapeamento_id", mapeamentoId)
     .is("task_id", null)
+    .is("vinculado_em", null)
     .lt("enviado_em", new Date(Date.now() - 5 * 60_000).toISOString());
 
   // Peças de um mês só vão depois que o cliente aprovou o plano daquele mês.
@@ -266,13 +267,13 @@ export async function enviarPecasAoDhub(mapeamentoId: string, origem = "d10b"): 
   // para o vínculo da peça, que a tela não pode gravar.
   const gravarVinculo = async (pecaId: string, taskId: string, postId: string | null) => {
     for (let tentativa = 0; tentativa < 2; tentativa += 1) {
-      const { error } = await admin.from("est_pecas").update({ task_id: taskId, post_id: postId }).eq("id", pecaId);
+      const { error } = await admin.from("est_pecas").update({ task_id: taskId, post_id: postId, vinculado_em: new Date().toISOString() }).eq("id", pecaId);
       if (!error) return true;
     }
     return false;
   };
   const liberar = async (pecaId: string) => {
-    await admin.from("est_pecas").update({ enviado_em: null, task_id: null, post_id: null }).eq("id", pecaId);
+    await admin.from("est_pecas").update({ enviado_em: null, task_id: null, post_id: null, vinculado_em: null }).eq("id", pecaId);
   };
 
   let tarefas = 0;
