@@ -12,6 +12,18 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-16",
+    area: "Posts",
+    titulo: "Publicar vários stories no Instagram",
+    texto: "Um post de Story com até 10 imagens e/ou vídeos agora é publicado no Instagram pelo d.hub: cada arquivo vira um story, na ordem do post, e a tela mostra quantos já saíram. Se der problema no meio, o d.hub avisa quantos saíram e, ao publicar de novo, envia só os que faltam (confira o perfil do cliente antes, pra não repetir). Vale a mesma regra de antes: imagens em JPEG e arquivos enviados pelo d.hub (não do Google Drive).",
+  },
+  {
+    data: "2026-11-16",
+    area: "Clientes",
+    titulo: "O cliente vê quando a equipe responde",
+    texto: "Na área do cliente (/cliente), a solicitação que recebeu resposta da equipe ganha o selo \"Resposta nova\", o topo da página avisa quantas foram respondidas e, ao abrir, cada comentário novo leva o selo \"Nova\". O aviso aparece quando o cliente entra no portal.",
+  },
+  {
     data: "2026-11-13",
     area: "Clientes",
     titulo: "O cliente comenta na solicitação",

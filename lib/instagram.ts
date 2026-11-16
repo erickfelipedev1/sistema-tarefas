@@ -113,6 +113,15 @@ async function criarContainer(igId: string, params: Record<string, string>): Pro
   return r.id;
 }
 
+// Container de UM story (imagem ou vídeo, sem legenda: a API do Instagram não usa).
+// Post com vários stories cria um por arquivo e publica em ordem.
+export function criarContainerDeStory(igId: string, m: MidiaParaPostar): Promise<string> {
+  return criarContainer(
+    igId,
+    m.tipo === "video" ? { media_type: "STORIES", video_url: m.url } : { media_type: "STORIES", image_url: m.url }
+  );
+}
+
 // Cria o container do post (e os dos itens, no carrossel). Os endereços das
 // mídias precisam ser públicos: o d.hub manda links assinados de curta duração.
 export async function criarContainers(

@@ -8,6 +8,8 @@ import { Button } from "../ui/Button";
 
 const A_CADA = 4000; // ms entre uma conferência e outra
 const DESISTE_DEPOIS = 8 * 60_000; // ms
+// Vários stories saem um por conferência (e cada vídeo leva um tempo): mais folga.
+const DESISTE_DEPOIS_STORIES = 25 * 60_000; // ms
 
 // "Publicar no Instagram" no post aberto da aba Posts do cliente: confirma,
 // manda pra Meta, acompanha o processamento (vídeo leva alguns minutos) e
@@ -30,6 +32,8 @@ export default function PublicarNoInstagram({
   const [trabalhando, setTrabalhando] = useState(post.ig_estado === "preparando" || post.ig_estado === "publicando");
   const [erro, setErro] = useState<string | null>(post.ig_estado === "erro" ? post.ig_erro ?? "A publicação falhou." : null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // "Publicando stories: 3 de 8": só nos posts com vários stories.
+  const [andamento, setAndamento] = useState<string | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const comecou = useRef(0);
   const ativo = useRef(true);
@@ -49,7 +53,7 @@ export default function PublicarNoInstagram({
     } catch {
       // Falha passageira (rede, deploy novo): tenta de novo, até o limite de tempo.
       if (!ativo.current) return;
-      if (Date.now() - comecou.current > DESISTE_DEPOIS) {
+      if (Date.now() - comecou.current > (post.category === "story" ? DESISTE_DEPOIS_STORIES : DESISTE_DEPOIS)) {
         setTrabalhando(false);
         setAviso("Perdi a conexão com o servidor. Recarregue a página: se o post estiver em andamento, ela volta a acompanhar.");
         return;
@@ -81,13 +85,15 @@ export default function PublicarNoInstagram({
       aoMudar({ ig_estado: "erro", ig_erro: r.erro });
       return;
     }
-    if (Date.now() - comecou.current > DESISTE_DEPOIS) {
+    // Post com vários stories: quantos já saíram.
+    if (r.detalhe) setAndamento(r.detalhe);
+    if (Date.now() - comecou.current > (post.category === "story" ? DESISTE_DEPOIS_STORIES : DESISTE_DEPOIS)) {
       setTrabalhando(false);
       setAviso("O Instagram ainda está processando. Abra o post de novo em alguns minutos pra ver se saiu.");
       return;
     }
     temporizador.current = setTimeout(conferir, A_CADA);
-  }, [post.id, aoMudar]);
+  }, [post.id, post.category, aoMudar]);
 
   // Já estava em andamento (outra aba, ou a página foi recarregada): continua acompanhando.
   useEffect(() => {
@@ -129,6 +135,7 @@ export default function PublicarNoInstagram({
     if (!ok) return;
     setErro(null);
     setAviso(null);
+    setAndamento(null);
     setTrabalhando(true);
     comecou.current = Date.now();
     let r: Awaited<ReturnType<typeof iniciarPublicacaoNoInstagram>>;
@@ -166,6 +173,7 @@ export default function PublicarNoInstagram({
             {instagramLigado && <span className="text-xs text-ink-muted">em @{instagramLigado}</span>}
           </div>
           {nota && !trabalhando && <p className="mt-2 text-[11px] text-ink-muted">{nota}</p>}
+          {trabalhando && andamento && <p className="mt-2 text-xs font-medium text-ink">{andamento}</p>}
           {trabalhando && (
             <p className="mt-2 text-xs text-ink-muted">
               A Meta está processando os arquivos (vídeo pode levar alguns minutos). Deixe este post aberto até terminar: é
