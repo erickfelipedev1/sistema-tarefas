@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { TextoComLinks } from "@/components/ui/TextoComLinks";
 import { formatarDataBR, formatarDataHora } from "@/lib/format";
 import type { TaskRequestComment } from "@/lib/types";
-import { comentarNaSolicitacao } from "./actions";
+import { comentarNaSolicitacao, marcarRespostasVistas } from "./actions";
 
 type Tom = "neutral" | "brand" | "success" | "warning" | "danger";
 
@@ -29,9 +29,12 @@ export interface PedidoDoCliente {
 export default function SolicitacaoDoCliente({
   pedido,
   comentariosIniciais,
+  vistoEm,
 }: {
   pedido: PedidoDoCliente;
   comentariosIniciais: TaskRequestComment[];
+  // Quando o cliente abriu a conversa pela última vez (null = nunca).
+  vistoEm: string | null;
 }) {
   const [aberto, setAberto] = useState(false);
   const [comentarios, setComentarios] = useState(comentariosIniciais);
@@ -39,8 +42,22 @@ export default function SolicitacaoDoCliente({
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  const ultimo = comentarios[comentarios.length - 1];
-  const equipeRespondeu = ultimo?.sender_type === "team";
+  // Resposta nova = comentário da equipe mais novo que a última abertura da conversa
+  // (migration 0118). Ao abrir, marca como visto; o selo "Nova" nos comentários fica
+  // até recarregar, pra ele achar o que é novo.
+  const [vistoAntes] = useState(vistoEm ? Date.parse(vistoEm) : 0);
+  const [lida, setLida] = useState(false);
+  const ehNova = (c: TaskRequestComment) => c.sender_type === "team" && Date.parse(c.created_at) > vistoAntes;
+  const temRespostaNova = !lida && comentarios.some(ehNova);
+
+  function alternar() {
+    const vaiAbrir = !aberto;
+    setAberto(vaiAbrir);
+    if (vaiAbrir && temRespostaNova) {
+      setLida(true);
+      marcarRespostasVistas(pedido.id).catch(() => {});
+    }
+  }
 
   async function enviar() {
     if (enviando) return;
@@ -71,7 +88,7 @@ export default function SolicitacaoDoCliente({
           <p className="mt-1 text-xs text-ink-muted">Enviada em {formatarDataHora(pedido.createdAt)}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {equipeRespondeu && !aberto && <Badge tone="brand">Equipe respondeu</Badge>}
+          {temRespostaNova && <Badge tone="brand">Resposta nova</Badge>}
           {pedido.urgency && <Badge tone="neutral">{pedido.urgency}</Badge>}
           <Badge tone={pedido.statusTom}>{pedido.statusRotulo}</Badge>
         </div>
@@ -79,7 +96,7 @@ export default function SolicitacaoDoCliente({
 
       <button
         type="button"
-        onClick={() => setAberto((v) => !v)}
+        onClick={alternar}
         aria-expanded={aberto}
         className="mt-3 text-xs font-medium text-brand-forte hover:underline"
       >
@@ -137,6 +154,7 @@ export default function SolicitacaoDoCliente({
                       {c.sender_type === "client" ? "Você" : c.sender_label}
                       {c.sender_type === "team" && " · equipe"}
                     </span>
+                    {ehNova(c) && <Badge tone="brand">Nova</Badge>}
                     {formatarDataHora(c.created_at)}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">

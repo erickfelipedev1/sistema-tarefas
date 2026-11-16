@@ -32,7 +32,7 @@ export default async function ClientePage() {
   const admin = createAdminClient();
   const { data: pedidos } = await admin
     .from("task_requests")
-    .select("id, title, description, urgency, demand_type, due_date, drive_url, created_at, task_id")
+    .select("id, title, description, urgency, demand_type, due_date, drive_url, created_at, task_id, cliente_viu_em")
     .eq("client_login_id", sessao.loginId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -57,6 +57,15 @@ export default async function ClientePage() {
     comentariosPorPedido.set(c.request_id, [...(comentariosPorPedido.get(c.request_id) ?? []), c]);
   }
 
+  // Respostas da equipe que o cliente ainda não viu (mais novas que a última abertura da conversa).
+  const respostasNovas = new Map<string, number>();
+  for (const p of pedidos ?? []) {
+    const visto = p.cliente_viu_em ? Date.parse(p.cliente_viu_em as string) : 0;
+    const novas = (comentariosPorPedido.get(p.id) ?? []).filter((c) => c.sender_type === "team" && Date.parse(c.created_at) > visto).length;
+    if (novas > 0) respostasNovas.set(p.id, novas);
+  }
+  const solicitacoesComResposta = respostasNovas.size;
+
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-canvas px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -79,6 +88,14 @@ export default async function ClientePage() {
           </button>
         </form>
       </header>
+
+      {solicitacoesComResposta > 0 && (
+        <p role="status" className="mb-4 rounded-2xl border border-brand-forte/25 bg-brand/5 px-4 py-3 text-sm text-ink">
+          {solicitacoesComResposta === 1
+            ? "A equipe respondeu 1 solicitação sua. Veja abaixo."
+            : `A equipe respondeu ${solicitacoesComResposta} solicitações suas. Veja abaixo.`}
+        </p>
+      )}
 
       <ClientRequestForm />
 
@@ -109,6 +126,7 @@ export default async function ClientePage() {
                     statusTom: status ? TOM_STATUS[status] ?? "neutral" : "warning",
                   }}
                   comentariosIniciais={comentariosPorPedido.get(p.id) ?? []}
+                  vistoEm={(p.cliente_viu_em as string | null) ?? null}
                 />
               );
             })}

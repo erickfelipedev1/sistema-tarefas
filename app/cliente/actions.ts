@@ -215,3 +215,19 @@ export async function comentarNaSolicitacao(
   }
   return { ok: true, comentario: comentario as TaskRequestComment };
 }
+
+// O cliente abriu a conversa: as respostas da equipe até agora deixam de ser
+// "novas" (migration 0118). Só marca solicitação do próprio login.
+export async function marcarRespostasVistas(pedidoId: string): Promise<{ ok: true } | { erro: string }> {
+  const sessao = await lerSessaoCliente();
+  if (!sessao) return { erro: "Sua sessão expirou. Entre de novo." };
+  if (typeof pedidoId !== "string" || !UUID.test(pedidoId)) return { erro: "Solicitação inválida." };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("task_requests")
+    .update({ cliente_viu_em: new Date().toISOString() })
+    .eq("id", pedidoId)
+    .eq("client_login_id", sessao.loginId);
+  if (error) return { erro: "Não foi possível registrar a leitura." };
+  return { ok: true };
+}
