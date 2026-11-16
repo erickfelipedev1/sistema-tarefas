@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/estrategia";
 import { gerarComIA } from "@/lib/actions/estrategia-etapa";
 import { gerarCalendario } from "@/lib/actions/estrategia-calendario";
+import { gerarTarefasDaAta } from "@/lib/actions/estrategia-ata";
 import { guiaDaEtapa, type AcaoDaEtapa, type CampoDaEtapa } from "@/lib/estrategia/guia-das-etapas";
 import {
   SERVICOS,
@@ -32,6 +33,7 @@ import type {
   EstPeca,
   EstResposta,
   EstSemana,
+  EstTarefaAta,
   ItemDoChecklist,
   StatusDoMapeamento,
 } from "@/lib/estrategia/tipos";
@@ -41,6 +43,7 @@ import { Button } from "../ui/Button";
 import { ChevronDownIcon, Trash2Icon } from "../ui/icons";
 import KickoffPanel from "./KickoffPanel";
 import CalendarioDasPecas from "./CalendarioDasPecas";
+import TarefasDaAta from "./TarefasDaAta";
 import RotinaDaSemana from "./RotinaDaSemana";
 import PainelDeOtimizacao from "./PainelDeOtimizacao";
 import FechamentoDoMes from "./FechamentoDoMes";
@@ -125,6 +128,7 @@ export default function MapeamentoView({
   souDirecao,
   respostas,
   pecas,
+  tarefasDaAta,
   semanas,
   otimizacoes,
   meses,
@@ -137,6 +141,7 @@ export default function MapeamentoView({
   souDirecao: boolean;
   respostas: EstResposta[];
   pecas: EstPeca[];
+  tarefasDaAta: EstTarefaAta[];
   semanas: EstSemana[];
   otimizacoes: EstOtimizacao[];
   meses: EstMes[];
@@ -339,6 +344,8 @@ export default function MapeamentoView({
                       mapeamento={mapeamento}
                       respostas={respostas}
                       pecas={pecas}
+                      tarefasDaAta={tarefasDaAta}
+                      pessoas={profiles}
                       perfilPendente={perfilPendente}
                       iaLigada={iaLigada}
                       nomeDeQuemAprovou={etapa.aprovado_por ? nomeDaPessoa.get(etapa.aprovado_por) ?? "Alguém da equipe" : null}
@@ -366,6 +373,8 @@ function EtapaCard({
   mapeamento,
   respostas,
   pecas,
+  tarefasDaAta,
+  pessoas,
   perfilPendente,
   iaLigada,
   nomeDeQuemAprovou,
@@ -381,6 +390,8 @@ function EtapaCard({
   mapeamento: EstMapeamento;
   respostas: EstResposta[];
   pecas: EstPeca[];
+  tarefasDaAta: EstTarefaAta[];
+  pessoas: Pessoa[];
   perfilPendente: boolean;
   iaLigada: boolean;
   nomeDeQuemAprovou: string | null;
@@ -534,6 +545,31 @@ function EtapaCard({
       router.refresh();
     } catch {
       setErro("Não deu pra gerar agora. Recarregue a página e confira se o texto chegou.");
+    } finally {
+      setGerando(null);
+    }
+  }
+
+  // D13: salva as anotações e pede à IA as tarefas da reunião (vão pra est_tarefas_ata, não mexem na linha da etapa).
+  async function sugerirTarefasDaAta() {
+    if (tarefasDaAta.some((t) => t.gerada_por_ia && !t.enviado_em)) {
+      if (!window.confirm("Sugerir de novo substitui as tarefas da IA que ninguém editou e que ainda não foram pro d.hub. As que você criou ou editou à mão e as já enviadas ficam. Continuar?")) return;
+    }
+    setErro(null);
+    setSalvo(false);
+    setGerando("tarefas-ata");
+    try {
+      const salva = await salvarTudo();
+      if ("erro" in salva) return setErro(salva.erro);
+      const r = await gerarTarefasDaAta({ etapaId: etapa.id, atualizadoEm: salva.atualizadoEm });
+      if ("erro" in r) {
+        setErro(r.erro);
+        if (/^Outra pessoa/.test(r.erro) && !temEdicaoPendente()) router.refresh();
+        return;
+      }
+      router.refresh();
+    } catch {
+      setErro("Não deu pra sugerir agora. Recarregue a página e confira se as tarefas chegaram.");
     } finally {
       setGerando(null);
     }
@@ -792,6 +828,19 @@ function EtapaCard({
                   mapeamentoAtivo={mapeamentoAtivo}
                   d10bAprovada={aprovada}
                   perfilPendente={perfilPendente}
+                />
+              )}
+
+              {modelo.codigo === "d13" && (
+                <TarefasDaAta
+                  mapeamentoId={mapeamento.id}
+                  tarefas={tarefasDaAta}
+                  pessoas={pessoas}
+                  mapeamentoAtivo={mapeamentoAtivo}
+                  etapaAprovada={aprovada}
+                  iaLigada={iaLigada}
+                  ocupadoComIA={gerando !== null}
+                  aoSugerir={sugerirTarefasDaAta}
                 />
               )}
 

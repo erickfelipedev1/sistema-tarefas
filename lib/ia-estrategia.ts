@@ -311,6 +311,37 @@ export function gerarCalendarioDaIA(
   );
 }
 
+// ---------------------------------------------------------------- tarefas da ata (D13)
+
+export const PROMPT_DAS_TAREFAS_DA_ATA = { chave: "tarefas_da_ata_d13", versao: VERSAO_DO_GUIA } as const;
+
+const ESQUEMA_DAS_TAREFAS_DA_ATA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["tarefas"],
+  properties: {
+    tarefas: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["titulo", "descricao", "responsavel", "prazo", "quem"],
+        properties: {
+          titulo: TEXTO_CURTO("Título começando com verbo, até 90 caracteres, legível pelo cliente."),
+          descricao: TEXTO_CURTO("Contexto da decisão e critério de pronto, em até 5 linhas."),
+          responsavel: TEXTO_CURTO("Nome da pessoa citada nas anotações, ou vazio."),
+          prazo: TEXTO_CURTO("AAAA-MM-DD se combinado ou dedutível com segurança; senão, vazio."),
+          quem: { type: "string", enum: ["equipe", "cliente"] },
+        },
+      },
+    },
+  },
+} as const;
+
+export function gerarTarefasDaAtaDaIA(prompt: { system: string; user: string }): Promise<{ bruto: unknown; uso: UsoDaIA }> {
+  return gerarJsonDaIA(prompt, ESQUEMA_DAS_TAREFAS_DA_ATA, "A lista de tarefas ficou grande demais e foi cortada. Tente de novo com anotações mais curtas.");
+}
+
 // ---------------------------------------------------------------- análise semanal
 
 export const PROMPT_DA_SEMANA = { chave: "analise_semanal", versao: VERSAO_DO_GUIA } as const;

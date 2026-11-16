@@ -7,6 +7,7 @@ import {
   COLUNAS_DA_ETAPA,
   COLUNAS_DA_PECA,
   COLUNAS_DA_RESPOSTA,
+  COLUNAS_DA_TAREFA_DA_ATA,
   COLUNAS_DA_OTIMIZACAO,
   COLUNAS_DA_SEMANA,
   COLUNAS_DO_MAPEAMENTO,
@@ -18,6 +19,7 @@ import {
   type EstPeca,
   type EstSemana,
   type EstResposta,
+  type EstTarefaAta,
 } from "@/lib/estrategia/tipos";
 
 export const metadata = { title: "Estratégia · d.hub" };
@@ -67,6 +69,13 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
     .eq("mapeamento_id", id)
     .order("data", { ascending: true, nullsFirst: false });
 
+  // Tarefas da reunião (D13). Se a tabela ainda não existe (migration 0116), a página abre sem elas.
+  const { data: tarefasDaAta, error: erroDasTarefasDaAta } = await supabase
+    .from("est_tarefas_ata")
+    .select(COLUNAS_DA_TAREFA_DA_ATA)
+    .eq("mapeamento_id", id)
+    .order("prazo", { ascending: true, nullsFirst: false });
+
   // Rotina do ciclo (semanas, ajustes, meses). Se as tabelas ainda não existem (migration 0109), a página abre sem elas.
   const [{ data: semanas, error: erroDasSemanas }, { data: otimizacoes, error: erroDasOtimizacoes }, { data: meses, error: erroDosMeses }] =
     await Promise.all([
@@ -94,6 +103,7 @@ export default async function MapeamentoPage({ params }: { params: { id: string 
           souDirecao={perfil?.ve_tudo === true}
           respostas={respostasLidas(erroDasRespostas ? [] : respostas ?? [])}
           pecas={(pecas ?? []) as unknown as EstPeca[]}
+          tarefasDaAta={erroDasTarefasDaAta ? [] : ((tarefasDaAta ?? []) as unknown as EstTarefaAta[])}
           semanas={erroDasSemanas ? [] : ((semanas ?? []) as unknown as EstSemana[])}
           otimizacoes={erroDasOtimizacoes ? [] : ((otimizacoes ?? []) as unknown as EstOtimizacao[])}
           meses={erroDosMeses ? [] : ((meses ?? []) as unknown as EstMes[])}

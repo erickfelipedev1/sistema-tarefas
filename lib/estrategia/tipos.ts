@@ -99,6 +99,24 @@ export interface EstPeca {
 export const COLUNAS_DA_PECA =
   "id, mapeamento_id, origem, data, formato, tema, funcao, jornada, mensagem, argumento, prova, cta, limite, resultado_esperado, status, task_id, post_id, enviado_em, gerada_por_ia, updated_at";
 
+// Tarefa que saiu da reunião de apresentação (D13), ligada à tarefa do d.hub quando criada.
+export interface EstTarefaAta {
+  id: string;
+  mapeamento_id: string;
+  titulo: string;
+  descricao: string;
+  responsavel_id: string | null;
+  prazo: string | null;
+  quem: "equipe" | "cliente";
+  task_id: string | null;
+  enviado_em: string | null;
+  gerada_por_ia: boolean;
+  updated_at: string;
+}
+
+export const COLUNAS_DA_TAREFA_DA_ATA =
+  "id, mapeamento_id, titulo, descricao, responsavel_id, prazo, quem, task_id, enviado_em, gerada_por_ia, updated_at";
+
 export const COLUNAS_DO_MAPEAMENTO =
   "id, project_id, servico, tipo_negocio, status, inicio, prazo_interno, prazo_cliente, responsavel_id, created_by, created_at, updated_at";
 
