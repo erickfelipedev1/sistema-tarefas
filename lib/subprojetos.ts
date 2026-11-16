@@ -11,13 +11,22 @@ export interface Subprojeto {
   name: string;
   description: string | null;
   status: StatusDoSubprojeto;
+  // Principal (o primeiro da lista) e a lista completa (migration 0120). Projeto antigo
+  // pode ter só o principal: use responsaveisDoSubprojeto().
   responsible_id: string | null;
+  responsible_ids?: string[] | null;
   start_date: string | null;
   due_date: string | null;
   created_by: string | null;
   created_by_label: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Todos os responsáveis do projeto, sem repetir (a lista; ou só o principal, nos projetos antigos).
+export function responsaveisDoSubprojeto(sp: { responsible_id: string | null; responsible_ids?: string[] | null }): string[] {
+  const lista = (sp.responsible_ids ?? []).length > 0 ? (sp.responsible_ids as string[]) : sp.responsible_id ? [sp.responsible_id] : [];
+  return Array.from(new Set(lista));
 }
 
 export const STATUS_DO_SUBPROJETO: Record<StatusDoSubprojeto, { label: string; tom: "neutral" | "brand" | "warning" | "success" }> = {

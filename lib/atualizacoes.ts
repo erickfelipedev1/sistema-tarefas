@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-17",
+    area: "Clientes",
+    titulo: "Mais de um responsável por projeto",
+    texto: "Nos projetos do cliente (aba Projetos), agora dá pra marcar mais de uma pessoa como responsável: no formulário do projeto, marque quem cuida dele. O cartão e a página do projeto mostram todos, e quem já era responsável continua marcado.",
+  },
+  {
     data: "2026-11-16",
     area: "Posts",
     titulo: "Publicar vários stories no Instagram",

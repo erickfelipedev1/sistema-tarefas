@@ -7,6 +7,7 @@ import {
   andamento,
   carregarSubprojetos,
   ERRO_SEM_MIGRATION,
+  responsaveisDoSubprojeto,
   STATUS_DO_SUBPROJETO,
   type StatusDoSubprojeto,
   type Subprojeto,
@@ -66,7 +67,7 @@ function ordenarTarefas(lista: Task[]) {
   });
 }
 
-type Rascunho = Pick<Subprojeto, "name" | "description" | "status" | "responsible_id" | "start_date" | "due_date"> & { id?: string };
+type Rascunho = Pick<Subprojeto, "name" | "description" | "status" | "responsible_id" | "responsible_ids" | "start_date" | "due_date"> & { id?: string };
 
 // Aba "Projetos" do cliente (migration 0083): frentes de trabalho que agrupam
 // tarefas do cliente, com o andamento de cada uma. A tarefa entra no projeto
@@ -298,10 +299,15 @@ export default function ProjetosDoCliente({
               <p className="mt-0.5 text-xs text-ink-muted">
                 {[periodo(aberto), aberto.created_by_label && `criado por ${aberto.created_by_label}`].filter(Boolean).join(" · ")}
               </p>
-              {aberto.responsible_id && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
-                  <Avatar name={nomeDe(aberto.responsible_id)} src={perfilPorId.get(aberto.responsible_id)?.avatar_url} size="xs" />
-                  Responsável: <span className="font-medium text-ink">{nomeDe(aberto.responsible_id)}</span>
+              {responsaveisDoSubprojeto(aberto).length > 0 && (
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+                  <span>{responsaveisDoSubprojeto(aberto).length === 1 ? "Responsável:" : "Responsáveis:"}</span>
+                  {responsaveisDoSubprojeto(aberto).map((id) => (
+                    <span key={id} className="inline-flex items-center gap-1.5">
+                      <Avatar name={nomeDe(id)} src={perfilPorId.get(id)?.avatar_url} size="xs" />
+                      <span className="font-medium text-ink">{nomeDe(id)}</span>
+                    </span>
+                  ))}
                 </p>
               )}
             </div>
@@ -424,7 +430,7 @@ export default function ProjetosDoCliente({
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={() => setForm({ name: "", description: null, status: "ativo", responsible_id: null, start_date: null, due_date: null })} disabled={!!erroCarregar}>
+        <Button size="sm" onClick={() => setForm({ name: "", description: null, status: "ativo", responsible_id: null, responsible_ids: [], start_date: null, due_date: null })} disabled={!!erroCarregar}>
           <PlusIcon className="h-3.5 w-3.5" />
           Novo projeto
         </Button>
@@ -528,10 +534,19 @@ function CartaoDoProjeto({
           {periodo(projeto)}
         </p>
       )}
-      {projeto.responsible_id && (
+      {responsaveisDoSubprojeto(projeto).length > 0 && (
         <p className="-mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-muted">
-          <Avatar name={nomeDe(projeto.responsible_id)} src={fotoDe(projeto.responsible_id)} size="xs" />
-          <span className="truncate">{nomeDe(projeto.responsible_id)}</span>
+          <span className="flex -space-x-1.5">
+            {responsaveisDoSubprojeto(projeto)
+              .slice(0, 3)
+              .map((id) => (
+                <Avatar key={id} name={nomeDe(id)} src={fotoDe(id)} size="xs" className="ring-2 ring-surface" />
+              ))}
+          </span>
+          <span className="truncate">
+            {nomeDe(responsaveisDoSubprojeto(projeto)[0])}
+            {responsaveisDoSubprojeto(projeto).length > 1 ? ` +${responsaveisDoSubprojeto(projeto).length - 1}` : ""}
+          </span>
         </p>
       )}
       <BarraDeAndamento {...a} className="w-full" />
@@ -610,7 +625,7 @@ function FormDoProjeto({
   const [nome, setNome] = useState(rascunho.name);
   const [descricao, setDescricao] = useState(rascunho.description ?? "");
   const [status, setStatus] = useState<StatusDoSubprojeto>(rascunho.status);
-  const [responsavel, setResponsavel] = useState(rascunho.responsible_id ?? "");
+  const [responsaveis, setResponsaveis] = useState<string[]>(responsaveisDoSubprojeto(rascunho));
   const [inicio, setInicio] = useState(rascunho.start_date ?? "");
   const [entrega, setEntrega] = useState(rascunho.due_date ?? "");
   const [salvando, setSalvando] = useState(false);
@@ -626,7 +641,9 @@ function FormDoProjeto({
       name: nome.trim(),
       description: descricao.trim() || null,
       status,
-      responsible_id: responsavel || null,
+      // O principal é o primeiro da lista (migration 0120).
+      responsible_id: responsaveis[0] ?? null,
+      responsible_ids: responsaveis,
       start_date: inicio || null,
       due_date: entrega || null,
     };
@@ -675,20 +692,34 @@ function FormDoProjeto({
             />
           </div>
           <div>
-            <label htmlFor="sp-responsavel" className="mb-1 block text-xs font-medium text-ink-muted">
-              Responsável <span className="font-normal">(opcional)</span>
-            </label>
-            <select id="sp-responsavel" value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={campo}>
-              <option value="">Sem responsável</option>
+            <p id="sp-responsaveis" className="mb-1 block text-xs font-medium text-ink-muted">
+              Responsáveis <span className="font-normal">(opcional, dá pra marcar mais de um)</span>
+            </p>
+            <div
+              role="group"
+              aria-labelledby="sp-responsaveis"
+              className="scrollbar-thin max-h-44 space-y-0.5 overflow-y-auto rounded-lg border border-line bg-surface p-1"
+            >
               {profiles
-                .filter((p) => p.ativo !== false || p.id === rascunho.responsible_id)
+                .filter((p) => p.ativo !== false || responsaveis.includes(p.id))
                 .sort((a, b) => (a.name || a.username || "").localeCompare(b.name || b.username || "", "pt-BR"))
                 .map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <label key={p.id} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-ink hover:bg-surface-hover">
+                    <input
+                      type="checkbox"
+                      checked={responsaveis.includes(p.id)}
+                      onChange={() =>
+                        setResponsaveis((atual) => (atual.includes(p.id) ? atual.filter((x) => x !== p.id) : [...atual, p.id]))
+                      }
+                      className="h-4 w-4 accent-brand-forte"
+                    />
                     {p.name || p.username}
-                  </option>
+                  </label>
                 ))}
-            </select>
+            </div>
+            {responsaveis.length > 1 && (
+              <p className="mt-1 text-[11px] text-ink-muted">{responsaveis.length} pessoas marcadas.</p>
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
