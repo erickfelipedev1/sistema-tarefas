@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PublicPost } from "@/lib/types";
+import { rotuloDoTipo } from "@/lib/posts";
 import { lerEndereco } from "@/lib/baixar-varios";
 import BotaoBaixarTodos from "../posts/BotaoBaixarTodos";
 import { DownloadIcon } from "../ui/icons";
@@ -18,7 +19,7 @@ export default function BaixarDoPortal({ post }: { post: PublicPost }) {
   const itens = [
     ...post.media.map((m, i) => ({
       chave: m.path,
-      rotulo: `${m.type === "video" ? "Vídeo" : "Imagem"}${post.media.length > 1 ? ` ${i + 1}` : ""}`,
+      rotulo: `${rotuloDoTipo(m.type)}${post.media.length > 1 ? ` ${i + 1}` : ""}`,
       nome: `${post.media.length > 1 ? `${String(i + 1).padStart(2, "0")}-` : ""}${m.name || "arquivo"}`,
       url: m.urlOriginal || m.url,
       driveId: m.source === "drive" && m.drive_id ? m.drive_id : undefined,

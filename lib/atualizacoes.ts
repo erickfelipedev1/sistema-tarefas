@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-19",
     area: "Posts",
+    titulo: "Carrossel em PDF pro LinkedIn",
+    texto: "Novo formato de post: PDF (LinkedIn). Escolha o formato, envie o PDF e cada página vira um slide, como o LinkedIn publica carrossel. A rede LinkedIn já vem marcada, e o preview e o portal do cliente mostram o PDF, com o botão Abrir o PDF. Pedido da Ana.",
+  },
+  {
+    data: "2026-11-19",
+    area: "Posts",
     titulo: "Aviso claro quando o login cai no envio pro Drive",
     texto: "Se o envio de um vídeo ou arquivo grande pro Google Drive falhar porque o login do aparelho expirou, o d.hub agora avisa isso: recarregue a página, entre de novo e envie outra vez. A mensagem de conexão continua aparecendo quando o problema é a internet.",
   },

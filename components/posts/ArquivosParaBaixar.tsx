@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/lib/types";
-import { BUCKET_DOS_POSTS, ehDoDrive } from "@/lib/posts";
+import { BUCKET_DOS_POSTS, ehDoDrive, rotuloDoTipo } from "@/lib/posts";
 import { lerEndereco } from "@/lib/baixar-varios";
 import BotaoBaixarTodos from "./BotaoBaixarTodos";
 import { Button } from "../ui/Button";
@@ -23,7 +23,7 @@ export default function ArquivosParaBaixar({ post }: { post: Post }) {
       const numero = post.media.length > 1 ? `${String(i + 1).padStart(2, "0")}-` : "";
       return {
         chave: m.path,
-        rotulo: `${m.type === "video" ? "Vídeo" : "Imagem"}${post.media.length > 1 ? ` ${i + 1}` : ""}`,
+        rotulo: `${rotuloDoTipo(m.type)}${post.media.length > 1 ? ` ${i + 1}` : ""}`,
         path: m.path,
         nome: `${numero}${m.name || "arquivo"}`,
         driveId: ehDoDrive(m) ? (m.drive_id as string) : undefined,

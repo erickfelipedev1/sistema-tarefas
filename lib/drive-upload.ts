@@ -9,6 +9,7 @@ import {
   liberarVideoDoDrive,
 } from "@/lib/actions/drive";
 import { createClient } from "@/lib/supabase/client";
+import type { TipoDeMidia } from "@/lib/posts";
 
 // Vídeo acima disso vai pro Google Drive em vez do Supabase (o limite de
 // upload do plano gratuito do Supabase é 50 MB por arquivo).
@@ -98,11 +99,11 @@ export async function enviarVideoParaODrive(
   }
 }
 
-// Mídia de post (vídeo ou imagem grande): o vídeo segue a conferência de
-// vídeo; a imagem usa o envio de arquivo qualquer.
+// Mídia de post (vídeo, imagem ou PDF grande): o vídeo segue a conferência de
+// vídeo; imagem e PDF usam o envio de arquivo qualquer.
 export async function enviarMidiaParaODrive(
   arquivo: File,
-  tipo: "image" | "video",
+  tipo: TipoDeMidia,
   aoProgresso: (fracao: number) => void
 ): Promise<ResultadoDoEnvio> {
   return tipo === "video" ? enviarVideoParaODrive(arquivo, aoProgresso) : enviarAnexoParaODrive(arquivo, aoProgresso);

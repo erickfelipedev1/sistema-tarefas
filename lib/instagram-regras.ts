@@ -20,7 +20,11 @@ export function categoriaVaiProInstagram(categoria: PostCategory): boolean {
 // frase pra equipe, ou null se está tudo certo.
 export function oQueImpedeDePublicar(post: Pick<Post, "category" | "caption" | "networks" | "media" | "cover">): string | null {
   if (!post.networks.includes("instagram")) return "Este post não está marcado pro Instagram. Marque a rede Instagram e salve.";
-  if (!categoriaVaiProInstagram(post.category)) return "O formato YouTube (vídeo) não vai pro Instagram.";
+  if (!categoriaVaiProInstagram(post.category)) {
+    return post.category === "documento"
+      ? "Carrossel em PDF é formato do LinkedIn e não vai pro Instagram."
+      : "O formato YouTube (vídeo) não vai pro Instagram.";
+  }
   if (post.media.length === 0) return "O post não tem arquivo ainda.";
   if (post.category === "estatico" && (post.media.length !== 1 || post.media[0].type !== "image")) {
     return "Post estático leva uma imagem só.";
@@ -34,6 +38,7 @@ export function oQueImpedeDePublicar(post: Pick<Post, "category" | "caption" | "
     return `O Instagram aceita no máximo ${LIMITE_DE_HASHTAGS} hashtags por post.`;
   }
   for (const m of post.media) {
+    if (m.type === "pdf") return "PDF não vai pro Instagram (é o carrossel do LinkedIn).";
     if (m.source === "drive") {
       return "Este post tem arquivo no Google Drive, que o Instagram não consegue baixar. Envie o arquivo pelo d.hub (até 50 MB) ou publique pelo app do Instagram.";
     }

@@ -50,6 +50,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["enviar post", "aprovar", "cliente aprovar", "portal", "posts"],
   },
   {
+    pergunta: "Como monto um carrossel em PDF pro LinkedIn?",
+    resposta:
+      "No post, escolha o formato PDF (LinkedIn) e envie o arquivo PDF: cada página vira um slide, como o LinkedIn mostra. A rede LinkedIn já fica marcada. O preview e o portal do cliente mostram o PDF, com o botão Abrir o PDF pra ver o arquivo inteiro (no celular o quadro pode mostrar só a primeira página). Esse formato não vai pro Instagram.",
+    palavras: ["pdf", "linkedin", "carrossel linkedin", "documento", "carrossel em pdf", "subir pdf"],
+  },
+  {
     pergunta: "Enviei um post pro cliente sem querer. Dá pra cancelar?",
     resposta:
       "Dá, enquanto o cliente ainda não respondeu (status \"Aguardando o cliente\"). Clique em Cancelar envio no post, nos Posts do cliente ou na tarefa. Ele volta a ser rascunho e o cliente deixa de ver. Os comentários ficam salvos, e você pode ajustar e enviar de novo quando quiser. Se o cliente já pediu ajuste, o caminho é Ajustar e reenviar.",

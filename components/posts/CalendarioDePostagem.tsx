@@ -7,6 +7,7 @@ import type { Post, PostCategory, PostStatus } from "@/lib/types";
 import { CATEGORIAS, miniaturaDoItem, ORDEM_DAS_CATEGORIAS, REDES, redesValidas, STATUS_DO_POST } from "@/lib/posts";
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "../ui/icons";
 import MiniaturaDeVideo from "./MiniaturaDeVideo";
+import MiniaturaDePdf from "./MiniaturaDePdf";
 
 export type PostNoCalendario = Post & { projectName?: string };
 
@@ -207,7 +208,9 @@ export default function CalendarioDePostagem({
         }`}
       >
         <span className="grid h-6 w-6 flex-shrink-0 place-items-center overflow-hidden rounded bg-black text-ink-muted">
-          {url && miniatura ? (
+          {mini?.tipo === "pdf" ? (
+            <MiniaturaDePdf compacta />
+          ) : url && miniatura ? (
             mini?.tipo === "video" ? (
               <MiniaturaDeVideo />
             ) : (

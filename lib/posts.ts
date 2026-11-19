@@ -5,9 +5,13 @@ import type { PostCategory, PostMedia, PostNetwork, PostStatus } from "@/lib/typ
 
 export const BUCKET_DOS_POSTS = "post-media";
 
+// O tipo de um arquivo do post: imagem, vídeo ou PDF (carrossel do LinkedIn).
+export type TipoDeMidia = PostMedia["type"];
+
 // O que cada categoria aceita de arquivo. Carrossel pode misturar imagem e
 // vídeo, como nas redes; reel é um vídeo só; story aceita de 1 a 10 (cada
-// arquivo é um story; o limite de 10 é o mesmo do banco, migration 0103).
+// arquivo é um story; o limite de 10 é o mesmo do banco, migration 0103);
+// "documento" é um PDF só, o carrossel do LinkedIn (migration 0121).
 export const CATEGORIAS: Record<
   PostCategory,
   { rotulo: string; artigo: string; aceita: string; minimo: number; maximo: number; dica: string }
@@ -60,9 +64,17 @@ export const CATEGORIAS: Record<
     maximo: 10,
     dica: "De 1 a 10 imagens ou vídeos na vertical (9:16), um por story, na ordem em que vão aparecer. Some em 24 horas.",
   },
+  documento: {
+    rotulo: "PDF (LinkedIn)",
+    artigo: "um carrossel em PDF",
+    aceita: "application/pdf,.pdf",
+    minimo: 1,
+    maximo: 1,
+    dica: "Um arquivo PDF: cada página vira um slide. É assim que o LinkedIn publica carrossel.",
+  },
 };
 
-export const ORDEM_DAS_CATEGORIAS: PostCategory[] = ["estatico", "carrossel", "reel", "story", "shorts", "youtube"];
+export const ORDEM_DAS_CATEGORIAS: PostCategory[] = ["estatico", "carrossel", "documento", "reel", "story", "shorts", "youtube"];
 
 // Reel, Shorts e vídeo do YouTube: um vídeo só, e podem ter capa.
 export function ehFormatoDeVideo(categoria: PostCategory): boolean {
@@ -140,7 +152,7 @@ export function midiaDoDrive(
   driveId: string,
   nome = "Vídeo do Google Drive",
   tamanho = 0,
-  tipo: "image" | "video" = "video"
+  tipo: TipoDeMidia = "video"
 ): PostMedia {
   return {
     path: `${projectId}/${postId}/drive-${driveId}`,
@@ -166,7 +178,7 @@ export function urlDaMiniaturaDoDrive(id: string, largura = 400) {
 export function miniaturaDoItem(
   m: PostMedia | null | undefined,
   links: Record<string, string>
-): { url: string; tipo: "image" | "video" } | null {
+): { url: string; tipo: TipoDeMidia } | null {
   if (!m) return null;
   if (ehDoDrive(m)) return { url: urlDaMiniaturaDoDrive(m.drive_id as string), tipo: "image" };
   return { url: links[m.path] ?? "", tipo: m.type };
@@ -219,8 +231,10 @@ export function midiasValidas(media: unknown): PostMedia[] {
     return [
       {
         path: item.path,
-        // Do Drive vem vídeo (o padrão) ou imagem grande; o resto é imagem, salvo vídeo.
-        type: doDrive ? (item.type === "image" ? "image" : "video") : item.type === "video" ? "video" : "image",
+        // Do Drive vem vídeo (o padrão), imagem ou PDF grande; o resto é imagem,
+        // salvo vídeo e PDF.
+        type:
+          item.type === "pdf" ? "pdf" : doDrive ? (item.type === "image" ? "image" : "video") : item.type === "video" ? "video" : "image",
         name: typeof item.name === "string" ? item.name : "arquivo",
         size: typeof item.size === "number" ? item.size : 0,
         ...(doDrive ? { source: "drive" as const, drive_id: item.drive_id } : {}),
@@ -250,7 +264,15 @@ export function oQueFaltaProEnvio(post: {
   const regra = CATEGORIAS[post.category];
   if (post.quantasMidias < regra.minimo) {
     return regra.minimo === 1
-      ? `Falta ${post.category === "story" ? "a imagem ou o vídeo" : ehFormatoDeVideo(post.category) ? "o vídeo" : "a imagem"} do post.`
+      ? `Falta ${
+          post.category === "story"
+            ? "a imagem ou o vídeo"
+            : post.category === "documento"
+            ? "o PDF"
+            : ehFormatoDeVideo(post.category)
+            ? "o vídeo"
+            : "a imagem"
+        } do post.`
       : `Um carrossel precisa de pelo menos ${regra.minimo} arquivos.`;
   }
   if (post.quantasMidias > regra.maximo) {
@@ -281,6 +303,7 @@ const TIPOS_POR_EXTENSAO: Record<string, string> = {
   mkv: "video/x-matroska",
   avi: "video/x-msvideo",
   "3gp": "video/3gpp",
+  pdf: "application/pdf",
 };
 
 export function tipoDoArquivo(arquivo: { name: string; type: string }): string {
@@ -289,11 +312,36 @@ export function tipoDoArquivo(arquivo: { name: string; type: string }): string {
   return TIPOS_POR_EXTENSAO[extensao] ?? "";
 }
 
+// O tipo do item do post a partir do tipo do arquivo.
+export function tipoDaMidia(mime: string): TipoDeMidia {
+  if (mime === "application/pdf") return "pdf";
+  return mime.startsWith("video/") ? "video" : "image";
+}
+
+// O contrário, pra conferir um item já montado com arquivoAceito.
+export function mimeDoTipo(tipo: TipoDeMidia): string {
+  return tipo === "pdf" ? "application/pdf" : `${tipo}/`;
+}
+
 // O arquivo serve pra esta categoria?
 export function arquivoAceito(categoria: PostCategory, mime: string) {
+  if (categoria === "documento") return mime === "application/pdf";
   if (ehFormatoDeVideo(categoria)) return mime.startsWith("video/");
   if (categoria === "estatico") return mime.startsWith("image/");
   return mime.startsWith("image/") || mime.startsWith("video/");
+}
+
+// O que dizer quando o arquivo escolhido não serve pra categoria.
+export function oQueACategoriaAceita(categoria: PostCategory): string {
+  if (categoria === "documento") return "o carrossel do LinkedIn só aceita PDF";
+  if (ehFormatoDeVideo(categoria)) return `${CATEGORIAS[categoria].rotulo} só aceita vídeo`;
+  if (categoria === "estatico") return "post estático só aceita imagem";
+  return "só imagem ou vídeo";
+}
+
+// Como o arquivo aparece na lista de downloads.
+export function rotuloDoTipo(tipo: TipoDeMidia): string {
+  return tipo === "video" ? "Vídeo" : tipo === "pdf" ? "PDF" : "Imagem";
 }
 
 // O erro do Storage quando o arquivo passa do limite de upload do projeto

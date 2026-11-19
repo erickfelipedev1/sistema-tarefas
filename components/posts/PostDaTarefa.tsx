@@ -17,6 +17,8 @@ import {
   caminhosDoItem,
   linksDeExibicao,
   MENSAGEM_CANCELAR_ENVIO,
+  mimeDoTipo,
+  oQueACategoriaAceita,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
   ehDoDrive,
@@ -30,7 +32,9 @@ import {
   redesValidas,
   rotuloDoStatus,
   STATUS_DO_POST,
+  tipoDaMidia,
   tipoDoArquivo,
+  type TipoDeMidia,
 } from "@/lib/posts";
 import { subirMiniatura } from "@/lib/miniatura-de-imagem";
 import { descartarVideosDoDrive, enviarMidiaParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
@@ -38,6 +42,7 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
 import MiniaturaDeVideo from "./MiniaturaDeVideo";
+import MiniaturaDePdf from "./MiniaturaDePdf";
 import CapaDoReel, { type CapaDoForm } from "./CapaDoReel";
 import ArquivosParaBaixar from "./ArquivosParaBaixar";
 import { BaixarItem, BaixarTodos } from "./BaixarDoForm";
@@ -51,7 +56,7 @@ const SEM_MIGRACAO = "Confere se a migration 0062_post_da_tarefa.sql já foi rod
 // ser escolhido e ainda vai subir (com um endereço local só pro preview).
 type ItemDeMidia =
   | { chave: string; salva: PostMedia; nova?: undefined }
-  | { chave: string; nova: { arquivo: File; url: string; tipo: "image" | "video" }; salva?: undefined };
+  | { chave: string; nova: { arquivo: File; url: string; tipo: TipoDeMidia }; salva?: undefined };
 
 function arrumar(post: Post): Post {
   return {
@@ -264,7 +269,7 @@ export default function PostDaTarefa({
         nova: {
           arquivo,
           url: URL.createObjectURL(arquivo),
-          tipo: tipoDoArquivo(arquivo).startsWith("video/") ? "video" : "image",
+          tipo: tipoDaMidia(tipoDoArquivo(arquivo)),
         },
       });
     }
@@ -282,7 +287,7 @@ export default function PostDaTarefa({
     });
     setErro(
       recusados.length > 0
-        ? `${recusados.join(", ")}: ${ehFormatoDeVideo(categoria) ? `${CATEGORIAS[categoria].rotulo} só aceita vídeo` : categoria === "estatico" ? "post estático só aceita imagem" : "só imagem ou vídeo"}.`
+        ? `${recusados.join(", ")}: ${oQueACategoriaAceita(categoria)}.`
         : null
     );
     if (seletor.current) seletor.current.value = "";
@@ -309,7 +314,7 @@ export default function PostDaTarefa({
 
   // Vídeo grande: sobe pro Google Drive (direto do navegador, com progresso) e
   // vira um item do Drive no post.
-  async function mandarProDrive(arquivo: File, tipo: "image" | "video", rotulo: string, postId: string) {
+  async function mandarProDrive(arquivo: File, tipo: TipoDeMidia, rotulo: string, postId: string) {
     if (!projectId) return { erro: "Tarefa sem cliente." };
     setSalvando(`Enviando ${rotulo} pro Google Drive... 0%`);
     const r = await enviarMidiaParaODrive(arquivo, tipo, (f) =>
@@ -324,7 +329,7 @@ export default function PostDaTarefa({
   async function salvar(enviar: boolean) {
     if (salvando || !projectId) return;
     setAviso(null);
-    if (itens.some((i) => !arquivoAceito(categoria, tipoDoItem(i) === "video" ? "video/" : "image/"))) {
+    if (itens.some((i) => !arquivoAceito(categoria, mimeDoTipo(tipoDoItem(i))))) {
       return setErro(`Tire os arquivos que não servem pra ${regra.artigo}. ${regra.dica}`);
     }
     if (redes.length === 0) return setErro("Marque pelo menos uma rede.");
@@ -591,7 +596,9 @@ export default function PostDaTarefa({
             return (
               <li key={post.id} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3">
                 <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-black">
-                  {url && miniatura ? (
+                  {mini?.tipo === "pdf" ? (
+                    <MiniaturaDePdf />
+                  ) : url && miniatura ? (
                     mini?.tipo === "video" ? (
                       <MiniaturaDeVideo />
                     ) : (
@@ -675,7 +682,7 @@ export default function PostDaTarefa({
                   onClick={() => {
                     // Arquivos que não cabem no novo formato saem: avisa antes.
                     const ficariam = itens
-                      .filter((i) => arquivoAceito(c, tipoDoItem(i) === "video" ? "video/" : "image/"))
+                      .filter((i) => arquivoAceito(c, mimeDoTipo(tipoDoItem(i))))
                       .slice(0, CATEGORIAS[c].maximo).length;
                     if (
                       ficariam < itens.length &&
@@ -690,10 +697,12 @@ export default function PostDaTarefa({
                     if (c === "shorts" || c === "youtube") {
                       setRedes((atual) => (atual.includes("youtube") ? atual : redesValidas([...atual, "youtube"])));
                     }
+                    // Carrossel em PDF é formato do LinkedIn: fica só ele marcado.
+                    if (c === "documento") setRedes(["linkedin"]);
                     // Arquivos que não servem pra nova categoria saem.
                     setItens((atual) => {
                       const fica = atual
-                        .filter((i) => arquivoAceito(c, tipoDoItem(i) === "video" ? "video/" : "image/"))
+                        .filter((i) => arquivoAceito(c, mimeDoTipo(tipoDoItem(i))))
                         .slice(0, CATEGORIAS[c].maximo);
                       for (const i of atual) if (i.nova && !fica.includes(i)) URL.revokeObjectURL(i.nova.url);
                       return fica;
@@ -746,7 +755,7 @@ export default function PostDaTarefa({
 
           <div>
             <p className="mb-1 text-xs font-medium text-ink-muted">
-              {ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagens ou vídeos" : "Imagens e vídeos"}
+              {categoria === "documento" ? "PDF" : ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagens ou vídeos" : "Imagens e vídeos"}
             </p>
             <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
             {itens.length > 0 && (
@@ -757,13 +766,15 @@ export default function PostDaTarefa({
                   const url = item.salva ? mini?.url ?? "" : item.nova.url;
                   const tipoDaMini = mini ? mini.tipo : tipo;
                   const doDrive = !!item.salva && ehDoDrive(item.salva);
-                  const serve = arquivoAceito(categoria, tipo === "video" ? "video/" : "image/");
+                  const serve = arquivoAceito(categoria, mimeDoTipo(tipo));
                   return (
                     <li
                       key={item.chave}
                       className={`relative h-24 w-24 overflow-hidden rounded-xl border bg-black ${serve ? "border-line" : "border-danger"}`}
                     >
-                      {!url ? (
+                      {tipoDaMini === "pdf" ? (
+                        <MiniaturaDePdf />
+                      ) : !url ? (
                         <span className="grid h-full w-full place-items-center text-[10px] text-white/60">…</span>
                       ) : tipoDaMini === "video" ? (
                         <MiniaturaDeVideo />
@@ -834,7 +845,7 @@ export default function PostDaTarefa({
             )}
             <BaixarTodos itens={itens} />
 
-            {categoria !== "estatico" && (
+            {categoria !== "estatico" && categoria !== "documento" && (
               <div className="mt-4 rounded-lg border border-line bg-surface p-3">
                 <p className="text-xs font-medium text-ink">Vídeo grande? Use um link do Google Drive</p>
                 <div className="mt-2 flex flex-wrap gap-2">

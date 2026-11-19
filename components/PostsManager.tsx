@@ -26,6 +26,8 @@ import {
   caminhosDoItem,
   linksDeExibicao,
   MENSAGEM_CANCELAR_ENVIO,
+  mimeDoTipo,
+  oQueACategoriaAceita,
   oQueFaltaProEnvio,
   ORDEM_DAS_CATEGORIAS,
   ORDEM_DAS_REDES,
@@ -33,7 +35,9 @@ import {
   redesValidas,
   rotuloDoStatus,
   STATUS_DO_POST,
+  tipoDaMidia,
   tipoDoArquivo,
+  type TipoDeMidia,
 } from "@/lib/posts";
 import CapaDoReel, { type CapaDoForm } from "./posts/CapaDoReel";
 import PublicarNoInstagram from "./posts/PublicarNoInstagram";
@@ -43,6 +47,7 @@ import { subirMiniatura } from "@/lib/miniatura-de-imagem";
 import { descartarVideosDoDrive, enviarMidiaParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import MiniaturaDeVideo from "./posts/MiniaturaDeVideo";
+import MiniaturaDePdf from "./posts/MiniaturaDePdf";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -68,7 +73,7 @@ const SEM_MIGRACAO = "Confere se a migration 0051_posts.sql já foi rodada no Su
 // ser escolhido e ainda vai subir (com um endereço local só pro preview).
 type ItemDeMidia =
   | { chave: string; salva: PostMedia; nova?: undefined }
-  | { chave: string; nova: { arquivo: File; url: string; tipo: "image" | "video" }; salva?: undefined };
+  | { chave: string; nova: { arquivo: File; url: string; tipo: TipoDeMidia }; salva?: undefined };
 
 // O post como veio do banco, com os arquivos conferidos.
 function arrumar(post: Post): Post {
@@ -395,7 +400,7 @@ export default function PostsManager({
         nova: {
           arquivo,
           url: URL.createObjectURL(arquivo),
-          tipo: tipoDoArquivo(arquivo).startsWith("video/") ? "video" : "image",
+          tipo: tipoDaMidia(tipoDoArquivo(arquivo)),
         },
       });
     }
@@ -413,7 +418,7 @@ export default function PostsManager({
     });
     setErroForm(
       recusados.length > 0
-        ? `${recusados.join(", ")}: ${ehFormatoDeVideo(categoria) ? `${CATEGORIAS[categoria].rotulo} só aceita vídeo` : categoria === "estatico" ? "post estático só aceita imagem" : "só imagem ou vídeo"}.`
+        ? `${recusados.join(", ")}: ${oQueACategoriaAceita(categoria)}.`
         : null
     );
     if (seletorDeArquivo.current) seletorDeArquivo.current.value = "";
@@ -487,7 +492,7 @@ export default function PostsManager({
 
   // Vídeo grande: sobe pro Google Drive (direto do navegador, com progresso) e
   // vira um item do Drive no post.
-  async function mandarProDrive(arquivo: File, tipo: "image" | "video", rotulo: string, postId: string) {
+  async function mandarProDrive(arquivo: File, tipo: TipoDeMidia, rotulo: string, postId: string) {
     setSalvando(`Enviando ${rotulo} pro Google Drive... 0%`);
     const r = await enviarMidiaParaODrive(arquivo, tipo, (f) =>
       setSalvando(`Enviando ${rotulo} pro Google Drive... ${Math.round(f * 100)}%`)
@@ -498,7 +503,7 @@ export default function PostsManager({
 
   async function salvar(enviarAoCliente: boolean) {
     if (salvando) return;
-    const foraDaCategoria = itens.some((item) => !arquivoAceito(categoria, tipoDoItem(item) === "video" ? "video/" : "image/"));
+    const foraDaCategoria = itens.some((item) => !arquivoAceito(categoria, mimeDoTipo(tipoDoItem(item))));
     if (foraDaCategoria) {
       return setErroForm(`Tire os arquivos que não servem pra ${CATEGORIAS[categoria].artigo}. ${CATEGORIAS[categoria].dica}`);
     }
@@ -792,6 +797,11 @@ export default function PostsManager({
                         setCategoria(c);
                         // Shorts e vídeo do YouTube são do YouTube: já marca a rede.
                         if ((c === "shorts" || c === "youtube") && !redes.includes("youtube")) alternarRede("youtube");
+                        // Carrossel em PDF é formato do LinkedIn: fica só ele marcado.
+                        if (c === "documento") {
+                          setRedes(["linkedin"]);
+                          setRedeDoPreview("linkedin");
+                        }
                       }}
                     >
                       {CATEGORIAS[c].rotulo}
@@ -829,7 +839,7 @@ export default function PostsManager({
                 </p>
               </Campo>
 
-              <Campo label={ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagens ou vídeos" : "Imagens e vídeos"} required>
+              <Campo label={categoria === "documento" ? "PDF" : ehFormatoDeVideo(categoria) ? "Vídeo" : categoria === "estatico" ? "Imagem" : categoria === "story" ? "Imagens ou vídeos" : "Imagens e vídeos"} required>
                 <p className="mb-2 text-xs text-ink-muted">{regra.dica}</p>
                 {itens.length > 0 && (
                   <ul className="mb-3 flex flex-wrap gap-2">
@@ -837,7 +847,7 @@ export default function PostsManager({
                       const tipo = tipoDoItem(item);
                       const mini = item.salva ? miniaturaDoItem(item.salva, links) : null;
                       const url = item.salva ? mini?.url ?? "" : item.nova.url;
-                      const serve = arquivoAceito(categoria, tipo === "video" ? "video/" : "image/");
+                      const serve = arquivoAceito(categoria, mimeDoTipo(tipo));
                       return (
                         <li
                           key={item.chave}
@@ -903,7 +913,7 @@ export default function PostsManager({
                 )}
                 <BaixarTodos itens={itens} />
 
-                {categoria !== "estatico" && (
+                {categoria !== "estatico" && categoria !== "documento" && (
                   <div className="mt-4 rounded-lg border border-line bg-canvas p-3">
                     <p className="text-xs font-medium text-ink">Vídeo grande? Use um link do Google Drive</p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -1356,7 +1366,8 @@ function SeletorDeRede({
   );
 }
 
-function Miniatura({ url, tipo }: { url: string; tipo: "image" | "video" }) {
+function Miniatura({ url, tipo }: { url: string; tipo: TipoDeMidia }) {
+  if (tipo === "pdf") return <MiniaturaDePdf />;
   if (!url) return <span className="grid h-full w-full place-items-center text-[10px] text-white/60">…</span>;
   if (tipo === "video") {
     return <MiniaturaDeVideo />;

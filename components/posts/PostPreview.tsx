@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import type { PostCategory, PostNetwork } from "@/lib/types";
-import { ehFormatoDeVideo, urlDoPlayerDoDrive } from "@/lib/posts";
+import { ehFormatoDeVideo, urlDoPlayerDoDrive, type TipoDeMidia } from "@/lib/posts";
+import { MAXIMO_DE_PAGINAS, paginasDoPdf } from "@/lib/paginas-do-pdf";
 import {
   BookmarkIcon,
   ChevronLeftIcon,
@@ -19,8 +20,8 @@ import {
 
 export interface MidiaDoPreview {
   url: string; // vazio = o arquivo não pôde ser aberto
-  tipo: "image" | "video";
-  // Vídeo do Google Drive: toca pelo player do Drive (a "url" fica vazia).
+  tipo: TipoDeMidia;
+  // Vídeo (ou PDF) do Google Drive: abre pelo player do Drive (a "url" fica vazia).
   driveId?: string;
 }
 
@@ -34,7 +35,8 @@ export interface MidiaDoPreview {
 // embaixo avisa do processamento do Drive (vídeo novo leva alguns minutos
 // pra poder tocar) — vale pra equipe e pro cliente.
 export default function PostPreview(props: ComponentProps<typeof PostPreviewBase>) {
-  const temDrive = props.midias.some((m) => !!m.driveId);
+  // PDF do Drive não passa por processamento: a dica é só pra vídeo.
+  const temDrive = props.midias.some((m) => !!m.driveId && m.tipo !== "pdf");
   return (
     <>
       <PostPreviewBase {...props} />
@@ -73,7 +75,7 @@ function PostPreviewBase({
       ? "aspect-[9/16]"
       : categoria === "youtube"
       ? "aspect-video"
-      : categoria === "carrossel"
+      : categoria === "carrossel" || categoria === "documento"
       ? "aspect-[4/5]"
       : null;
 
@@ -298,10 +300,124 @@ function Legenda({
   );
 }
 
+type PropsDasMidias = {
+  midias: MidiaDoPreview[];
+  capa?: string | null;
+  proporcao?: string | null;
+  preencher?: boolean;
+};
+
+// PDF do post (carrossel do LinkedIn) que está no d.hub: vira um slide por
+// página. PDF do Google Drive abre no leitor do Drive.
+function Midias(props: PropsDasMidias) {
+  const [unica] = props.midias;
+  if (props.midias.length === 1 && unica.tipo === "pdf" && !unica.driveId && unica.url) {
+    return <PdfEmPaginas key={unica.url} url={unica.url} {...props} />;
+  }
+  return <MidiasComuns {...props} />;
+}
+
+// Desenha as páginas só quando o preview aparece na tela (o portal pode ter
+// vários posts). Se o PDF não abrir aqui, fica o leitor do navegador e o
+// botão "Abrir o PDF".
+function PdfEmPaginas({ url, ...props }: PropsDasMidias & { url: string }) {
+  const caixa = useRef<HTMLDivElement>(null);
+  const [visivel, setVisivel] = useState(false);
+  const [paginas, setPaginas] = useState<{ urls: string[]; total: number } | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [desenhando, setDesenhando] = useState(false);
+
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el || visivel) return;
+    if (typeof IntersectionObserver === "undefined") return setVisivel(true);
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) setVisivel(true);
+      },
+      { rootMargin: "200px" }
+    );
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [visivel]);
+
+  useEffect(() => {
+    if (!visivel) return;
+    let cancelado = false;
+    let feitas: string[] = [];
+    const largar = (urls: string[]) => {
+      for (const u of urls) URL.revokeObjectURL(u);
+    };
+    paginasDoPdf(
+      url,
+      (urls, total) => {
+        feitas = urls;
+        if (cancelado) return;
+        setPaginas({ urls, total });
+        setDesenhando(urls.length < Math.min(total, MAXIMO_DE_PAGINAS));
+      },
+      () => cancelado
+    )
+      .then((r) => {
+        if (cancelado) largar(r.urls);
+      })
+      .catch(() => {
+        if (cancelado) return largar(feitas);
+        // Se já tem páginas na tela, fica com elas; senão, o leitor do navegador.
+        setDesenhando(false);
+        if (feitas.length === 0) setFalhou(true);
+      });
+    return () => {
+      cancelado = true;
+      largar(feitas);
+    };
+  }, [url, visivel]);
+
+  const molde = props.preencher ? "absolute inset-0" : `relative ${props.proporcao ?? "aspect-[4/5]"}`;
+  if (falhou) {
+    return (
+      <div className={`${molde} bg-white`}>
+        <DocumentoPdf url={url} />
+      </div>
+    );
+  }
+  if (!paginas) {
+    return (
+      <div ref={caixa} className={`${molde} grid place-items-center bg-canvas text-xs text-ink-muted`}>
+        Abrindo o PDF...
+      </div>
+    );
+  }
+  return (
+    <div className={props.preencher ? "absolute inset-0" : "relative"}>
+      <MidiasComuns {...props} midias={paginas.urls.map((u) => ({ url: u, tipo: "image" as const }))} />
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-7 right-2.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/90"
+      >
+        Abrir o PDF
+      </a>
+      {desenhando ? (
+        <p className="bg-canvas px-3.5 py-1.5 text-center text-[11px] text-ink-muted">
+          Carregando as páginas ({paginas.urls.length} de {Math.min(paginas.total, MAXIMO_DE_PAGINAS)})...
+        </p>
+      ) : (
+        paginas.total > paginas.urls.length && (
+          <p className="bg-canvas px-3.5 py-1.5 text-center text-[11px] text-ink-muted">
+            Mostrando as {paginas.urls.length} primeiras de {paginas.total} páginas. O PDF inteiro abre no botão.
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
 // Os arquivos do post. Um só: aparece inteiro. Vários: carrossel de arrastar,
 // com setas, bolinhas e o contador. Nada é cortado (object-contain) — o
 // cliente precisa ver a arte toda, mesmo que a rede vá cortar um pouco.
-function Midias({
+function MidiasComuns({
   midias,
   capa = null,
   proporcao = null,
@@ -457,7 +573,31 @@ function VideoDoDrive({ id, preenche }: { id: string; preenche: boolean }) {
   );
 }
 
+// O PDF no leitor do Drive (arquivo grande que ficou lá) ou, se o d.hub não
+// conseguiu desenhar as páginas, no leitor do navegador. O "Abrir o PDF" abre
+// o arquivo inteiro.
+function DocumentoPdf({ url, driveId }: { url: string; driveId?: string }) {
+  const endereco = driveId ? urlDoPlayerDoDrive(driveId) : `${url}#view=FitH`;
+  const abrir = driveId ? `https://drive.google.com/file/d/${encodeURIComponent(driveId)}/view` : url;
+  return (
+    <div className="relative h-full w-full bg-white">
+      <iframe src={endereco} title="PDF do post" loading="lazy" className="block h-full w-full border-0" />
+      <a
+        href={abrir}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-2.5 right-2.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/90"
+      >
+        Abrir o PDF
+      </a>
+    </div>
+  );
+}
+
 function Arquivo({ midia, capa = null, className }: { midia: MidiaDoPreview; capa?: string | null; className: string }) {
+  if (midia.tipo === "pdf" && (midia.driveId || midia.url)) {
+    return <DocumentoPdf url={midia.url} driveId={midia.driveId} />;
+  }
   if (midia.driveId) {
     // O vídeo precisa estar compartilhado como "Qualquer pessoa com o link".
     return <VideoDoDrive id={midia.driveId} preenche={className.includes("h-full")} />;

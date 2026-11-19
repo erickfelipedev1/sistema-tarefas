@@ -406,15 +406,15 @@ export interface ReportAnalysis {
 
 // Preview de posts (migration 0051): o post que o colaborador monta pro
 // cliente aprovar. Ver lib/posts.ts pros rótulos de cada valor.
-export type PostCategory = "carrossel" | "estatico" | "reel" | "shorts" | "youtube" | "story";
+export type PostCategory = "carrossel" | "estatico" | "reel" | "shorts" | "youtube" | "story" | "documento";
 export type PostNetwork = "instagram" | "facebook" | "tiktok" | "linkedin" | "youtube";
 export type PostStatus = "rascunho" | "enviado" | "ajuste" | "publicado";
 
 // Um arquivo do post, guardado em posts.media. "path" é o caminho no bucket
-// privado "post-media".
+// privado "post-media". "pdf" é o carrossel em PDF do LinkedIn (migration 0121).
 export interface PostMedia {
   path: string;
-  type: "image" | "video";
+  type: "image" | "video" | "pdf";
   name: string;
   size: number;
   // Vídeo do Google Drive (migration 0070): em vez de um arquivo no bucket, o

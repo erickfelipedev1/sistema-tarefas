@@ -230,7 +230,11 @@ export async function iniciarPublicacaoNoInstagram(postId: string): Promise<Anda
       if (!achado) throw new ErroDoInstagram("Um dos arquivos do post não foi encontrado.");
       return achado;
     };
-    const midias: MidiaParaPostar[] = indices.map((i) => ({ url: urlDe(post.media[i].path), tipo: post.media[i].type }));
+    const midias: MidiaParaPostar[] = indices.map((i) => {
+      const tipo = post.media[i].type;
+      if (tipo === "pdf") throw new ErroDoInstagram("PDF não vai pro Instagram (é o carrossel do LinkedIn).");
+      return { url: urlDe(post.media[i].path), tipo };
+    });
     const capaUrl = post.cover && !variosStories ? urlDe(post.cover.path) : null;
 
     if (variosStories) {
