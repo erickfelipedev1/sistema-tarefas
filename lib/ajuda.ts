@@ -217,7 +217,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Vídeo grande não sobe no post. E agora?",
     resposta:
-      "Vídeo acima de 45 MB vai sozinho pro Google Drive e toca no preview do post. Se der erro, exporte em .mp4 (vídeo .mov de iPhone costuma ser bem maior) ou cole o link do Drive no lugar do arquivo.",
+      "Vídeo acima de 45 MB vai sozinho pro Google Drive e toca no preview do post. Se aparecer que a sessão expirou, recarregue a página, entre de novo e envie outra vez. Se der outro erro, exporte em .mp4 (vídeo .mov de iPhone costuma ser bem maior) ou cole o link do Drive no lugar do arquivo.",
     palavras: ["vídeo grande", "upload", "drive", "limite", "mb", "não sobe"],
   },
   {

@@ -8,6 +8,7 @@ import {
   liberarAnexoDoDrive,
   liberarVideoDoDrive,
 } from "@/lib/actions/drive";
+import { createClient } from "@/lib/supabase/client";
 
 // Vídeo acima disso vai pro Google Drive em vez do Supabase (o limite de
 // upload do plano gratuito do Supabase é 50 MB por arquivo).
@@ -19,6 +20,24 @@ const TENTATIVAS = 4;
 export type ResultadoDoEnvio = { id: string } | { erro: string; naoConfigurado?: boolean };
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Quando o envio falha antes de começar, a causa mais comum é o login do
+// aparelho ter caído (o servidor manda o pedido pra tela de login e a chamada
+// quebra). Confere o login no Supabase pra dar a mensagem certa; sem internet,
+// fica a mensagem de conexão.
+async function mensagemDaFalha(padrao: string, oQue: "o vídeo" | "o arquivo"): Promise<string> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return padrao;
+  try {
+    const { data, error } = await createClient().auth.getUser();
+    const semRede = error && (error.name === "AuthRetryableFetchError" || error.status === 0);
+    if (!semRede && !data.user) {
+      return `Sua sessão expirou. Recarregue a página, entre de novo no d.hub e envie ${oQue} outra vez.`;
+    }
+  } catch {
+    // Não deu pra conferir: fica a mensagem de conexão.
+  }
+  return padrao;
+}
 
 // O código do arquivo na resposta final do Drive (null se vier ilegível).
 function lerId(texto: string): string | null {
@@ -73,7 +92,9 @@ export async function enviarVideoParaODrive(
   } catch {
     // Qualquer exceção (rede, sessão expirada, servidor fora) vira mensagem:
     // o formulário nunca fica preso em "salvando".
-    return { erro: "Não deu pra enviar o vídeo pro Drive agora. Confira a conexão e tente de novo." };
+    return {
+      erro: await mensagemDaFalha("Não deu pra enviar o vídeo pro Drive agora. Confira a conexão e tente de novo.", "o vídeo"),
+    };
   }
 }
 
@@ -95,7 +116,9 @@ export async function enviarAnexoParaODrive(
   try {
     return await enviar(arquivo, aoProgresso, "anexo");
   } catch {
-    return { erro: "Não deu pra enviar o arquivo pro Drive agora. Confira a conexão e tente de novo." };
+    return {
+      erro: await mensagemDaFalha("Não deu pra enviar o arquivo pro Drive agora. Confira a conexão e tente de novo.", "o arquivo"),
+    };
   }
 }
 
