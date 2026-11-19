@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-19",
+    area: "Sistema",
+    titulo: "Escala do lixo: Mariana na quinta",
+    texto: "Na página Regras, a Mariana saiu da quarta e passou pra quinta, junto com a Julia. Na quarta ficam Erick e Gabriel. O aviso do Painel segue a escala nova.",
+  },
+  {
     data: "2026-11-17",
     area: "Clientes",
     titulo: "Mais de um responsável por projeto",
