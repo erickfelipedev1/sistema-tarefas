@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-23",
     area: "Sistema",
+    titulo: "Ressarcimento: lote em PDF",
+    texto: "Quem cuida dos ressarcimentos agora baixa o lote em PDF: resumo do que pagar por empresa e pessoa, lista de despesas e os comprovantes (fotos e PDFs) numa página cada, pronto pra encaminhar ao financeiro.",
+  },
+  {
+    data: "2026-11-23",
+    area: "Sistema",
     titulo: "Ressarcimento de despesas",
     texto: "Nova página Ressarcimento (no menu): lance o que pagou do próprio bolso pela now d.gital ou pela Won, com chave PIX, valor, motivo, descrição e foto ou PDF do comprovante. Nos dias 1 e 16 o que estiver pendente vai para o financeiro, separado por empresa, e você é avisado quando for pago.",
   },

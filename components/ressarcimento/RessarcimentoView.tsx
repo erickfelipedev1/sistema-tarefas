@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { prepararComprovantes } from "@/lib/comprovantes-para-pdf";
 import { linkDoArquivo } from "@/lib/arquivos";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { formatarDataBR, formatarMoeda, formatarTamanho } from "@/lib/format";
@@ -442,6 +444,9 @@ export default function RessarcimentoView({
 
       {financeiro && !carregando && (
         <BlocoFinanceiro
+          supabase={supabase}
+          meuNome={meuNome}
+          aoFalhar={setErro}
           itens={itens}
           nomes={nomesDeQuemLancou}
           loteInicial={loteInicial}
@@ -516,6 +521,9 @@ function CartaoMeu({ r, aoApagar }: { r: Ressarcimento; aoApagar: () => void }) 
 }
 
 function BlocoFinanceiro({
+  supabase,
+  meuNome,
+  aoFalhar,
   itens,
   nomes,
   loteInicial,
@@ -524,6 +532,9 @@ function BlocoFinanceiro({
   aoDesfazer,
   aoRecusar,
 }: {
+  supabase: SupabaseClient;
+  meuNome: string;
+  aoFalhar: (mensagem: string | null) => void;
   itens: Ressarcimento[];
   nomes: Record<string, string>;
   loteInicial: string | null;
@@ -562,6 +573,51 @@ function BlocoFinanceiro({
     URL.revokeObjectURL(url);
   }
 
+  const [progressoDoPdf, setProgressoDoPdf] = useState<string | null>(null);
+
+  async function baixarPdf() {
+    if (progressoDoPdf || doLote.length === 0) return;
+    aoFalhar(null);
+    setProgressoDoPdf("Preparando PDF...");
+    try {
+      const { pdf } = await import("@react-pdf/renderer");
+      const { DocumentoDosRessarcimentos } = await import("@/lib/ressarcimento-pdf");
+      const comprovantes = await prepararComprovantes(supabase, doLote, (feitos, total) => {
+        if (total > 0) setProgressoDoPdf(`Preparando PDF... comprovante ${Math.min(feitos + 1, total)} de ${total}`);
+      });
+      setProgressoDoPdf("Montando PDF...");
+      const geradoEm = new Date().toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const blob = await pdf(
+        <DocumentoDosRessarcimentos
+          titulo={escolhido === PENDENTES ? "Ressarcimentos pendentes" : `Ressarcimentos — ${rotuloDoLote(escolhido)}`}
+          geradoEm={geradoEm.replace(",", " às")}
+          geradoPor={meuNome}
+          itens={doLote}
+          comprovantes={comprovantes}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ressarcimentos-${escolhido === PENDENTES ? "pendentes" : escolhido}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      aoFalhar("Não deu pra gerar o PDF. Tente de novo.");
+    } finally {
+      setProgressoDoPdf(null);
+    }
+  }
+
   return (
     <section data-mov="card" className="space-y-3 rounded-2xl border border-line bg-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -591,10 +647,16 @@ function BlocoFinanceiro({
                 )
               </span>
             </p>
-            <Button size="sm" variant="secondary" onClick={baixarCsv}>
-              <DownloadIcon className="h-3.5 w-3.5" />
-              Baixar planilha (CSV)
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={baixarPdf} disabled={!!progressoDoPdf || doLote.length === 0}>
+                <DownloadIcon className="h-3.5 w-3.5" />
+                {progressoDoPdf ?? "Baixar PDF"}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={baixarCsv}>
+                <DownloadIcon className="h-3.5 w-3.5" />
+                Baixar planilha (CSV)
+              </Button>
+            </div>
           </div>
 
           {ORDEM_DAS_EMPRESAS.map((empresa) => {
