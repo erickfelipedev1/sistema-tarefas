@@ -11,6 +11,13 @@ export interface PerguntaDeAjuda {
 
 export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
+    pergunta: "Como peço ressarcimento de uma despesa?",
+    resposta:
+      "No menu Ressarcimento, preencha a empresa, o nome, a chave PIX, a data, o valor, o motivo e a descrição, e anexe o comprovante (foto ou PDF). Nos dias 1 e 16, o que estiver pendente vai para o financeiro. Enquanto está pendente, dá pra apagar. Você é avisado quando for pago ou recusado.",
+    palavras: ["ressarcimento", "reembolso", "pix", "despesa", "comprovante", "recibo", "uber"],
+    link: { rotulo: "Abrir Ressarcimento", href: "/ressarcimento" },
+  },
+  {
     pergunta: "Excluí uma tarefa sem querer. Dá pra recuperar?",
     resposta:
       "Dá. Tarefa excluída vai pra Lixeira (no menu) e fica lá 30 dias. Clique em Restaurar e ela volta ao quadro com comentários, checklist, anexos e horas. Passados os 30 dias, some de vez.",

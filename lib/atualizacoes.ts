@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-23",
+    area: "Sistema",
+    titulo: "Ressarcimento de despesas",
+    texto: "Nova página Ressarcimento (no menu): lance o que pagou do próprio bolso pela now d.gital ou pela Won, com chave PIX, valor, motivo, descrição e foto ou PDF do comprovante. Nos dias 1 e 16 o que estiver pendente vai para o financeiro, separado por empresa, e você é avisado quando for pago.",
+  },
+  {
     data: "2026-11-19",
     area: "Posts",
     titulo: "Carrossel em PDF pro LinkedIn",
