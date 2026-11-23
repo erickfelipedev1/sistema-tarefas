@@ -44,6 +44,11 @@ function somar(itens: Ressarcimento[]) {
   return itens.reduce((t, r) => t + r.valor, 0);
 }
 
+// Totais do financeiro: recusado não se paga, fica fora da conta.
+function somarAPagar(itens: Ressarcimento[]) {
+  return somar(itens.filter((r) => r.status !== "recusado"));
+}
+
 export default function RessarcimentoView({
   euId,
   meuNome,
@@ -577,8 +582,14 @@ function BlocoFinanceiro({
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-ink">
-              Total do lote: <strong>{formatarMoeda(somar(doLote))}</strong>{" "}
-              <span className="text-xs text-ink-muted">({doLote.length} pedido{doLote.length > 1 ? "s" : ""})</span>
+              Total do lote: <strong>{formatarMoeda(somarAPagar(doLote))}</strong>{" "}
+              <span className="text-xs text-ink-muted">
+                ({doLote.length} pedido{doLote.length > 1 ? "s" : ""}
+                {doLote.some((r) => r.status === "recusado")
+                  ? `; ${doLote.filter((r) => r.status === "recusado").length} recusado(s) fora do total`
+                  : ""}
+                )
+              </span>
             </p>
             <Button size="sm" variant="secondary" onClick={baixarCsv}>
               <DownloadIcon className="h-3.5 w-3.5" />
@@ -599,7 +610,7 @@ function BlocoFinanceiro({
               <div key={empresa} className="space-y-2">
                 <h3 className="flex items-center justify-between border-b border-line pb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   <span>{EMPRESAS[empresa]}</span>
-                  <span className="normal-case tracking-normal text-ink">{formatarMoeda(somar(daEmpresa))}</span>
+                  <span className="normal-case tracking-normal text-ink">{formatarMoeda(somarAPagar(daEmpresa))}</span>
                 </h3>
                 {grupos.map((lista) => (
                   <GrupoDaPessoa
@@ -655,7 +666,7 @@ function GrupoDaPessoa({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-ink">
-            {nome} <span className="font-normal text-ink-muted">· {formatarMoeda(somar(lista))}</span>
+            {nome} <span className="font-normal text-ink-muted">· {formatarMoeda(somarAPagar(lista))}</span>
           </p>
           <p className="break-all text-xs text-ink-muted">PIX: {pix}</p>
         </div>
