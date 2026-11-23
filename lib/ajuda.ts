@@ -13,7 +13,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como peço ressarcimento de uma despesa?",
     resposta:
-      "No menu Ressarcimento, preencha a empresa, o nome, a chave PIX, a data, o valor, o motivo e a descrição, e anexe o comprovante (foto ou PDF). Nos dias 1 e 16, o que estiver pendente vai para o financeiro. Enquanto está pendente, dá pra apagar. Você é avisado quando for pago ou recusado. Quem cuida dos ressarcimentos baixa o lote em PDF (resumo para pagar, lista de despesas e os comprovantes) para encaminhar ao financeiro.",
+      "No menu Ressarcimento, preencha a empresa, o nome, a chave PIX, a data, o valor, o motivo e a descrição, e anexe o comprovante (foto ou PDF). Nos dias 1 e 16, o que estiver pendente vai para o financeiro. Enquanto está pendente, dá pra apagar. Você é avisado quando for pago ou recusado. Quem cuida dos ressarcimentos também pode ajustar o pedido e deixar uma observação, e quem lançou é avisado. Quem cuida dos ressarcimentos baixa o lote em PDF (resumo para pagar, lista de despesas e os comprovantes) para encaminhar ao financeiro.",
     palavras: ["ressarcimento", "reembolso", "pix", "despesa", "comprovante", "recibo", "uber"],
     link: { rotulo: "Abrir Ressarcimento", href: "/ressarcimento" },
   },

@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-23",
     area: "Sistema",
+    titulo: "Ressarcimento: ajuste e observação do financeiro",
+    texto: "Quem cuida dos ressarcimentos agora pode ajustar um pedido (empresa, nome, PIX, data, valor, motivo e descrição) e deixar uma observação a qualquer momento. Quem lançou é avisado, vê a observação no pedido e ela vai no PDF.",
+  },
+  {
+    data: "2026-11-23",
+    area: "Sistema",
     titulo: "Ressarcimento: lote em PDF",
     texto: "Quem cuida dos ressarcimentos agora baixa o lote em PDF: resumo do que pagar por empresa e pessoa, lista de despesas e os comprovantes (fotos e PDFs) numa página cada, pronto pra encaminhar ao financeiro.",
   },

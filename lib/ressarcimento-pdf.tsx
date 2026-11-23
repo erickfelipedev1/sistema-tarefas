@@ -195,7 +195,12 @@ export function DocumentoDosRessarcimentos({
                   <View key={r.id} style={s.linha} wrap={false}>
                     <Text style={{ width: 50 }}>{formatarDataBR(r.data_despesa).slice(0, 5)}</Text>
                     <Text style={{ width: 95, paddingRight: 4 }}>{MOTIVOS[r.motivo].replace(/ \(.*\)$/, "")}</Text>
-                    <Text style={{ width: 190, paddingRight: 4 }}>{r.descricao}</Text>
+                    <View style={{ width: 190, paddingRight: 4 }}>
+                      <Text>{r.descricao}</Text>
+                      {r.observacao_financeiro && r.status !== "recusado" && (
+                        <Text style={[s.cinza, { marginTop: 2 }]}>Obs.: {r.observacao_financeiro}</Text>
+                      )}
+                    </View>
                     <Text style={[s.direita, { width: 60 }]}>{brl(r.valor)}</Text>
                     <Text style={{ width: 68, paddingLeft: 8 }}>
                       {r.status === "pago" ? `Pago em ${dataPago(r.pago_em)}` : "A pagar"}

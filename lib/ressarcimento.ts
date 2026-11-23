@@ -57,6 +57,8 @@ export interface Ressarcimento {
   pago_em: string | null;
   pago_por: string | null;
   observacao_financeiro: string | null;
+  editado_por: string | null;
+  editado_em: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -127,7 +129,7 @@ export function csvDosRessarcimentos(itens: Ressarcimento[], origem: string): st
       a.data_despesa.localeCompare(b.data_despesa)
   );
   const linhas = [
-    ["Empresa", "Nome", "Chave PIX", "Data da despesa", "Valor (R$)", "Motivo", "Descrição", "Status", "Lançado em", "Comprovantes"],
+    ["Empresa", "Nome", "Chave PIX", "Data da despesa", "Valor (R$)", "Motivo", "Descrição", "Status", "Observação do financeiro", "Lançado em", "Comprovantes"],
     ...ordenados.map((r) => [
       EMPRESAS[r.empresa] ?? r.empresa,
       semFormula(r.nome),
@@ -137,6 +139,7 @@ export function csvDosRessarcimentos(itens: Ressarcimento[], origem: string): st
       MOTIVOS[r.motivo] ?? r.motivo,
       semFormula(r.descricao),
       STATUS_DO_RESSARCIMENTO[r.status]?.rotulo ?? r.status,
+      semFormula(r.observacao_financeiro ?? ""),
       new Date(r.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
       r.anexos.map((a) => `${origem}${linkDoArquivo(BUCKET_DOS_RESSARCIMENTOS, a.path)}`).join(" | "),
     ]),

@@ -42,6 +42,11 @@ interface ArquivoNovo {
   previa: string | null;
 }
 
+// Data (AAAA-MM-DD) em São Paulo de um timestamp.
+function dataSP(iso: string) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
 function somar(itens: Ressarcimento[]) {
   return itens.reduce((t, r) => t + r.valor, 0);
 }
@@ -452,9 +457,10 @@ export default function RessarcimentoView({
           loteInicial={loteInicial}
           aoPagar={(r) => mudar(r, { status: "pago" })}
           aoPagarVarios={pagarVarios}
-          aoDesfazer={(r) => mudar(r, { status: "enviado", observacao_financeiro: null })}
+          aoDesfazer={(r) => mudar(r, { status: "enviado" })}
+          aoEditar={gravar}
           aoRecusar={(r) => {
-            const motivoDaRecusa = window.prompt("Por que recusar? (obrigatório, quem lançou vai ver)");
+            const motivoDaRecusa = window.prompt("Por que recusar? (obrigatório, quem lançou vai ver)", r.observacao_financeiro ?? "");
             if (motivoDaRecusa === null) return;
             const texto = motivoDaRecusa.trim();
             if (!texto) return setErro("Informe o motivo da recusa.");
@@ -508,6 +514,14 @@ function CartaoMeu({ r, aoApagar }: { r: Ressarcimento; aoApagar: () => void }) 
         {r.status === "pago" && `Pago em ${r.pago_em ? new Date(r.pago_em).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) : ""}`}
         {r.status === "recusado" && `Recusado${r.observacao_financeiro ? `: ${r.observacao_financeiro}` : ""}`}
       </p>
+      {r.status !== "recusado" && r.observacao_financeiro && (
+        <p className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-canvas px-3 py-2 text-xs text-ink-muted">
+          Obs. do financeiro: {r.observacao_financeiro}
+        </p>
+      )}
+      {r.editado_em && (
+        <p className="mt-1 text-[11px] text-ink-muted">Ajustado pelo financeiro em {formatarDataBR(dataSP(r.editado_em))}</p>
+      )}
       {r.status === "pendente" && (
         <div className="mt-3">
           <Button size="sm" variant="danger" onClick={aoApagar}>
@@ -530,6 +544,7 @@ function BlocoFinanceiro({
   aoPagar,
   aoPagarVarios,
   aoDesfazer,
+  aoEditar,
   aoRecusar,
 }: {
   supabase: SupabaseClient;
@@ -541,6 +556,7 @@ function BlocoFinanceiro({
   aoPagar: (r: Ressarcimento) => void;
   aoPagarVarios: (lista: Ressarcimento[]) => void;
   aoDesfazer: (r: Ressarcimento) => void;
+  aoEditar: (r: Ressarcimento, campos: Partial<Ressarcimento>) => Promise<string | null>;
   aoRecusar: (r: Ressarcimento) => void;
 }) {
   const lotes = useMemo(
@@ -682,6 +698,7 @@ function BlocoFinanceiro({
                     aoPagar={aoPagar}
                     aoPagarVarios={aoPagarVarios}
                     aoDesfazer={aoDesfazer}
+                    aoEditar={aoEditar}
                     aoRecusar={aoRecusar}
                   />
                 ))}
@@ -700,6 +717,7 @@ function GrupoDaPessoa({
   aoPagar,
   aoPagarVarios,
   aoDesfazer,
+  aoEditar,
   aoRecusar,
 }: {
   lista: Ressarcimento[];
@@ -707,6 +725,7 @@ function GrupoDaPessoa({
   aoPagar: (r: Ressarcimento) => void;
   aoPagarVarios: (lista: Ressarcimento[]) => void;
   aoDesfazer: (r: Ressarcimento) => void;
+  aoEditar: (r: Ressarcimento, campos: Partial<Ressarcimento>) => Promise<string | null>;
   aoRecusar: (r: Ressarcimento) => void;
 }) {
   const [copiado, setCopiado] = useState(false);
@@ -751,7 +770,7 @@ function GrupoDaPessoa({
       </div>
       <div className="mt-2 space-y-2">
         {lista.map((r) => (
-          <ItemDoFinanceiro key={r.id} r={r} lancador={nomes[r.solicitante_id] ?? null} aoPagar={aoPagar} aoDesfazer={aoDesfazer} aoRecusar={aoRecusar} />
+          <ItemDoFinanceiro key={r.id} r={r} lancador={nomes[r.solicitante_id] ?? null} nomes={nomes} aoPagar={aoPagar} aoDesfazer={aoDesfazer} aoEditar={aoEditar} aoRecusar={aoRecusar} />
         ))}
       </div>
     </div>
@@ -761,18 +780,24 @@ function GrupoDaPessoa({
 function ItemDoFinanceiro({
   r,
   lancador,
+  nomes,
   aoPagar,
   aoDesfazer,
+  aoEditar,
   aoRecusar,
 }: {
   r: Ressarcimento;
   lancador: string | null;
+  nomes: Record<string, string>;
   aoPagar: (r: Ressarcimento) => void;
   aoDesfazer: (r: Ressarcimento) => void;
+  aoEditar: (r: Ressarcimento, campos: Partial<Ressarcimento>) => Promise<string | null>;
   aoRecusar: (r: Ressarcimento) => void;
 }) {
   const status = STATUS_DO_RESSARCIMENTO[r.status];
   const encerrado = r.status === "pago" || r.status === "recusado";
+  const [editando, setEditando] = useState(false);
+  const quemEditou = r.editado_por ? nomes[r.editado_por] : "";
   return (
     <article className="rounded-lg border border-line bg-surface p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -787,26 +812,170 @@ function ItemDoFinanceiro({
       </div>
       {r.descricao && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink-muted">{r.descricao}</p>}
       <Comprovantes anexos={r.anexos} />
-      {r.status === "recusado" && r.observacao_financeiro && (
-        <p className="mt-2 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">Motivo: {r.observacao_financeiro}</p>
+      {r.observacao_financeiro &&
+        (r.status === "recusado" ? (
+          <p className="mt-2 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">Motivo: {r.observacao_financeiro}</p>
+        ) : (
+          <p className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-canvas px-3 py-2 text-xs text-ink-muted">
+            Obs. do financeiro: {r.observacao_financeiro}
+          </p>
+        ))}
+      {r.editado_em && (
+        <p className="mt-1 text-[11px] text-ink-muted">
+          Editado por {quemEditou || "pelo financeiro"} em {formatarDataBR(dataSP(r.editado_em))}
+        </p>
       )}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {!encerrado && (
-          <>
-            <Button size="sm" onClick={() => aoPagar(r)}>
-              Marcar como pago
+      {editando ? (
+        <FormularioDeEdicao r={r} aoEditar={aoEditar} aoFechar={() => setEditando(false)} />
+      ) : (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {!encerrado && (
+            <>
+              <Button size="sm" onClick={() => aoPagar(r)}>
+                Marcar como pago
+              </Button>
+              <Button size="sm" variant="danger" onClick={() => aoRecusar(r)}>
+                Recusar
+              </Button>
+            </>
+          )}
+          {encerrado && (
+            <Button size="sm" variant="ghost" onClick={() => aoDesfazer(r)}>
+              Desfazer
             </Button>
-            <Button size="sm" variant="danger" onClick={() => aoRecusar(r)}>
-              Recusar
-            </Button>
-          </>
-        )}
-        {encerrado && (
-          <Button size="sm" variant="ghost" onClick={() => aoDesfazer(r)}>
-            Desfazer
+          )}
+          <Button size="sm" variant="secondary" onClick={() => setEditando(true)}>
+            Editar
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </article>
+  );
+}
+
+function FormularioDeEdicao({
+  r,
+  aoEditar,
+  aoFechar,
+}: {
+  r: Ressarcimento;
+  aoEditar: (r: Ressarcimento, campos: Partial<Ressarcimento>) => Promise<string | null>;
+  aoFechar: () => void;
+}) {
+  const [empresa, setEmpresa] = useState<EmpresaDoRessarcimento>(r.empresa);
+  const [nome, setNome] = useState(r.nome);
+  const [pix, setPix] = useState(r.pix);
+  const [data, setData] = useState(r.data_despesa);
+  const [valor, setValor] = useState(r.valor.toFixed(2).replace(".", ","));
+  const [motivo, setMotivo] = useState<MotivoDoRessarcimento>(r.motivo);
+  const [descricao, setDescricao] = useState(r.descricao);
+  const [obs, setObs] = useState(r.observacao_financeiro ?? "");
+  const [salvando, setSalvando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!empresa) return setAviso("Escolha a empresa.");
+    if (nome.trim().length < 2) return setAviso("Informe o nome da pessoa para ressarcimento.");
+    if (pix.trim().length < 3) return setAviso("Informe a chave PIX.");
+    if (!data) return setAviso("Informe a data da despesa.");
+    if (data > hojeSP()) return setAviso("A data da despesa não pode ser no futuro.");
+    const valorLido = lerValor(valor);
+    if (valorLido === null) return setAviso("Informe um valor válido, por exemplo 25,90.");
+    if (!descricao.trim()) return setAviso("Descreva a despesa.");
+
+    const novos: Partial<Ressarcimento> = {
+      empresa,
+      nome: nome.trim(),
+      pix: pix.trim(),
+      data_despesa: data,
+      valor: valorLido,
+      motivo,
+      descricao: descricao.trim(),
+      observacao_financeiro: obs.trim() || null,
+    };
+    const mudou: Record<string, unknown> = {};
+    for (const k of Object.keys(novos) as (keyof Ressarcimento)[]) {
+      if (novos[k] !== r[k]) mudou[k] = novos[k];
+    }
+    if (Object.keys(mudou).length === 0) return aoFechar();
+
+    setSalvando(true);
+    setAviso(null);
+    const falha = await aoEditar(r, mudou as Partial<Ressarcimento>);
+    if (falha) {
+      setSalvando(false);
+      return setAviso(falha);
+    }
+    aoFechar();
+  }
+
+  return (
+    <form onSubmit={salvar} className="mt-3 space-y-3 border-t border-line pt-3">
+      <div>
+        <p className="mb-1 text-xs font-medium text-ink">Empresa *</p>
+        <div className="grid grid-cols-2 gap-2">
+          {ORDEM_DAS_EMPRESAS.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => setEmpresa(e)}
+              aria-pressed={empresa === e}
+              className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
+                empresa === e ? "border-brand bg-brand-light text-brand-forte" : "border-line bg-surface text-ink hover:bg-surface-hover"
+              }`}
+            >
+              {EMPRESAS[e]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink">Nome da pessoa para ressarcimento *</span>
+        <input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} className={campo} />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink">Chave PIX *</span>
+        <input value={pix} onChange={(e) => setPix(e.target.value)} maxLength={140} autoComplete="off" className={campo} />
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-ink">Data da despesa *</span>
+          <input type="date" value={data} max={hojeSP()} onChange={(e) => setData(e.target.value)} className={campo} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-ink">Valor (R$) *</span>
+          <input value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" autoComplete="off" className={campo} />
+        </label>
+      </div>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink">Motivo *</span>
+        <select value={motivo} onChange={(e) => setMotivo(e.target.value as MotivoDoRessarcimento)} className={campo}>
+          {(Object.keys(MOTIVOS) as MotivoDoRessarcimento[]).map((m) => (
+            <option key={m} value={m}>
+              {MOTIVOS[m]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink">Descrição *</span>
+        <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} maxLength={1000} rows={3} className={campo} />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-ink">Observação do financeiro</span>
+        <textarea value={obs} onChange={(e) => setObs(e.target.value)} maxLength={500} rows={2} className={campo} />
+        <span className="mt-1 block text-[11px] text-ink-muted">Quem lançou vê essa observação e ela vai no PDF.</span>
+      </label>
+      {aviso && <p className="text-xs text-danger">{aviso}</p>}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={salvando}>
+          {salvando ? "Salvando..." : "Salvar"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={aoFechar} disabled={salvando}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
   );
 }
