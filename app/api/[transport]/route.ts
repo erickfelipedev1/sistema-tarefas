@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { avisarTarefaParaResponsaveis } from "@/lib/push";
 import { verificarTokenPessoal } from "@/lib/mcp-tokens";
 import { registrarFerramentasDeLeitura } from "@/lib/mcp-leitura";
+import { registrarFerramentasDoCalendario } from "@/lib/mcp-calendario";
 import { podeVerTudo } from "@/lib/permissions";
 import {
   resolverProjeto,
@@ -107,6 +108,7 @@ function tipoDoArquivo(nome: string, ehTexto: boolean) {
 const handler = createMcpHandler(
   (server) => {
     registrarFerramentasDeLeitura(server);
+    registrarFerramentasDoCalendario(server);
 
     server.registerTool(
       "now_listar_projetos",

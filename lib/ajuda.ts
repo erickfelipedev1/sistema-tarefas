@@ -204,8 +204,8 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como ligo o Claude (IA) ao d.hub?",
     resposta:
-      "No menu Agente de IA tem o passo a passo: no claude.ai, Configurações → Conectores → Adicionar conector personalizado, cole o endereço e autorize no d.hub. Depois é só pedir: \"o que está atrasado pra mim?\", \"cria uma tarefa...\".",
-    palavras: ["ia", "claude", "chatgpt", "agente", "inteligência artificial", "conectar"],
+      "No menu Agente de IA tem o passo a passo: no claude.ai, Configurações → Conectores → Adicionar conector personalizado, cole o endereço e autorize no d.hub. Depois é só pedir: \"o que está atrasado pra mim?\", \"cria uma tarefa...\", \"como está minha agenda da semana?\", \"cria os posts de dezembro do cliente X\". Ele mexe nos dois calendários (o normal e o de postagem); os arquivos dos posts você sobe pelo site.",
+    palavras: ["ia", "claude", "chatgpt", "agente", "inteligência artificial", "conectar", "calendário", "postagem"],
     link: { rotulo: "Abrir Agente de IA", href: "/agente" },
   },
   {

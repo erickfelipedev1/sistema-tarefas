@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-25",
+    area: "Calendário",
+    titulo: "Agente de IA nos calendários",
+    texto: "O Claude ligado ao d.hub (menu Agente de IA) agora mexe nos dois calendários. No normal, mostra a agenda de qualquer período, sua, de alguém ou da equipe, e cria e remarca tarefas. No de postagem, cria posts com formato, data, redes e legenda, remarca, edita, envia ao cliente, cancela o envio e marca como publicado. Os arquivos do post continuam subindo pelo site.",
+  },
+  {
     data: "2026-11-23",
     area: "Sistema",
     titulo: "Ressarcimento: ajuste e observação do financeiro",

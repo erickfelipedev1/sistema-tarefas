@@ -14,17 +14,22 @@ export interface ConexaoDoAgente {
 const PEDIDOS = [
   { grupo: "Perguntar", texto: "O que está atrasado pra mim? Organiza por cliente." },
   { grupo: "Perguntar", texto: "O que a equipe tem pra entregar esta semana?" },
+  { grupo: "Perguntar", texto: "Como está a minha agenda de 1 a 15 de dezembro?" },
   { grupo: "Resumir", texto: "Resume o andamento do cliente X: tarefas abertas, projetos e posts esperando aprovação." },
   { grupo: "Resumir", texto: "Lê a última ata do cliente X e me diz o que ficou decidido e o que ainda está pendente." },
   { grupo: "Agir", texto: "Cria uma tarefa no cliente X, no projeto Site novo, pra Ana, entrega sexta, com checklist: texto, arte, aprovação." },
   { grupo: "Agir", texto: "Pega os próximos passos da última ata do cliente X e cria uma tarefa pra cada um." },
   { grupo: "Agir", texto: "Marca a tarefa Y como concluída e comenta que foi entregue ao cliente." },
+  { grupo: "Agir", texto: "Monta o calendário de postagem de dezembro do cliente X: 3 posts por semana, com legenda, alternando estático e carrossel." },
+  { grupo: "Agir", texto: "Passa o post de sexta do cliente X pra segunda e envia ao cliente." },
 ];
 
 const FERRAMENTAS = [
   "Ler tarefas (com checklist, subtarefas e comentários)",
   "Ler posts, atas e projetos de cada cliente",
-  "Criar e editar tarefas, mudar status",
+  "Ver o calendário de qualquer período, seu ou da equipe",
+  "Criar e editar tarefas, mudar status e remarcar datas",
+  "Criar, remarcar e editar posts do calendário de postagem, e enviar ao cliente",
   "Comentar, fazer checklist, registrar horas e anexar arquivos",
 ];
 
@@ -144,7 +149,8 @@ export default function AgenteDoDhub({ conexoes }: { conexoes: ConexaoDoAgente[]
             ))}
           </ul>
           <p className="mt-4 text-xs text-ink-muted">
-            Posts e atas ele só lê. Mensagens, faturas e arquivos do Drive ele não acessa.
+            Atas ele só lê. Os arquivos dos posts (imagem, vídeo, PDF) você sobe pelo site. Mensagens, faturas e arquivos do
+            Drive ele não acessa.
           </p>
         </section>
       </div>

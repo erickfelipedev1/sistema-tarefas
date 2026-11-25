@@ -215,7 +215,7 @@ Args:
     "now_listar_posts",
     {
       title: "Listar posts",
-      description: `Lista os posts do calendário de postagem (os que vão pro cliente aprovar), com data, formato, redes, status e o começo da legenda.
+      description: `Lista os posts do calendário de postagem (os que vão pro cliente aprovar), com data, formato, redes, status, a tarefa ligada, o começo da legenda e o código de cada post (usado em now_editar_post pra remarcar, editar ou enviar ao cliente; pra criar, now_criar_post).
 
 Args:
   - projeto (string, opcional): nome do cliente. Sem isso, lista de todos os clientes que a pessoa enxerga.
@@ -240,7 +240,7 @@ Args:
         const ctx = await contexto(admin, perfil.profileId);
         let q = admin
           .from("posts")
-          .select("id, project_id, category, networks, scheduled_date, status, caption, created_by_label")
+          .select("id, project_id, category, networks, scheduled_date, status, caption, created_by_label, task_id")
           .order("scheduled_date", { ascending: true, nullsFirst: false })
           .limit(300);
         if (resol.projeto) q = q.eq("project_id", resol.projeto.id);
@@ -257,9 +257,17 @@ Args:
         const posts = (data ?? []).filter((p) => ctx.verTudo || ctx.idsVisiveis.has(p.project_id));
         const limite = limit ?? 30;
         if (posts.length === 0) return texto("Nenhum post encontrado com esses filtros.");
-        const linhas = posts.slice(0, limite).map((p) => {
+        const mostrados = posts.slice(0, limite);
+        // O nome do post no calendário é o da tarefa que o gerou.
+        const idsDasTarefas = Array.from(new Set(mostrados.map((p) => p.task_id).filter((id): id is string => !!id)));
+        const { data: tarefas } = idsDasTarefas.length
+          ? await admin.from("tasks").select("id, title").in("id", idsDasTarefas)
+          : { data: [] as { id: string; title: string }[] };
+        const tituloDaTarefa = new Map((tarefas ?? []).map((t) => [t.id as string, t.title as string]));
+        const linhas = mostrados.map((p) => {
           const legenda = (p.caption ?? "").replace(/\s+/g, " ").trim();
-          return `- ${p.scheduled_date ?? "sem data"} · ${ctx.nomeDoCliente.get(p.project_id) ?? "?"} · ${p.category} (${((p.networks as string[]) ?? []).join(", ")}) · ${STATUS_DO_POST[p.status] ?? p.status}${legenda ? ` — "${corta(legenda, 140)}"` : ""}`;
+          const tarefa = p.task_id ? tituloDaTarefa.get(p.task_id) : null;
+          return `- ${p.scheduled_date ?? "sem data"} · ${ctx.nomeDoCliente.get(p.project_id) ?? "?"} · ${p.category} (${((p.networks as string[]) ?? []).join(", ")}) · ${STATUS_DO_POST[p.status] ?? p.status}${tarefa ? ` · tarefa "${tarefa}"` : ""}${legenda ? ` — "${corta(legenda, 140)}"` : ""} [código: ${p.id}]`;
         });
         const aviso = posts.length > limite ? `\n(mostrando ${limite} de ${posts.length})` : "";
         return texto(linhas.join("\n") + aviso, { total: posts.length });
