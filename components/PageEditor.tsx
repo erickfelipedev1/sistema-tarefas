@@ -1,7 +1,12 @@
 "use client";
 
 import { useRef, useState, type CSSProperties } from "react";
-import { useCreateBlockNote } from "@blocknote/react";
+import {
+  FormattingToolbar,
+  FormattingToolbarController,
+  getFormattingToolbarItems,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { pt } from "@blocknote/core/locales";
 import "@blocknote/core/fonts/inter.css";
@@ -9,22 +14,14 @@ import "@blocknote/mantine/style.css";
 import "@mantine/core/styles.css";
 import { createClient } from "@/lib/supabase/client";
 import { formatarRelativo } from "@/lib/format";
-import type { CorDeFundoDaPagina, Page } from "@/lib/types";
+import type { Page } from "@/lib/types";
+import { paletaDaPagina } from "@/lib/wiki-paletas";
+import SeletorDePaleta from "@/components/SeletorDePaleta";
+import BotaoDeCoresDoEditor from "@/components/BotaoDeCoresDoEditor";
+import { esquemaDaWiki } from "@/lib/wiki-esquema";
 
-// Fundo da página (migration 0125), igual pra todo mundo que abre. No branco
-// e no bege o editor usa o tema claro (as cores de letra e de marca-texto são
-// as feitas pra fundo claro); no preto e no padrão, o escuro de sempre.
-const FUNDOS: { valor: CorDeFundoDaPagina | null; rotulo: string; amostra: string }[] = [
-  { valor: null, rotulo: "Padrão", amostra: "#1f1f1f" },
-  { valor: "branco", rotulo: "Branco", amostra: "#ffffff" },
-  { valor: "bege", rotulo: "Bege", amostra: "#f3ead6" },
-  { valor: "preto", rotulo: "Preto", amostra: "#000000" },
-];
-const ESTILO_DO_FUNDO: Record<CorDeFundoDaPagina, { tema: "light" | "dark"; fundo: string; texto: string }> = {
-  branco: { tema: "light", fundo: "#ffffff", texto: "#2b2b2b" },
-  bege: { tema: "light", fundo: "#f3ead6", texto: "#3b3226" },
-  preto: { tema: "dark", fundo: "#000000", texto: "#e8e8e8" },
-};
+// A página tem uma paleta (migrations 0125/0126, lib/wiki-paletas.ts), igual
+// pra todo mundo que abre: a cor da folha, a da letra e o tema do editor.
 
 export default function PageEditor({ page }: { page: Page }) {
   const supabase = createClient();
@@ -32,12 +29,12 @@ export default function PageEditor({ page }: { page: Page }) {
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [updatedAt, setUpdatedAt] = useState(page.updated_at);
   const [htmlParaImprimir, setHtmlParaImprimir] = useState("");
-  const [fundo, setFundo] = useState<CorDeFundoDaPagina | null>(page.cor_fundo ?? null);
+  const [fundo, setFundo] = useState<string | null>(paletaDaPagina(page.cor_fundo)?.codigo ?? null);
   const [erroDoFundo, setErroDoFundo] = useState<string | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const estilo = fundo ? ESTILO_DO_FUNDO[fundo] : null;
+  const estilo = paletaDaPagina(fundo);
 
-  async function mudarFundo(valor: CorDeFundoDaPagina | null) {
+  async function mudarFundo(valor: string | null) {
     if (valor === fundo) return;
     const antes = fundo;
     setFundo(valor);
@@ -55,6 +52,8 @@ export default function PageEditor({ page }: { page: Page }) {
       : undefined;
 
   const editor = useCreateBlockNote({
+    // Cor da letra e marca-texto aceitam a paleta grande (lib/wiki-esquema.ts).
+    schema: esquemaDaWiki,
     initialContent,
     // Menus do editor em português (o botão "Cores" é o de cor de letra e marca-texto).
     dictionary: pt,
@@ -114,30 +113,8 @@ export default function PageEditor({ page }: { page: Page }) {
         {page.created_by_label && <span>por {page.created_by_label}</span>}
         {page.created_by_label && <span className="text-ink-muted">·</span>}
         <span>Atualizado {formatarRelativo(updatedAt)}</span>
-        <div role="radiogroup" aria-label="Cor de fundo da página" className="ml-auto flex flex-wrap items-center gap-1">
-          <span className="mr-0.5">Cor da página</span>
-          {FUNDOS.map((f) => {
-            const ativo = f.valor === fundo;
-            return (
-              <button
-                key={f.rotulo}
-                type="button"
-                role="radio"
-                aria-checked={ativo}
-                onClick={() => mudarFundo(f.valor)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium transition-colors ${
-                  ativo ? "border-brand bg-brand-light text-brand-forte" : "border-line text-ink hover:bg-surface-hover"
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className="h-3 w-3 rounded-full border border-ink-muted/40"
-                  style={{ backgroundColor: f.amostra }}
-                />
-                {f.rotulo}
-              </button>
-            );
-          })}
+        <div className="ml-auto">
+          <SeletorDePaleta valor={fundo} aoEscolher={mudarFundo} />
         </div>
         <button
           type="button"
@@ -173,7 +150,19 @@ export default function PageEditor({ page }: { page: Page }) {
           editor={editor}
           theme={estilo?.tema ?? "dark"}
           onChange={() => scheduleSave(title)}
-        />
+          formattingToolbar={false}
+        >
+          {/* O menu de formatação de sempre, com o botão de cores trocado pelo da paleta grande. */}
+          <FormattingToolbarController
+            formattingToolbar={() => (
+              <FormattingToolbar>
+                {getFormattingToolbarItems().map((item) =>
+                  item.key === "colorStyleButton" ? <BotaoDeCoresDoEditor key="colorStyleButton" /> : item
+                )}
+              </FormattingToolbar>
+            )}
+          />
+        </BlockNoteView>
       </div>
       </div>
 

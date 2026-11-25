@@ -107,7 +107,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como mudo a cor da letra, marco um trecho ou troco o fundo da página na Wiki?",
     resposta:
-      "Selecione o texto e, no menu que aparece, clique no botão \"A\" (Cores): em \"Texto\" você muda a cor da letra e em \"Fundo\" marca o trecho com marca-texto. Pra pintar o bloco inteiro, use o menu dos seis pontinhos ao lado dele → Cores. O fundo da página (padrão, branco, bege ou preto) fica em \"Cor da página\", ao lado de Exportar PDF, e vale pra todo mundo que abre a página.",
+      "Selecione o texto e, no menu que aparece, clique no botão \"A\" (Cores): na aba \"Cor da letra\" ou \"Marca-texto\", escolha qualquer cor da paleta ou digite o código (ex.: #FF6600) e aperte Enter; \"Tirar...\" volta ao normal. A cor da página fica em \"Cor da página\", ao lado de Exportar PDF: 17 paletas prontas (claras e escuras) ou qualquer cor da paleta grande. Vale pra todo mundo que abre a página, e a letra se ajusta sozinha pra dar leitura.",
     palavras: ["wiki", "cor", "cores", "fundo", "marca-texto", "destacar", "highlight", "letra", "fonte", "bege", "preto", "branco"],
     link: { rotulo: "Abrir a Wiki", href: "/wiki" },
   },

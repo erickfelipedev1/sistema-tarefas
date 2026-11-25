@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-25",
     area: "Sistema",
+    titulo: "Wiki: paleta grande de cores",
+    texto: "Na Wiki, a cor da página agora tem 17 paletas prontas (claras e escuras) e uma paleta grande com mais de 140 cores, ou o código que você digitar (ex.: #FF6600). O botão \"A\" (Cores) do texto usa a mesma paleta pra cor da letra e pro marca-texto. A letra se ajusta sozinha pra dar leitura no fundo e no marca-texto.",
+  },
+  {
+    data: "2026-11-25",
+    area: "Sistema",
     titulo: "Wiki: cor da página, cor da letra e marca-texto",
     texto: "Cada página da Wiki agora pode ter fundo branco, bege ou preto (em \"Cor da página\", ao lado de Exportar PDF), e todo mundo vê igual. Pra mudar a cor da letra ou marcar um trecho com marca-texto, selecione o texto e clique no botão \"A\" (Cores). O marca-texto ficou mais forte no fundo claro, e os menus do editor agora estão em português. Pedido da Mariana.",
   },
