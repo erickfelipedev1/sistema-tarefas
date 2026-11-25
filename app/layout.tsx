@@ -3,6 +3,7 @@ import { Nunito, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
 import PwaSetup from "@/components/PwaSetup";
+import { ehEpocaDeNatal } from "@/lib/natal";
 
 // Fonte do sistema: Nunito, de cantos arredondados (antes era a Inter).
 const texto = Nunito({
@@ -19,13 +20,21 @@ const outfit = Outfit({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "d.hub",
-  description: "Central de tarefas, clientes e demandas.",
-  other: { google: "notranslate" },
-  // iPhone: abre em tela cheia quando instalado na tela de início.
-  appleWebApp: { capable: true, title: "d.hub", statusBarStyle: "black" },
-};
+export function generateMetadata(): Metadata {
+  // Ícone da aba e do iPhone (public/): no Natal (lib/natal.ts), os com gorro.
+  const natal = ehEpocaDeNatal();
+  return {
+    title: "d.hub",
+    description: "Central de tarefas, clientes e demandas.",
+    other: { google: "notranslate" },
+    icons: {
+      icon: { url: natal ? "/icon-natal.svg" : "/icon.svg", type: "image/svg+xml" },
+      apple: natal ? "/apple-icon-natal.png" : "/apple-icon.png",
+    },
+    // iPhone: abre em tela cheia quando instalado na tela de início.
+    appleWebApp: { capable: true, title: "d.hub", statusBarStyle: "black" },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0A0D08",

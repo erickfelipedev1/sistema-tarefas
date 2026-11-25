@@ -11,7 +11,8 @@
 // Não dá pra apagar com transparência: o degradê é recortado no texto pelo
 // elemento de fora, que continua pintando a letra mesmo "transparente".
 
-import { GorroDeNatal, NeveDeNatal, ehEpocaDeNatal } from "./GorroDeNatal";
+import { GorroDeNatal, NeveDeNatal } from "./GorroDeNatal";
+import { ehEpocaDeNatal } from "@/lib/natal";
 
 const DEGRADE =
   "linear-gradient(100deg, #AEDF55 0%, #7FD36A 28%, #AEDF55 44%, #F1FFB0 50%, #AEDF55 56%, #DAEE63 78%, #AEDF55 100%)";

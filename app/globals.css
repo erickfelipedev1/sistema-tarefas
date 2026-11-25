@@ -308,7 +308,8 @@
 /* Neve no logo, no Natal (components/ui/GorroDeNatal.tsx): cada floco desce
    do alto do gorro até abaixo das letras, com um pouco de vento pro lado,
    aparecendo e sumindo devagar. A sombra fininha deixa o branco visível
-   também em fundo claro. */
+   também em fundo claro. Roda mesmo com "efeitos de animação" desligados no
+   sistema, como o resto do logo: são poucos flocos, pequenos e lentos. */
 .neve-floco {
   position: absolute;
   top: -0.3em;
@@ -328,9 +329,6 @@
   50% { transform: translate(var(--vento), 0.7em); }
   80% { opacity: 0.9; }
   100% { transform: translate(0, 1.4em); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .neve-floco { display: none; }
 }
 @media print {
   .neve-floco { display: none; }

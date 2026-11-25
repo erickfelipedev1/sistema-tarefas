@@ -5,23 +5,10 @@ import type { CSSProperties } from "react";
 // degradê recortado, senão seria pintado de limão também. Tamanho e posição
 // em "em", então acompanha os três tamanhos do logo.
 
-// Época de Natal no horário de Brasília (igual no servidor e no navegador,
-// pra não trocar o desenho na hidratação): de 15/11 a 06/01 (Dia de Reis).
-export function ehEpocaDeNatal(agora: Date = new Date()): boolean {
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    month: "numeric",
-    day: "numeric",
-  }).formatToParts(agora);
-  const mes = Number(partes.find((p) => p.type === "month")?.value);
-  const dia = Number(partes.find((p) => p.type === "day")?.value);
-  return mes === 12 || (mes === 11 && dia >= 15) || (mes === 1 && dia <= 6);
-}
-
 // Neve caindo devagar por cima do logo, junto com o gorro. Flocos em "em" e
 // presos à esquerda (não em %), pra não pularem quando o nome encolhe de
 // "d.gital hub" pra "d.hub". Atrasos negativos: já começa nevando. A queda é
-// .neve-floco, em globals.css (some com "reduzir movimento" e na impressão).
+// .neve-floco, em globals.css (some na impressão).
 const FLOCOS: { x: number; tam: number; dur: number; atraso: number; vento: number }[] = [
   { x: 0.12, tam: 0.15, dur: 3.4, atraso: -0.4, vento: 0.14 },
   { x: 0.62, tam: 0.11, dur: 4.2, atraso: -2.9, vento: -0.1 },
