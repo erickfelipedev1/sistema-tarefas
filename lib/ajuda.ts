@@ -77,7 +77,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como faço uma subtarefa?",
     resposta:
-      "Abra a tarefa e vá em Subtarefas. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o atalho \"abrir original\".",
+      "Abra a tarefa e vá em Subtarefas. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o título da tarefa original logo abaixo do título dela (clique nele pra abrir a original).",
     palavras: ["subtarefa", "sub", "dividir tarefa", "tarefa filha"],
   },
   {

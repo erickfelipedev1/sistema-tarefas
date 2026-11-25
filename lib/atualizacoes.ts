@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-25",
+    area: "Tarefas",
+    titulo: "Subtarefa mostra a tarefa original",
+    texto: "No quadro, o cartão de uma subtarefa mostra logo abaixo do título o nome da tarefa original (clique nele pra abrir a original). Na lista, aparece \"Subtarefa de\" com o nome da original.",
+  },
+  {
+    data: "2026-11-25",
     area: "Sistema",
     titulo: "Logo de Natal",
     texto: "O logo do d.hub ganhou um gorro de Papai Noel e neve caindo de leve. Fica até o Dia de Reis (6 de janeiro) e some sozinho depois.",

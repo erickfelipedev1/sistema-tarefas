@@ -64,6 +64,7 @@ export default function TarefasEmLista({
   ligacoes,
   etiquetas,
   resumos,
+  tituloDaOriginal,
   filtrando,
   aoAbrir,
   aoMudarStatus,
@@ -83,6 +84,8 @@ export default function TarefasEmLista({
   ligacoes: Record<string, string[]>;
   etiquetas: Map<string, Etiqueta>;
   resumos: Record<string, ResumoTarefa>;
+  // Título da tarefa original de uma subtarefa ("" se ainda não chegou).
+  tituloDaOriginal: (parentId: string) => string;
   filtrando: boolean;
   aoAbrir: (t: Task) => void;
   aoMudarStatus: (t: Task, status: TaskStatus) => void;
@@ -240,7 +243,11 @@ export default function TarefasEmLista({
                           </div>
                           {(marcas.length > 0 || resumo || task.parent_id) && (
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
-                              {task.parent_id && <span className="font-medium text-brand-forte">↳ Subtarefa</span>}
+                              {task.parent_id && (
+                                <span className="min-w-0 font-medium text-brand-forte">
+                                  ↳ {tituloDaOriginal(task.parent_id) ? `Subtarefa de ${tituloDaOriginal(task.parent_id)}` : "Subtarefa"}
+                                </span>
+                              )}
                               {resumo && (
                                 <>
                                   <span className="inline-flex items-center gap-1" title="Checklist">

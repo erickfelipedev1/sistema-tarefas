@@ -765,6 +765,11 @@ export default function TaskBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [principaisQueFaltam]);
 
+  // Título da original (carregada no quadro ou buscada acima); vazio enquanto
+  // não chega ou se a pessoa não enxerga a original.
+  const tituloDaOriginal = (parentId: string) =>
+    tasks.find((t) => t.id === parentId)?.title || titulosDasPrincipais[parentId] || "";
+
   async function abrirOriginal(parentId: string) {
     const carregada = tasks.find((t) => t.id === parentId);
     if (carregada) return abrirEditar(carregada);
@@ -934,6 +939,7 @@ export default function TaskBoard({
           ligacoes={ligacoes}
           etiquetas={etiquetaPorId}
           resumos={resumos}
+          tituloDaOriginal={tituloDaOriginal}
           filtrando={!!(busca || filtroResponsavel || filtroEtiqueta || filtroCliente || filtroResumo || projetoDoFiltro)}
           aoAbrir={abrirEditar}
           aoMudarStatus={moveTaskTo}
@@ -1076,6 +1082,23 @@ export default function TaskBoard({
                         {task.title}
                       </p>
 
+                      {/* Subtarefa solta no quadro: o título da original vem logo
+                          abaixo, como subtítulo; clicar abre a original. */}
+                      {task.parent_id && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirOriginal(task.parent_id as string);
+                          }}
+                          title="Subtarefa de outra tarefa. Clique para abrir a original."
+                          className="mt-1 flex w-full min-w-0 items-start gap-1 text-left text-[11px] font-medium leading-snug text-brand-forte hover:underline"
+                        >
+                          <span className="flex-shrink-0">↳</span>
+                          <span className="line-clamp-2 min-w-0">{tituloDaOriginal(task.parent_id) || "Subtarefa"}</span>
+                        </button>
+                      )}
+
                       {task.due_date && (
                         <p
                           className={`mt-2 flex min-w-0 items-start gap-1 text-[11px] ${
@@ -1119,26 +1142,6 @@ export default function TaskBoard({
                           <FolderIcon className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">{subprojetoPorId.get(task.subproject_id)?.name}</span>
                         </p>
-                      )}
-
-                      {task.parent_id && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            abrirOriginal(task.parent_id as string);
-                          }}
-                          title="Abrir a tarefa original"
-                          className="mt-2 flex w-full min-w-0 items-center gap-1 rounded-md bg-brand/10 px-1.5 py-1 text-left text-[11px] font-medium text-brand-forte hover:bg-brand/20"
-                        >
-                          <span className="flex-shrink-0">↳ Subtarefa de</span>
-                          <span className="min-w-0 flex-1 truncate">
-                            {tasks.find((t) => t.id === task.parent_id)?.title ||
-                              titulosDasPrincipais[task.parent_id] ||
-                              "outra tarefa"}
-                          </span>
-                          <span className="flex-shrink-0 underline">abrir original</span>
-                        </button>
                       )}
 
                       {temConteudo(resumos[task.id]) && (
