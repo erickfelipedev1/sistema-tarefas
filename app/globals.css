@@ -305,6 +305,37 @@
   }
 }
 
+/* Neve no logo, no Natal (components/ui/GorroDeNatal.tsx): cada floco desce
+   do alto do gorro até abaixo das letras, com um pouco de vento pro lado,
+   aparecendo e sumindo devagar. A sombra fininha deixa o branco visível
+   também em fundo claro. */
+.neve-floco {
+  position: absolute;
+  top: -0.3em;
+  width: max(2.5px, var(--tam));
+  height: max(2.5px, var(--tam));
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 1px rgba(15, 23, 42, 0.45);
+  opacity: 0;
+  animation-name: neve-cair;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes neve-cair {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: 0.9; }
+  50% { transform: translate(var(--vento), 0.7em); }
+  80% { opacity: 0.9; }
+  100% { transform: translate(0, 1.4em); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .neve-floco { display: none; }
+}
+@media print {
+  .neve-floco { display: none; }
+}
+
 /* Texto formatado da descrição da tarefa (editor e leitura). O Tailwind zera
    listas e links, então eles voltam aqui. */
 .texto-rico ul {

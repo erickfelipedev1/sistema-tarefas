@@ -11,12 +11,12 @@
 // Não dá pra apagar com transparência: o degradê é recortado no texto pelo
 // elemento de fora, que continua pintando a letra mesmo "transparente".
 
-import { GorroDeNatal, ehEpocaDeNatal } from "./GorroDeNatal";
+import { GorroDeNatal, NeveDeNatal, ehEpocaDeNatal } from "./GorroDeNatal";
 
 const DEGRADE =
   "linear-gradient(100deg, #AEDF55 0%, #7FD36A 28%, #AEDF55 44%, #F1FFB0 50%, #AEDF55 56%, #DAEE63 78%, #AEDF55 100%)";
 
-// No Natal (15/11 a 06/01) o "d" ganha um gorro (GorroDeNatal.tsx), por fora
+// No Natal (15/11 a 06/01) neva no logo e o "d" ganha um gorro (GorroDeNatal.tsx), por fora
 // do texto recortado, num invólucro que só serve de referência pra posição.
 
 const MIOLO = ["g", "i", "t", "a", "l", " "];
@@ -56,7 +56,12 @@ export function Logo({
       </span>
       <span className="font-light">hub</span>
     </span>
-    {ehEpocaDeNatal() && <GorroDeNatal />}
+    {ehEpocaDeNatal() && (
+      <>
+        <NeveDeNatal />
+        <GorroDeNatal />
+      </>
+    )}
     </span>
   );
 }

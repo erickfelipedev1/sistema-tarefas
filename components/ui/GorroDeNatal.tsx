@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 // Gorro de Papai Noel que senta no "d" do logo (components/ui/Logo.tsx) na
 // época de Natal. Desenho em SVG com cores fixas: fica fora do texto com o
 // degradê recortado, senão seria pintado de limão também. Tamanho e posição
@@ -14,6 +16,42 @@ export function ehEpocaDeNatal(agora: Date = new Date()): boolean {
   const mes = Number(partes.find((p) => p.type === "month")?.value);
   const dia = Number(partes.find((p) => p.type === "day")?.value);
   return mes === 12 || (mes === 11 && dia >= 15) || (mes === 1 && dia <= 6);
+}
+
+// Neve caindo devagar por cima do logo, junto com o gorro. Flocos em "em" e
+// presos à esquerda (não em %), pra não pularem quando o nome encolhe de
+// "d.gital hub" pra "d.hub". Atrasos negativos: já começa nevando. A queda é
+// .neve-floco, em globals.css (some com "reduzir movimento" e na impressão).
+const FLOCOS: { x: number; tam: number; dur: number; atraso: number; vento: number }[] = [
+  { x: 0.12, tam: 0.15, dur: 3.4, atraso: -0.4, vento: 0.14 },
+  { x: 0.62, tam: 0.11, dur: 4.2, atraso: -2.9, vento: -0.1 },
+  { x: 1.05, tam: 0.16, dur: 3.7, atraso: -1.6, vento: 0.16 },
+  { x: 1.5, tam: 0.12, dur: 4.6, atraso: -3.8, vento: -0.14 },
+  { x: 1.95, tam: 0.15, dur: 4.0, atraso: -0.9, vento: 0.1 },
+  { x: 0.4, tam: 0.09, dur: 5.0, atraso: -2.2, vento: 0.08 },
+  { x: 1.75, tam: 0.09, dur: 5.4, atraso: -4.6, vento: -0.06 },
+];
+
+export function NeveDeNatal() {
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {FLOCOS.map((f, i) => (
+        <span
+          key={i}
+          className="neve-floco"
+          style={
+            {
+              left: `${f.x}em`,
+              "--tam": `${f.tam}em`,
+              "--vento": `${f.vento}em`,
+              animationDuration: `${f.dur}s`,
+              animationDelay: `${f.atraso}s`,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </span>
+  );
 }
 
 export function GorroDeNatal() {

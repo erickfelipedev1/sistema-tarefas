@@ -15,7 +15,7 @@ export const ATUALIZACOES: Atualizacao[] = [
     data: "2026-11-25",
     area: "Sistema",
     titulo: "Logo de Natal",
-    texto: "O logo do d.hub ganhou um gorro de Papai Noel. Ele fica até o Dia de Reis (6 de janeiro) e some sozinho depois.",
+    texto: "O logo do d.hub ganhou um gorro de Papai Noel e neve caindo de leve. Fica até o Dia de Reis (6 de janeiro) e some sozinho depois. Se o computador estiver com \"reduzir animações\" ligado, a neve não aparece.",
   },
   {
     data: "2026-11-25",
