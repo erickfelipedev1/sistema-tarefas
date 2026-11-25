@@ -8,6 +8,7 @@ import { CATEGORIAS, miniaturaDoItem, ORDEM_DAS_CATEGORIAS, REDES, redesValidas,
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "../ui/icons";
 import MiniaturaDeVideo from "./MiniaturaDeVideo";
 import MiniaturaDePdf from "./MiniaturaDePdf";
+import { IconesDasRedes } from "../ui/IconesDasRedes";
 
 export type PostNoCalendario = Post & { projectName?: string };
 
@@ -230,6 +231,8 @@ export default function CalendarioDePostagem({
               ? `${post.projectName} · ${CATEGORIAS[post.category].rotulo}`
               : CATEGORIAS[post.category].rotulo}
           </span>
+          {/* As redes em que o post vai sair (nome ao passar o mouse). */}
+          <IconesDasRedes redes={post.networks} tamanho="h-3.5 w-3.5" className="mt-0.5" />
         </span>
       </div>
     );
