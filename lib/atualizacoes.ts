@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-25",
     area: "Tarefas",
+    titulo: "Redes da postagem no quadro",
+    texto: "No quadro, o cartão da tarefa de postagem mostra os ícones das redes marcadas no post dela (Instagram, Facebook, TikTok, LinkedIn, YouTube). Passe o mouse pra ver os nomes.",
+  },
+  {
+    data: "2026-11-25",
+    area: "Tarefas",
     titulo: "Subtarefa mostra a tarefa original",
     texto: "No quadro, o cartão de uma subtarefa mostra logo abaixo do título o nome da tarefa original (clique nele pra abrir a original). Na lista, aparece \"Subtarefa de\" com o nome da original.",
   },

@@ -15,7 +15,8 @@ import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { StatTile } from "./ui/StatTile";
-import { carregarResumos, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
+import { carregarRedesDasTarefas, carregarResumos, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
+import { IconesDasRedes } from "./ui/IconesDasRedes";
 import { carregarCatalogo, carregarLigacoes, type Etiqueta } from "@/lib/etiquetas";
 import { carregarClientesExtras } from "@/lib/clientes-extras";
 import { EtiquetaSelo } from "./EtiquetasDaTarefa";
@@ -216,6 +217,29 @@ export default function TaskBoard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsDasTarefas]);
+
+  // Redes do post de cada tarefa de postagem (ícones no cartão).
+  const [redesDasTarefas, setRedesDasTarefas] = useState<Record<string, string[]>>({});
+  const idsDasPostagens = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.tipo === "postagem")
+        .map((t) => t.id)
+        .sort()
+        .join(","),
+    [tasks]
+  );
+  useEffect(() => {
+    if (!idsDasPostagens) return;
+    let ativo = true;
+    carregarRedesDasTarefas(supabase, idsDasPostagens.split(",")).then((m) => {
+      if (ativo) setRedesDasTarefas(m);
+    });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsDasPostagens]);
 
   // As subtarefas vêm numa consulta própria: o quadro individual só traz as
   // tarefas "minhas", mas dentro do cartão da principal aparecem todas.
@@ -434,6 +458,14 @@ export default function TaskBoard({
       const ids = new Set<string>([aberta, ...visitadas.current]);
       if (mae) ids.add(mae);
       carregarResumos(supabase, Array.from(ids)).then((m) => setResumos((atual) => ({ ...atual, ...m })));
+      // As redes do post podem ter mudado no modal (PostDaTarefa).
+      carregarRedesDasTarefas(supabase, Array.from(ids)).then((m) =>
+        setRedesDasTarefas((atual) => {
+          const novo = { ...atual };
+          ids.forEach((id) => delete novo[id]);
+          return { ...novo, ...m };
+        })
+      );
       carregarLigacoes(supabase, Array.from(ids)).then((m) =>
         setLigacoes((atual) => {
           const proximo = { ...atual };
@@ -1097,6 +1129,11 @@ export default function TaskBoard({
                           <span className="flex-shrink-0">↳</span>
                           <span className="line-clamp-2 min-w-0">{tituloDaOriginal(task.parent_id) || "Subtarefa"}</span>
                         </button>
+                      )}
+
+                      {/* Tarefa de postagem: as redes marcadas no post dela. */}
+                      {task.tipo === "postagem" && (
+                        <IconesDasRedes redes={redesDasTarefas[task.id] ?? []} className="mt-1.5" />
                       )}
 
                       {task.due_date && (

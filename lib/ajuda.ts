@@ -34,7 +34,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Qual a diferença entre tarefa Geral e Postagem?",
     resposta:
-      "Logo abaixo do nome da tarefa tem o Tipo. Na Postagem aparecem, dentro de Detalhes, o status da postagem, a copy (com formatação e imagem) e o post do cliente. Na Geral esses campos não aparecem.",
+      "Logo abaixo do nome da tarefa tem o Tipo. Na Postagem aparecem, dentro de Detalhes, o status da postagem, a copy (com formatação e imagem) e o post do cliente; no quadro, o cartão dela mostra os ícones das redes marcadas no post. Na Geral esses campos não aparecem.",
     palavras: ["tipo", "postagem", "geral", "post", "copy"],
   },
   {

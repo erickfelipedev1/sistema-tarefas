@@ -82,3 +82,25 @@ export async function carregarResumos(
 export function formatarHoras(h: number) {
   return `${h.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}h`;
 }
+
+// Redes do post de cada tarefa de postagem (posts.task_id, migration 0062),
+// pro cartão do quadro mostrar os ícones. Se a tarefa tiver mais de um post,
+// junta as redes de todos; tarefa sem post fica de fora.
+export async function carregarRedesDasTarefas(
+  supabase: SupabaseClient,
+  ids: string[]
+): Promise<Record<string, string[]>> {
+  const mapa: Record<string, string[]> = {};
+  const unicos = Array.from(new Set(ids));
+  for (let i = 0; i < unicos.length; i += LOTE) {
+    const { data } = await supabase
+      .from("posts")
+      .select("task_id, networks")
+      .in("task_id", unicos.slice(i, i + LOTE));
+    for (const p of data ?? []) {
+      const id = p.task_id as string;
+      mapa[id] = Array.from(new Set([...(mapa[id] ?? []), ...((p.networks as string[] | null) ?? [])]));
+    }
+  }
+  return mapa;
+}
