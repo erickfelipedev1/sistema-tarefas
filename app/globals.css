@@ -370,3 +370,26 @@
 @media print {
   @page { margin: 18mm 16mm; }
 }
+
+/* Wiki: fundo escolhido na página (migration 0125, components/PageEditor.tsx).
+   O editor ganha a cor da folha; menus e cores de letra seguem o tema dele. */
+.wiki-fundo .bn-editor {
+  background-color: var(--wiki-fundo);
+  color: var(--wiki-texto);
+}
+
+/* Marca-texto de verdade no tema claro do editor (fundos branco e bege da
+   Wiki): o tom pálido padrão do BlockNote some no bege. O tema escuro já vem
+   com tons fortes. */
+.bn-root[data-color-scheme="light"],
+.texto-pdf {
+  --bn-colors-highlights-gray-background: #e2e4e7;
+  --bn-colors-highlights-brown-background: #e8d5c4;
+  --bn-colors-highlights-red-background: #fecaca;
+  --bn-colors-highlights-orange-background: #fed7aa;
+  --bn-colors-highlights-yellow-background: #fde68a;
+  --bn-colors-highlights-green-background: #bbf7d0;
+  --bn-colors-highlights-blue-background: #bfdbfe;
+  --bn-colors-highlights-purple-background: #ddd6fe;
+  --bn-colors-highlights-pink-background: #fbcfe8;
+}

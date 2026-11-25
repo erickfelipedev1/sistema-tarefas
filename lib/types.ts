@@ -119,7 +119,11 @@ export interface Page {
   created_by_label: string | null;
   created_at: string;
   updated_at: string;
+  // Fundo escolhido na página (migration 0125); null = o padrão.
+  cor_fundo?: CorDeFundoDaPagina | null;
 }
+
+export type CorDeFundoDaPagina = "branco" | "bege" | "preto";
 
 // Etapa do projeto (portal do cliente) — controla o "stepper" e o rótulo
 // do card "Seu projeto". "Projeto iniciado" não é um valor aqui: é sempre

@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-25",
+    area: "Sistema",
+    titulo: "Wiki: cor da página, cor da letra e marca-texto",
+    texto: "Cada página da Wiki agora pode ter fundo branco, bege ou preto (em \"Cor da página\", ao lado de Exportar PDF), e todo mundo vê igual. Pra mudar a cor da letra ou marcar um trecho com marca-texto, selecione o texto e clique no botão \"A\" (Cores). O marca-texto ficou mais forte no fundo claro, e os menus do editor agora estão em português. Pedido da Mariana.",
+  },
+  {
+    data: "2026-11-25",
     area: "Calendário",
     titulo: "Agente de IA nos calendários",
     texto: "O Claude ligado ao d.hub (menu Agente de IA) agora mexe nos dois calendários. No normal, mostra a agenda de qualquer período, sua, de alguém ou da equipe, e cria e remarca tarefas. No de postagem, cria posts com formato, data, redes e legenda, remarca, edita, envia ao cliente, cancela o envio e marca como publicado. Os arquivos do post continuam subindo pelo site.",

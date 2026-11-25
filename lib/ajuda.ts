@@ -105,6 +105,13 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     link: { rotulo: "Abrir a Wiki", href: "/wiki" },
   },
   {
+    pergunta: "Como mudo a cor da letra, marco um trecho ou troco o fundo da página na Wiki?",
+    resposta:
+      "Selecione o texto e, no menu que aparece, clique no botão \"A\" (Cores): em \"Texto\" você muda a cor da letra e em \"Fundo\" marca o trecho com marca-texto. Pra pintar o bloco inteiro, use o menu dos seis pontinhos ao lado dele → Cores. O fundo da página (padrão, branco, bege ou preto) fica em \"Cor da página\", ao lado de Exportar PDF, e vale pra todo mundo que abre a página.",
+    palavras: ["wiki", "cor", "cores", "fundo", "marca-texto", "destacar", "highlight", "letra", "fonte", "bege", "preto", "branco"],
+    link: { rotulo: "Abrir a Wiki", href: "/wiki" },
+  },
+  {
     pergunta: "Dá pra mudar a ordem do checklist?",
     resposta: "Dá: arraste o item pela alça ⠿ ou use as setas ↑↓ ao lado dele (no computador elas aparecem ao passar o mouse).",
     palavras: ["checklist", "ordem", "reordenar", "mover item", "passos"],
