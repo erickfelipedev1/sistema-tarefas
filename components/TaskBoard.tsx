@@ -218,33 +218,36 @@ export default function TaskBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsDasTarefas]);
 
-  // Redes do post de cada tarefa de postagem (ícones no cartão), inclusive
-  // das subtarefas que aparecem dentro do cartão da principal.
+  // Redes do post de cada tarefa (ícones no cartão): das de postagem, das
+  // subtarefas (soltas ou dentro do cartão da principal) e das originais
+  // delas, porque a subtarefa sem post próprio mostra as redes da original.
   const [redesDasTarefas, setRedesDasTarefas] = useState<Record<string, string[]>>({});
-  const idsDasPostagens = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          [...tasks, ...Object.values(filhas).flat()]
-            .filter((t) => t.tipo === "postagem")
-            .map((t) => t.id)
-        )
-      )
-        .sort()
-        .join(","),
-    [tasks, filhas]
-  );
+  const idsComRedes = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of [...tasks, ...Object.values(filhas).flat()]) {
+      if (t.tipo === "postagem" || t.parent_id) ids.add(t.id);
+      if (t.parent_id) ids.add(t.parent_id);
+    }
+    return Array.from(ids).sort().join(",");
+  }, [tasks, filhas]);
   useEffect(() => {
-    if (!idsDasPostagens) return;
+    if (!idsComRedes) return;
     let ativo = true;
-    carregarRedesDasTarefas(supabase, idsDasPostagens.split(",")).then((m) => {
+    carregarRedesDasTarefas(supabase, idsComRedes.split(",")).then((m) => {
       if (ativo) setRedesDasTarefas(m);
     });
     return () => {
       ativo = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsDasPostagens]);
+  }, [idsComRedes]);
+  // Tarefa principal: as redes do post dela, se for de postagem. Subtarefa:
+  // as do post dela; sem post, as da tarefa original.
+  const redesDaTarefa = (t: Task): string[] => {
+    const proprias = redesDasTarefas[t.id] ?? [];
+    if (t.parent_id) return proprias.length > 0 ? proprias : redesDasTarefas[t.parent_id] ?? [];
+    return t.tipo === "postagem" ? proprias : [];
+  };
 
   // As subtarefas vêm numa consulta própria: o quadro individual só traz as
   // tarefas "minhas", mas dentro do cartão da principal aparecem todas.
@@ -1136,10 +1139,8 @@ export default function TaskBoard({
                         </button>
                       )}
 
-                      {/* Tarefa de postagem: as redes marcadas no post dela. */}
-                      {task.tipo === "postagem" && (
-                        <IconesDasRedes redes={redesDasTarefas[task.id] ?? []} className="mt-1.5" />
-                      )}
+                      {/* Redes do post (na subtarefa sem post, as da original). */}
+                      <IconesDasRedes redes={redesDaTarefa(task)} className="mt-1.5" />
 
                       {task.due_date && (
                         <p
@@ -1204,7 +1205,7 @@ export default function TaskBoard({
                             })
                           }
                           aoAbrir={abrirEditar}
-                          redes={redesDasTarefas}
+                          redesDe={redesDaTarefa}
                         />
                       )}
 
@@ -1371,15 +1372,16 @@ function SubtarefasNoCartao({
   recolhida,
   aoRecolher,
   aoAbrir,
-  redes,
+  redesDe,
 }: {
   subtarefas: Task[];
   hoje: string;
   recolhida: boolean;
   aoRecolher: () => void;
   aoAbrir: (t: Task) => void;
-  // Redes do post de cada subtarefa de postagem (ícones embaixo do título).
-  redes: Record<string, string[]>;
+  // Redes de cada subtarefa (as do post dela ou, sem post, as da original),
+  // em ícones embaixo do título.
+  redesDe: (t: Task) => string[];
 }) {
   const ativas = subtarefas.filter((s) => s.status !== "cancelled");
   const feitas = ativas.filter((s) => s.status === "done").length;
@@ -1418,9 +1420,7 @@ function SubtarefasNoCartao({
                   <span className={`mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${coluna?.dot ?? "bg-slate-400"}`} aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{s.title}</span>
-                    {s.tipo === "postagem" && (
-                      <IconesDasRedes redes={redes[s.id] ?? []} tamanho="h-3.5 w-3.5" className="mt-0.5" />
-                    )}
+                    <IconesDasRedes redes={redesDe(s)} tamanho="h-3.5 w-3.5" className="mt-0.5" />
                   </span>
                   <ChevronRightIcon className="mt-0.5 h-3 w-3 flex-shrink-0 opacity-50" />
                 </button>
