@@ -218,16 +218,21 @@ export default function TaskBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsDasTarefas]);
 
-  // Redes do post de cada tarefa de postagem (ícones no cartão).
+  // Redes do post de cada tarefa de postagem (ícones no cartão), inclusive
+  // das subtarefas que aparecem dentro do cartão da principal.
   const [redesDasTarefas, setRedesDasTarefas] = useState<Record<string, string[]>>({});
   const idsDasPostagens = useMemo(
     () =>
-      tasks
-        .filter((t) => t.tipo === "postagem")
-        .map((t) => t.id)
+      Array.from(
+        new Set(
+          [...tasks, ...Object.values(filhas).flat()]
+            .filter((t) => t.tipo === "postagem")
+            .map((t) => t.id)
+        )
+      )
         .sort()
         .join(","),
-    [tasks]
+    [tasks, filhas]
   );
   useEffect(() => {
     if (!idsDasPostagens) return;
@@ -1199,6 +1204,7 @@ export default function TaskBoard({
                             })
                           }
                           aoAbrir={abrirEditar}
+                          redes={redesDasTarefas}
                         />
                       )}
 
@@ -1365,12 +1371,15 @@ function SubtarefasNoCartao({
   recolhida,
   aoRecolher,
   aoAbrir,
+  redes,
 }: {
   subtarefas: Task[];
   hoje: string;
   recolhida: boolean;
   aoRecolher: () => void;
   aoAbrir: (t: Task) => void;
+  // Redes do post de cada subtarefa de postagem (ícones embaixo do título).
+  redes: Record<string, string[]>;
 }) {
   const ativas = subtarefas.filter((s) => s.status !== "cancelled");
   const feitas = ativas.filter((s) => s.status === "done").length;
@@ -1402,13 +1411,18 @@ function SubtarefasNoCartao({
                   type="button"
                   onClick={() => aoAbrir(s)}
                   title={`Abrir a subtarefa · ${coluna?.label ?? ""}${atrasada ? " · atrasada" : ""}`}
-                  className={`flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-left text-[11px] leading-snug hover:bg-surface-hover ${
+                  className={`flex w-full items-start gap-1.5 rounded-md px-1 py-1 text-left text-[11px] leading-snug hover:bg-surface-hover ${
                     feita ? "text-ink-muted line-through opacity-70" : atrasada ? "text-danger" : "text-ink"
                   }`}
                 >
-                  <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${coluna?.dot ?? "bg-slate-400"}`} aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">{s.title}</span>
-                  <ChevronRightIcon className="h-3 w-3 flex-shrink-0 opacity-50" />
+                  <span className={`mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${coluna?.dot ?? "bg-slate-400"}`} aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{s.title}</span>
+                    {s.tipo === "postagem" && (
+                      <IconesDasRedes redes={redes[s.id] ?? []} tamanho="h-3.5 w-3.5" className="mt-0.5" />
+                    )}
+                  </span>
+                  <ChevronRightIcon className="mt-0.5 h-3 w-3 flex-shrink-0 opacity-50" />
                 </button>
               </li>
             );

@@ -81,14 +81,23 @@ const NOTA =
 
 // Fileira de ícones na ordem padrão das redes, com o nome de cada uma ao
 // passar o mouse e pro leitor de tela.
-export function IconesDasRedes({ redes, className = "" }: { redes: readonly string[]; className?: string }) {
+export function IconesDasRedes({
+  redes,
+  className = "",
+  tamanho = "h-4 w-4",
+}: {
+  redes: readonly string[];
+  className?: string;
+  // Classes de tamanho de cada ícone.
+  tamanho?: string;
+}) {
   const lista = redesValidas(redes);
   if (lista.length === 0) return null;
   const nomes = lista.map((r) => REDES[r]).join(", ");
   return (
     <span className={`flex items-center gap-1 ${className}`} role="img" aria-label={`Redes: ${nomes}`} title={`Redes: ${nomes}`}>
       {lista.map((r) => (
-        <IconeDaRede key={r} rede={r} />
+        <IconeDaRede key={r} rede={r} className={tamanho} />
       ))}
     </span>
   );
