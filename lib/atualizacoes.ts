@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-25",
     area: "Sistema",
+    titulo: "Logo de Natal",
+    texto: "O logo do d.hub ganhou um gorro de Papai Noel. Ele fica até o Dia de Reis (6 de janeiro) e some sozinho depois.",
+  },
+  {
+    data: "2026-11-25",
+    area: "Sistema",
     titulo: "Wiki: paleta grande de cores",
     texto: "Na Wiki, a cor da página agora tem 17 paletas prontas (claras e escuras) e uma paleta grande com mais de 140 cores, ou o código que você digitar (ex.: #FF6600). O botão \"A\" (Cores) do texto usa a mesma paleta pra cor da letra e pro marca-texto. A letra se ajusta sozinha pra dar leitura no fundo e no marca-texto.",
   },
