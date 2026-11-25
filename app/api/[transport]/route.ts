@@ -152,7 +152,6 @@ Retorna: lista de projetos (nome e id).`,
           const texto = filtrados.map((p) => `- ${p.name}`).join("\n");
           return {
             content: [{ type: "text", text: `Projetos (${filtrados.length}):\n${texto}` }],
-            structuredContent: { projetos: filtrados },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -321,14 +320,6 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
                 }. ${link}`,
               },
             ],
-            structuredContent: {
-              id: tarefa.id,
-              title: tarefa.title,
-              status: tarefa.status,
-              projeto: nomeProjeto,
-              due_date: tarefa.due_date,
-              url: link,
-            },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -481,7 +472,6 @@ Retorna: lista de tarefas com título, status, projeto e prazo.`,
 
           return {
             content: [{ type: "text", text: onde + linhas.join("\n") + aviso }],
-            structuredContent: { total, count: tarefas.length, tarefas },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -570,7 +560,6 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
             content: [
               { type: "text", text: `Tarefa "${alvo.title}" agora está "${STATUS_LABEL[novo_status]}".` },
             ],
-            structuredContent: { id: alvo.id, title: alvo.title, status: novo_status },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -809,7 +798,6 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
                 text: `Tarefa "${tituloFinal}" atualizada: ${resumo.join(", ")}.`,
               },
             ],
-            structuredContent: { id: alvo.id, title: tituloFinal, alteracoes: resumo },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -905,7 +893,6 @@ Erros: se nenhuma tarefa bater com o título (ou mais de uma bater), a ferrament
 
           return {
             content: [{ type: "text", text: `Comentário adicionado em "${alvo.title}".` }],
-            structuredContent: { taskId: alvo.id, title: alvo.title },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -978,7 +965,6 @@ Retorna: o checklist completo atualizado.`,
                 text: `${novos.length} ${novos.length === 1 ? "item adicionado" : "itens adicionados"} ao checklist de "${alvo.title}".\n${textoDoChecklist(todos ?? [])}`,
               },
             ],
-            structuredContent: { taskId: alvo.id, title: alvo.title, checklist: todos ?? [] },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -1051,7 +1037,6 @@ Retorna: o checklist atualizado. Se o item não for encontrado (ou bater com mai
                 text: `"${achados[0].title}" ${novoValor ? "marcado como feito" : "desmarcado"}.\n${textoDoChecklist(atualizados)}`,
               },
             ],
-            structuredContent: { taskId: alvo.id, checklist: atualizados },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -1118,7 +1103,6 @@ Retorna: confirmação com o total de horas da tarefa.`,
                 text: `${horas.toLocaleString("pt-BR")}h lançadas em "${alvo.title}". Total da tarefa: ${total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}h.`,
               },
             ],
-            structuredContent: { taskId: alvo.id, horas, total },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };
@@ -1220,7 +1204,6 @@ Retorna: confirmação com o link do arquivo.`,
 
           return {
             content: [{ type: "text", text: `Arquivo "${nome}" anexado em "${alvo.title}". ${url}` }],
-            structuredContent: { taskId: alvo.id, arquivo: nome, url },
           };
         } catch (error) {
           return { isError: true, content: [{ type: "text", text: mensagemDeErro(error) }] };

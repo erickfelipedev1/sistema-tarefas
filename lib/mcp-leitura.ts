@@ -38,8 +38,10 @@ function erro(texto: string) {
   return { isError: true, content: [{ type: "text" as const, text: texto }] };
 }
 
-function texto(t: string, estruturado?: Record<string, unknown>) {
-  return { content: [{ type: "text" as const, text: t }], ...(estruturado ? { structuredContent: estruturado } : {}) };
+// Só texto: quando a resposta traz structuredContent, o Claude mostra só ele
+// ao agente, e o texto (com descrição, checklist, links e avisos) se perdia.
+function texto(t: string) {
+  return { content: [{ type: "text" as const, text: t }] };
 }
 
 function diasAPartirDeHoje(dias: number) {
@@ -160,7 +162,7 @@ Args:
             : null,
           `\nLink: ${urlDoApp(`/board?tarefa=${t.id}`)}`,
         ];
-        return texto(linhas.filter((l) => l !== null).join("\n"), { id: t.id, title: t.title, status: t.status });
+        return texto(linhas.filter((l) => l !== null).join("\n"));
       } catch (e) {
         return erro(mensagemDeErro(e));
       }
@@ -270,7 +272,7 @@ Args:
           return `- ${p.scheduled_date ?? "sem data"} · ${ctx.nomeDoCliente.get(p.project_id) ?? "?"} · ${p.category} (${((p.networks as string[]) ?? []).join(", ")}) · ${STATUS_DO_POST[p.status] ?? p.status}${tarefa ? ` · tarefa "${tarefa}"` : ""}${legenda ? ` — "${corta(legenda, 140)}"` : ""} [código: ${p.id}]`;
         });
         const aviso = posts.length > limite ? `\n(mostrando ${limite} de ${posts.length})` : "";
-        return texto(linhas.join("\n") + aviso, { total: posts.length });
+        return texto(linhas.join("\n") + aviso);
       } catch (e) {
         return erro(mensagemDeErro(e));
       }
@@ -378,7 +380,7 @@ Args:
               ? "\n(Tem transcrição: chame de novo com com_transcricao=true pra ler.)"
               : null,
         ];
-        return texto(partes.filter((p) => p !== null).join("\n"), { id: a.id, title: a.title });
+        return texto(partes.filter((p) => p !== null).join("\n"));
       } catch (e) {
         return erro(mensagemDeErro(e));
       }

@@ -65,8 +65,9 @@ function erro(texto: string) {
   return { isError: true, content: [{ type: "text" as const, text: texto }] };
 }
 
-function texto(t: string, estruturado?: Record<string, unknown>) {
-  return { content: [{ type: "text" as const, text: t }], ...(estruturado ? { structuredContent: estruturado } : {}) };
+// Só texto (sem structuredContent): ver o comentário em lib/mcp-leitura.ts.
+function texto(t: string) {
+  return { content: [{ type: "text" as const, text: t }] };
 }
 
 function somarDias(data: string, dias: number) {
@@ -226,7 +227,7 @@ Retorna: as tarefas que caem no período (começam, terminam ou atravessam), agr
 
         const deQuem = todos ? "de todo mundo que você vê" : ehEu ? "seu" : `de ${nomeDaPessoa.get(pessoaId!) ?? quem}`;
         const cabecalho = `Calendário ${deQuem}${resolProjeto.projeto ? ` em ${resolProjeto.projeto.name}` : ""}, ${ddmm(inicio)} a ${ddmm(fim)}`;
-        if (tarefas.length === 0 && !cortado) return texto(`${cabecalho}: nada marcado.`, { total: 0 });
+        if (tarefas.length === 0 && !cortado) return texto(`${cabecalho}: nada marcado.`);
 
         const ordenadas = [...tarefas].sort(
           (a, b) => (a.due_date as string).localeCompare(b.due_date as string) || (a.title as string).localeCompare(b.title as string, "pt-BR")
@@ -248,7 +249,7 @@ Retorna: as tarefas que caem no período (começam, terminam ou atravessam), agr
         }
         if (cortado) linhas.push("", "(Período com tarefas demais: a lista pode estar incompleta. Peça um período menor.)");
         linhas.push("", `No site: ${urlDoApp("/calendario")}`);
-        return texto(linhas.join("\n"), { total: ordenadas.length, de: inicio, ate: fim });
+        return texto(linhas.join("\n"));
       } catch (e) {
         return erro(mensagemDeErro(e));
       }
@@ -331,7 +332,7 @@ Retorna: confirmação, o código do post (pra editar depois) e o link pra subir
           falta ? `Antes de enviar ao cliente: ${falta.charAt(0).toLowerCase()}${falta.slice(1)} ${CATEGORIAS[categoria].dica}` : null,
           `Subir os arquivos no site: ${linkDoPost(resol.projeto.id, post.id)}`,
         ];
-        return texto(linhas.filter(Boolean).join("\n"), { id: post.id, project_id: resol.projeto.id });
+        return texto(linhas.filter(Boolean).join("\n"));
       } catch (e) {
         return erro(mensagemDeErro(e));
       }
@@ -473,9 +474,7 @@ Retorna: o que mudou e o link do post.`,
           return erro("O post mudou enquanto eu editava (o cliente ou alguém da equipe mexeu nele). Confira com now_listar_posts e tente de novo.");
         }
 
-        return texto(`Post atualizado (${CATEGORIAS[categoria].rotulo}): ${feito.join("; ")}.\n${linkDoPost(post.project_id, post.id)}`, {
-          id: post.id,
-        });
+        return texto(`Post atualizado (${CATEGORIAS[categoria].rotulo}): ${feito.join("; ")}.\n${linkDoPost(post.project_id, post.id)}`);
       } catch (e) {
         return erro(mensagemDeErro(e));
       }
