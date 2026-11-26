@@ -79,14 +79,25 @@ export default function PostDaTarefa({
   projectName,
   dueDate,
   currentUserLabel,
+  redesDaTarefa,
+  aoMudarRedes,
 }: {
   taskId: string;
   projectId: string | null;
   projectName: string;
   dueDate: string | null;
   currentUserLabel: string;
+  // Redes marcadas na tarefa (ao lado do Tipo): o post novo começa com elas.
+  redesDaTarefa?: readonly string[];
+  // O post gravou com estas redes; o banco já passou elas pra tarefa
+  // (migration 0127), aqui é só pra tela da tarefa acompanhar.
+  aoMudarRedes?: (redes: PostNetwork[]) => void;
 }) {
   const supabase = createClient();
+  const redesIniciais = (): PostNetwork[] => {
+    const daTarefa = redesValidas(redesDaTarefa);
+    return daTarefa.length > 0 ? daTarefa : ["instagram"];
+  };
   const [posts, setPosts] = useState<Post[]>([]);
   const [links, setLinks] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
@@ -94,7 +105,11 @@ export default function PostDaTarefa({
   const [criando, setCriando] = useState(false);
 
   const [categoria, setCategoria] = useState<PostCategory>("estatico");
-  const [redes, setRedes] = useState<PostNetwork[]>(["instagram"]);
+  const [redes, setRedes] = useState<PostNetwork[]>(redesIniciais);
+  // Post novo: as redes do formulário acompanham os checks da tarefa até a
+  // pessoa mexer nelas aqui (ou o formato marcar uma), pra não gravar redes
+  // velhas por cima das que ela acabou de marcar na tarefa.
+  const mexeuNasRedes = useRef(false);
   const [data, setData] = useState(dueDate ?? "");
   const [legenda, setLegenda] = useState("");
   const [itens, setItens] = useState<ItemDeMidia[]>([]);
@@ -119,6 +134,13 @@ export default function PostDaTarefa({
     },
     []
   );
+
+  const chaveDasRedesDaTarefa = redesValidas(redesDaTarefa).join(",");
+  useEffect(() => {
+    if (editando || mexeuNasRedes.current) return;
+    setRedes(redesIniciais());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveDasRedesDaTarefa, editando]);
 
   useEffect(() => {
     let ativo = true;
@@ -227,7 +249,8 @@ export default function PostDaTarefa({
     setEditando(null);
     setLinkDrive("");
     setCategoria("estatico");
-    setRedes(["instagram"]);
+    mexeuNasRedes.current = false;
+    setRedes(redesIniciais());
     setData(dueDate ?? "");
     setLegenda("");
     setErro(null);
@@ -252,6 +275,7 @@ export default function PostDaTarefa({
   }
 
   function alternarRede(rede: PostNetwork) {
+    mexeuNasRedes.current = true;
     setRedes((atual) => (atual.includes(rede) ? atual.filter((r) => r !== rede) : redesValidas([...atual, rede])));
   }
 
@@ -527,7 +551,15 @@ export default function PostDaTarefa({
     }
 
     const post = arrumar(gravado);
-    setPosts((atual) => (atual.some((p) => p.id === post.id) ? atual.map((p) => (p.id === post.id ? post : p)) : [post, ...atual]));
+    // O banco só passa as redes pra tarefa quando as do post mudam (ou o post
+    // é novo), e passa a soma das redes de todos os posts dela (migration
+    // 0127): a tela da tarefa acompanha nas mesmas condições.
+    const redesAntes = editando ? redesValidas((posts.find((p) => p.id === editando.id) ?? editando).networks).join(",") : null;
+    const lista = posts.some((p) => p.id === post.id) ? posts.map((p) => (p.id === post.id ? post : p)) : [post, ...posts];
+    setPosts(lista);
+    if (redesAntes === null || redesAntes !== redesValidas(post.networks).join(",")) {
+      aoMudarRedes?.(redesValidas(lista.flatMap((p) => p.networks)));
+    }
     const eraEdicao = !!editando;
     limpar();
     setCriando(false);
@@ -695,10 +727,14 @@ export default function PostDaTarefa({
                     setCategoria(c);
                     // Shorts e vídeo do YouTube são do YouTube: já marca a rede.
                     if (c === "shorts" || c === "youtube") {
+                      mexeuNasRedes.current = true;
                       setRedes((atual) => (atual.includes("youtube") ? atual : redesValidas([...atual, "youtube"])));
                     }
                     // Carrossel em PDF é formato do LinkedIn: fica só ele marcado.
-                    if (c === "documento") setRedes(["linkedin"]);
+                    if (c === "documento") {
+                      mexeuNasRedes.current = true;
+                      setRedes(["linkedin"]);
+                    }
                     // Arquivos que não servem pra nova categoria saem.
                     setItens((atual) => {
                       const fica = atual

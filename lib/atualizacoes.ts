@@ -12,6 +12,12 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-26",
+    area: "Tarefas",
+    titulo: "Redes na tarefa de postagem",
+    texto: "Na tarefa de postagem, ao lado do Tipo, agora tem os checks das redes (Instagram, Facebook, TikTok, LinkedIn, YouTube). As marcadas aparecem no cartão do quadro e nas subtarefas. O post da tarefa já nasce com essas redes, e se você mudar as redes no post, a tarefa acompanha.",
+  },
+  {
     data: "2026-11-25",
     area: "Tarefas",
     titulo: "Redes da postagem no quadro",

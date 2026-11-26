@@ -15,7 +15,7 @@ import { EmptyState } from "./ui/EmptyState";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { StatTile } from "./ui/StatTile";
-import { carregarRedesDasTarefas, carregarResumos, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
+import { carregarResumos, temConteudo, type ResumoTarefa } from "@/lib/task-resumo";
 import { IconesDasRedes } from "./ui/IconesDasRedes";
 import { carregarCatalogo, carregarLigacoes, type Etiqueta } from "@/lib/etiquetas";
 import { carregarClientesExtras } from "@/lib/clientes-extras";
@@ -217,37 +217,6 @@ export default function TaskBoard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsDasTarefas]);
-
-  // Redes do post de cada tarefa (ícones no cartão): das de postagem, das
-  // subtarefas (soltas ou dentro do cartão da principal) e das originais
-  // delas, porque a subtarefa sem post próprio mostra as redes da original.
-  const [redesDasTarefas, setRedesDasTarefas] = useState<Record<string, string[]>>({});
-  const idsComRedes = useMemo(() => {
-    const ids = new Set<string>();
-    for (const t of [...tasks, ...Object.values(filhas).flat()]) {
-      if (t.tipo === "postagem" || t.parent_id) ids.add(t.id);
-      if (t.parent_id) ids.add(t.parent_id);
-    }
-    return Array.from(ids).sort().join(",");
-  }, [tasks, filhas]);
-  useEffect(() => {
-    if (!idsComRedes) return;
-    let ativo = true;
-    carregarRedesDasTarefas(supabase, idsComRedes.split(",")).then((m) => {
-      if (ativo) setRedesDasTarefas(m);
-    });
-    return () => {
-      ativo = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsComRedes]);
-  // Tarefa principal: as redes do post dela, se for de postagem. Subtarefa:
-  // as do post dela; sem post, as da tarefa original.
-  const redesDaTarefa = (t: Task): string[] => {
-    const proprias = redesDasTarefas[t.id] ?? [];
-    if (t.parent_id) return proprias.length > 0 ? proprias : redesDasTarefas[t.parent_id] ?? [];
-    return t.tipo === "postagem" ? proprias : [];
-  };
 
   // As subtarefas vêm numa consulta própria: o quadro individual só traz as
   // tarefas "minhas", mas dentro do cartão da principal aparecem todas.
@@ -466,14 +435,6 @@ export default function TaskBoard({
       const ids = new Set<string>([aberta, ...visitadas.current]);
       if (mae) ids.add(mae);
       carregarResumos(supabase, Array.from(ids)).then((m) => setResumos((atual) => ({ ...atual, ...m })));
-      // As redes do post podem ter mudado no modal (PostDaTarefa).
-      carregarRedesDasTarefas(supabase, Array.from(ids)).then((m) =>
-        setRedesDasTarefas((atual) => {
-          const novo = { ...atual };
-          ids.forEach((id) => delete novo[id]);
-          return { ...novo, ...m };
-        })
-      );
       carregarLigacoes(supabase, Array.from(ids)).then((m) =>
         setLigacoes((atual) => {
           const proximo = { ...atual };
@@ -772,6 +733,8 @@ export default function TaskBoard({
   // Título da tarefa original de cada subtarefa solta no quadro (a principal
   // pode não estar carregada aqui, se for de outra pessoa).
   const [titulosDasPrincipais, setTitulosDasPrincipais] = useState<Record<string, string>>({});
+  // E as redes dela (pra subtarefa sem redes próprias mostrar as da original).
+  const [redesDasPrincipais, setRedesDasPrincipais] = useState<Record<string, string[]>>({});
   const principaisQueFaltam = useMemo(
     () =>
       Array.from(
@@ -790,14 +753,19 @@ export default function TaskBoard({
     let ativo = true;
     supabase
       .from("tasks")
-      .select("id, title")
+      .select("id, title, tipo, redes")
       .in("id", principaisQueFaltam.split(","))
       .then(({ data }) => {
         if (!ativo) return;
         const novos: Record<string, string> = {};
+        const redes: Record<string, string[]> = {};
         for (const id of principaisQueFaltam.split(",")) novos[id] = "";
-        for (const t of data ?? []) novos[t.id as string] = t.title as string;
+        for (const t of data ?? []) {
+          novos[t.id as string] = t.title as string;
+          redes[t.id as string] = redesProprias(t as Pick<Task, "tipo" | "redes">);
+        }
         setTitulosDasPrincipais((atual) => ({ ...atual, ...novos }));
+        setRedesDasPrincipais((atual) => ({ ...atual, ...redes }));
       });
     return () => {
       ativo = false;
@@ -809,6 +777,15 @@ export default function TaskBoard({
   // não chega ou se a pessoa não enxerga a original.
   const tituloDaOriginal = (parentId: string) =>
     tasks.find((t) => t.id === parentId)?.title || titulosDasPrincipais[parentId] || "";
+
+  // Redes do cartão (marcadas na tarefa, migration 0127). Principal: as dela,
+  // se for de postagem. Subtarefa: as dela; sem nenhuma, as da original.
+  const redesDaTarefa = (t: Task): string[] => {
+    const proprias = redesProprias(t);
+    if (!t.parent_id || proprias.length > 0) return proprias;
+    const original = tasks.find((x) => x.id === t.parent_id);
+    return original ? redesProprias(original) : redesDasPrincipais[t.parent_id] ?? [];
+  };
 
   async function abrirOriginal(parentId: string) {
     const carregada = tasks.find((t) => t.id === parentId);
@@ -1361,6 +1338,11 @@ function SeletorDeVisao({ visao, aoTrocar }: { visao: "quadro" | "lista"; aoTroc
       ))}
     </div>
   );
+}
+
+// Redes marcadas na própria tarefa (só valem na de postagem).
+function redesProprias(t: Pick<Task, "tipo" | "redes">): string[] {
+  return t.tipo === "postagem" ? t.redes ?? [] : [];
 }
 
 // As subtarefas dentro do cartão da tarefa principal, como atalhos: bolinha

@@ -34,7 +34,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Qual a diferença entre tarefa Geral e Postagem?",
     resposta:
-      "Logo abaixo do nome da tarefa tem o Tipo. Na Postagem aparecem, dentro de Detalhes, o status da postagem, a copy (com formatação e imagem) e o post do cliente; no quadro, o cartão dela mostra os ícones das redes marcadas no post, e as subtarefas dela mostram os mesmos ícones. Na Geral esses campos não aparecem.",
+      "Logo abaixo do nome da tarefa tem o Tipo. Na Postagem aparecem, ao lado do Tipo, os checks das redes (Instagram, Facebook, TikTok, LinkedIn, YouTube) e, dentro de Detalhes, o status da postagem, a copy (com formatação e imagem) e o post do cliente. No quadro, o cartão mostra os ícones das redes marcadas, e as subtarefas mostram os mesmos ícones. O post da tarefa já nasce com essas redes, e se você mudar as redes no post, a tarefa acompanha. Na Geral esses campos não aparecem.",
     palavras: ["tipo", "postagem", "geral", "post", "copy"],
   },
   {

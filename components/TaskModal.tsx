@@ -15,6 +15,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type {
   ChecklistItem,
+  PostNetwork,
   Profile,
   Project,
   RepeatRule,
@@ -33,6 +34,8 @@ import {
 import { carregarResumos, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 import { avisarMencao, avisarMencaoNaDescricao, avisarResposta, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
+import { ORDEM_DAS_REDES, REDES, redesValidas } from "@/lib/posts";
+import { IconeDaRede } from "./ui/IconesDasRedes";
 import StatusDaPostagemPicker from "./posts/StatusDaPostagemPicker";
 import VisualizadorDeArquivos, { tipoDoArquivoPeloNome } from "./VisualizadorDeArquivos";
 import BaixarTodosOsAnexos from "./BaixarTodosOsAnexos";
@@ -95,6 +98,10 @@ export default function TaskModal({
 }) {
   const supabase = createClient();
   const [current, setCurrent] = useState<Task | null>(task);
+  // A tarefa mais recente, pra quem responde depois de algo demorado (ex.: o
+  // post gravou e trouxe as redes) não voltar campos que mudaram no meio.
+  const currentRef = useRef(current);
+  currentRef.current = current;
   const [aba, setAba] = useState<Aba>("detalhes");
   // Tela larga (computador): "Comentários" abre ao lado dos detalhes, pra
   // anotar enquanto lê a descrição. Em tela estreita continua trocando de aba.
@@ -137,6 +144,11 @@ export default function TaskModal({
   const [color, setColor] = useState(task?.color ?? "gray");
   // Geral (padrão) ou Postagem: na postagem, a copy e o post ficam em Detalhes.
   const [tipo, setTipo] = useState<"geral" | "postagem">(task?.tipo ?? "geral");
+  // Redes da postagem (migration 0127), os checks ao lado do Tipo.
+  const [redes, setRedes] = useState<PostNetwork[]>(() => redesValidas(task?.redes));
+  // O valor mais novo, pra dois cliques seguidos não partirem do mesmo.
+  const redesRef = useRef(redes);
+  redesRef.current = redes;
   const [taskProjectId, setTaskProjectId] = useState(
     task?.project_id ?? projectId ?? ""
   );
@@ -248,6 +260,7 @@ export default function TaskModal({
         project_id: taskProjectId || null,
         ...(taskProjectId && subprojetoId ? { subproject_id: subprojetoId } : {}),
         ...(tipo !== "geral" ? { tipo } : {}),
+        ...(tipo === "postagem" && redes.length > 0 ? { redes } : {}),
         assigned_to: assignedTo,
         created_by_label: currentUserLabel,
       })
@@ -325,6 +338,26 @@ export default function TaskModal({
     return linkDoArquivo("task-attachments", caminho);
   }
 
+  // Marca/desmarca uma rede da postagem. Na tarefa nova, vai junto na criação.
+  function alternarRede(rede: PostNetwork) {
+    const atuais = redesRef.current;
+    const nova = atuais.includes(rede) ? atuais.filter((r) => r !== rede) : redesValidas([...atuais, rede]);
+    redesRef.current = nova;
+    setRedes(nova);
+    if (!isNovo) salvarCampo({ redes: nova });
+  }
+
+  // O post da tarefa gravou: o banco já copiou as redes dele pra tarefa
+  // (migration 0127); a tela acompanha, sem gravar de novo.
+  function aplicarRedesDoPost(novas: PostNetwork[]) {
+    setRedes(novas);
+    const agora = currentRef.current;
+    if (!agora) return;
+    const atualizado = { ...agora, redes: novas };
+    setCurrent(atualizado);
+    onUpdated(atualizado);
+  }
+
   async function salvarCampo(campos: Partial<Task>): Promise<boolean> {
     if (!current) return false;
     const antes = current;
@@ -370,6 +403,18 @@ export default function TaskModal({
       onUpdated(antes);
       setTipo(antes.tipo ?? "geral");
       setErro("Não deu pra mudar o tipo da tarefa. Tenta de novo.");
+      return false;
+    }
+
+    if (error && "redes" in campos) {
+      setCurrent(antes);
+      onUpdated(antes);
+      setRedes(redesValidas(antes.redes));
+      setErro(
+        /redes/i.test(error.message) && /column|schema/i.test(error.message)
+          ? "Não deu pra salvar as redes. Confere se a migration 0127_redes_da_tarefa.sql já foi rodada no Supabase."
+          : "Não deu pra salvar as redes. Tenta de novo."
+      );
       return false;
     }
 
@@ -454,6 +499,7 @@ export default function TaskModal({
         subproject_id: current.subproject_id ?? null,
         parent_id: current.parent_id ?? null,
         tipo: current.tipo ?? "geral",
+        redes: current.redes ?? [],
         assigned_to: current.assigned_to,
         created_by_label: currentUserLabel,
       })
@@ -589,6 +635,7 @@ export default function TaskModal({
                 />
               </div>
 
+              <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
               <div>
                 <p className="mb-1 text-xs font-medium text-ink-muted">Tipo</p>
                 <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Tipo da tarefa">
@@ -615,6 +662,47 @@ export default function TaskModal({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Postagem: em quais redes ela sai. Aparece no cartão do quadro. */}
+              {tipo === "postagem" && (
+                <div>
+                  <p className="mb-1 text-xs font-medium text-ink-muted">Redes</p>
+                  <div className="flex flex-wrap gap-1" role="group" aria-label="Redes da postagem">
+                    {ORDEM_DAS_REDES.map((r) => {
+                      const marcada = redes.includes(r);
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          role="checkbox"
+                          aria-checked={marcada}
+                          aria-label={REDES[r]}
+                          title={REDES[r]}
+                          onClick={() => alternarRede(r)}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-1.5 py-1.5 text-xs font-medium transition-colors ${
+                            marcada ? "border-brand bg-brand/10 text-ink" : "border-line bg-surface text-ink-muted hover:text-ink"
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`grid h-3.5 w-3.5 flex-shrink-0 place-items-center rounded-[4px] border ${
+                              marcada ? "border-brand bg-brand text-navy" : "border-ink-muted/50"
+                            }`}
+                          >
+                            {marcada && (
+                              <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M2.5 6.2 5 8.5 9.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                          <IconeDaRede rede={r} className="h-4 w-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               </div>
 
               <div>
@@ -996,6 +1084,8 @@ export default function TaskModal({
                       projectName={projects.find((p) => p.id === current.project_id)?.name ?? "o cliente"}
                       dueDate={current.due_date}
                       currentUserLabel={currentUserLabel}
+                      redesDaTarefa={redes}
+                      aoMudarRedes={aplicarRedesDoPost}
                     />
                   </div>
                 </section>

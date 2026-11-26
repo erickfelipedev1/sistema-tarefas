@@ -35,6 +35,10 @@ export interface Task {
   // Tipo (migration 0085): na "postagem", a copy e o post do cliente aparecem
   // em Detalhes. Ausente = "geral".
   tipo?: "geral" | "postagem";
+  // Redes da postagem (migration 0127): os checks ao lado do Tipo. O quadro
+  // mostra os ícones delas; o post da tarefa nasce com elas e, quando as redes
+  // do post mudam, a tarefa acompanha.
+  redes?: PostNetwork[];
   // Status da postagem (migration 0086): etiqueta de andamento da peça; a cor
   // dela é a cor do post no Calendário de postagem.
   post_status_id?: string | null;
