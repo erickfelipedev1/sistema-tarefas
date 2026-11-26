@@ -274,6 +274,23 @@ export default function PostDaTarefa({
     requestAnimationFrame(() => topoDoForm.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   }
 
+  // Mesmo conteúdo em outro formato (pedido da equipe): o carrossel do
+  // Instagram também sai como PDF no LinkedIn, e vice-versa. Abre um post novo
+  // já com a legenda e a data do original, o outro formato e a rede dele; só
+  // falta subir o arquivo. Vira mais um post da mesma tarefa.
+  function criarVersao(base: Post) {
+    const para: PostCategory = base.category === "documento" ? "carrossel" : "documento";
+    limpar();
+    setCategoria(para);
+    mexeuNasRedes.current = true;
+    setRedes(para === "documento" ? ["linkedin"] : ["instagram"]);
+    setLegenda(base.caption);
+    setData(base.scheduled_date ?? dueDate ?? "");
+    setAviso(null);
+    setCriando(true);
+    requestAnimationFrame(() => topoDoForm.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  }
+
   function alternarRede(rede: PostNetwork) {
     mexeuNasRedes.current = true;
     setRedes((atual) => (atual.includes(rede) ? atual.filter((r) => r !== rede) : redesValidas([...atual, rede])));
@@ -563,12 +580,17 @@ export default function PostDaTarefa({
     const eraEdicao = !!editando;
     limpar();
     setCriando(false);
+    // Carrossel novo sem a versão em PDF: lembra do botão.
+    const dica =
+      !eraEdicao && post.category === "carrossel" && !lista.some((p) => p.category === "documento")
+        ? ' Se ele também vai pro LinkedIn em PDF, use "Criar versão PDF pro LinkedIn".'
+        : "";
     setAviso(
-      enviar
+      (enviar
         ? "Post enviado pros Posts do cliente. Ele já pode ver no portal."
         : eraEdicao
         ? "Alterações salvas."
-        : "Rascunho salvo nos Posts do cliente."
+        : "Rascunho salvo nos Posts do cliente.") + dica
     );
   }
 
@@ -663,6 +685,16 @@ export default function PostDaTarefa({
                     {post.status === "enviado" && (
                       <Button variant="secondary" size="sm" onClick={() => cancelarEnvio(post)}>
                         Cancelar envio
+                      </Button>
+                    )}
+                    {post.category === "carrossel" && !posts.some((p) => p.category === "documento") && (
+                      <Button variant="secondary" size="sm" onClick={() => criarVersao(post)} disabled={salvando !== null}>
+                        Criar versão PDF pro LinkedIn
+                      </Button>
+                    )}
+                    {post.category === "documento" && !posts.some((p) => p.category === "carrossel") && (
+                      <Button variant="secondary" size="sm" onClick={() => criarVersao(post)} disabled={salvando !== null}>
+                        Criar versão carrossel pro Instagram
                       </Button>
                     )}
                     <Link

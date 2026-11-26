@@ -149,6 +149,9 @@ export default function PostsManager({
   const [redes, setRedes] = useState<PostNetwork[]>(["instagram"]);
   const [data, setData] = useState("");
   const [legenda, setLegenda] = useState("");
+  // Versão em outro formato (criarVersao): a tarefa do post original, pro
+  // post novo ficar ligado a ela também.
+  const [tarefaDaVersao, setTarefaDaVersao] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemDeMidia[]>([]);
   const [capa, setCapa] = useState<CapaDoForm | null>(null);
   const [redeDoPreview, setRedeDoPreview] = useState<PostNetwork>("instagram");
@@ -321,12 +324,30 @@ export default function PostsManager({
     setData("");
     setLegenda("");
     setErroForm(null);
+    setTarefaDaVersao(null);
     setMostrarForm(false);
   }
 
   function abrirNovo() {
     fecharForm();
     setMostrarForm(true);
+  }
+
+  // Mesmo conteúdo em outro formato: o carrossel do Instagram também sai como
+  // PDF no LinkedIn, e vice-versa. Post novo com a legenda e a data do
+  // original, o outro formato e a rede dele, ligado à mesma tarefa (se houver).
+  function criarVersao(base: Post) {
+    const para: PostCategory = base.category === "documento" ? "carrossel" : "documento";
+    fecharForm();
+    setCategoria(para);
+    const rede: PostNetwork = para === "documento" ? "linkedin" : "instagram";
+    setRedes([rede]);
+    setRedeDoPreview(rede);
+    setData(base.scheduled_date ?? "");
+    setLegenda(base.caption);
+    setTarefaDaVersao(base.task_id ?? null);
+    setMostrarForm(true);
+    requestAnimationFrame(() => topoDoForm.current?.scrollIntoView({ block: "start" }));
   }
 
   // Veio do calendário de todos os clientes com um dia escolhido.
@@ -655,7 +676,15 @@ export default function PostsManager({
           .single()
       : await supabase
           .from("posts")
-          .insert({ ...campos, status: statusFinal, id: postId, project_id: projectId, created_by_label: currentUserLabel })
+          .insert({
+            ...campos,
+            status: statusFinal,
+            id: postId,
+            project_id: projectId,
+            created_by_label: currentUserLabel,
+            // Versão em outro formato de um post que saiu de uma tarefa: fica na mesma tarefa.
+            ...(tarefaDaVersao ? { task_id: tarefaDaVersao } : {}),
+          })
           .select()
           .single();
     let salvo = gravacao.data as Post | null;
@@ -1117,6 +1146,17 @@ export default function PostsManager({
                       Marcar como publicado
                     </Button>
                   )}
+                  {(post.category === "carrossel" || post.category === "documento") &&
+                    !posts.some(
+                      (p) =>
+                        p.id !== post.id &&
+                        p.category === (post.category === "carrossel" ? "documento" : "carrossel") &&
+                        (post.task_id ? p.task_id === post.task_id : p.caption === post.caption && p.scheduled_date === post.scheduled_date)
+                    ) && (
+                      <Button size="sm" variant="secondary" onClick={() => criarVersao(post)}>
+                        {post.category === "carrossel" ? "Criar versão PDF pro LinkedIn" : "Criar versão carrossel pro Instagram"}
+                      </Button>
+                    )}
                   {post.status !== "publicado" && (
                     <button
                       onClick={() => abrirEdicao(post)}

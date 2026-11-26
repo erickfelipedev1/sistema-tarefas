@@ -13,6 +13,24 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-26",
+    area: "Posts",
+    titulo: "Versão PDF pro LinkedIn",
+    texto: "Num post de carrossel, o botão \"Criar versão PDF pro LinkedIn\" abre um post novo com a mesma legenda e data, no formato PDF (LinkedIn): só falta subir o PDF. Também tem o caminho contrário, do PDF pro carrossel do Instagram. Vale no post da tarefa e nos Posts do cliente.",
+  },
+  {
+    data: "2026-11-26",
+    area: "Tarefas",
+    titulo: "Datas já no formulário da subtarefa",
+    texto: "Ao adicionar uma subtarefa, o início e a entrega já aparecem pra escolher (a entrega vem com a da tarefa principal), junto com o horário. Antes, as datas só apareciam depois de criar.",
+  },
+  {
+    data: "2026-11-26",
+    area: "Sistema",
+    titulo: "Agente de IA cria subtarefas",
+    texto: "O agente de IA agora cria subtarefas dentro de uma tarefa. Ex.: \"divide a tarefa X em subtarefas: roteiro pra Ana, gravação pro Bruno\". Sem data, a subtarefa entrega junto com a principal. Se o conector já estava ligado, abra uma conversa nova pro agente ver a novidade.",
+  },
+  {
+    data: "2026-11-26",
     area: "Tarefas",
     titulo: "Spotify, WhatsApp e InCicle nas redes da postagem",
     texto: "Os checks de redes da tarefa de postagem ganharam Spotify, WhatsApp e InCicle, e os ícones aparecem no cartão do quadro. Essas três ficam só na tarefa: o post que vai pro cliente aprovar continua com Instagram, Facebook, TikTok, LinkedIn e YouTube.",

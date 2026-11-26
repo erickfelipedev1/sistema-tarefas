@@ -49,6 +49,14 @@ export default function SubtarefasTab({
   // Responsável já escolhido pra subtarefa que está sendo criada (opcional).
   const [novoResponsavel, setNovoResponsavel] = useState("");
   const [criando, setCriando] = useState(false);
+  // Datas da subtarefa nova, já à vista no formulário: começa hoje e entrega
+  // junto com a tarefa principal (ou hoje, se a principal já venceu).
+  const datasPadrao = () => {
+    const hoje = new Date().toLocaleDateString("en-CA");
+    return { inicio: hoje, entrega: tarefa.due_date && tarefa.due_date >= hoje ? tarefa.due_date : hoje };
+  };
+  const [novaDataInicio, setNovaDataInicio] = useState(() => datasPadrao().inicio);
+  const [novaDataEntrega, setNovaDataEntrega] = useState(() => datasPadrao().entrega);
   // Horário da subtarefa nova (opcional): hora de início e de fim, "HH:MM".
   const [novaHoraInicio, setNovaHoraInicio] = useState("");
   const [novaHoraFim, setNovaHoraFim] = useState("");
@@ -101,11 +109,15 @@ export default function SubtarefasTab({
     if (!titulo || criando) return;
     setCriando(true);
     setErro(null);
-    const hoje = new Date().toLocaleDateString("en-CA");
-    // Começa hoje e entrega junto com a tarefa principal (dá pra ajustar
-    // depois, abrindo a subtarefa).
-    const entrega = tarefa.due_date && tarefa.due_date >= hoje ? tarefa.due_date : hoje;
-    const erroDaHora = erroDeHorario(hoje, entrega, novaHoraInicio, novaHoraFim);
+    // As datas do formulário (vazias = o padrão: hoje e a entrega da principal).
+    const padrao = datasPadrao();
+    const inicio = novaDataInicio || padrao.inicio;
+    const entrega = novaDataEntrega || padrao.entrega;
+    if (inicio > entrega) {
+      setCriando(false);
+      return setErro("O início não pode ser depois da entrega.");
+    }
+    const erroDaHora = erroDeHorario(inicio, entrega, novaHoraInicio, novaHoraFim);
     if (erroDaHora) {
       setCriando(false);
       return setErro(erroDaHora);
@@ -120,7 +132,7 @@ export default function SubtarefasTab({
         ...(tarefa.subproject_id ? { subproject_id: tarefa.subproject_id } : {}),
         status: "todo",
         position: getNextPosition("todo"),
-        start_date: hoje,
+        start_date: inicio,
         due_date: entrega,
         // O horário é opcional: sem preencher, a subtarefa fica sem hora.
         start_time: novaHoraInicio || null,
@@ -146,6 +158,8 @@ export default function SubtarefasTab({
     setNovoResponsavel("");
     setNovaHoraInicio("");
     setNovaHoraFim("");
+    setNovaDataInicio(padrao.inicio);
+    setNovaDataEntrega(padrao.entrega);
     aoCriar(criada);
     aoMudar();
     // Push no celular de quem recebeu (o aviso do sininho vem do banco).
@@ -446,6 +460,28 @@ export default function SubtarefasTab({
         <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
           Início
           <input
+            type="date"
+            value={novaDataInicio}
+            max={novaDataEntrega || undefined}
+            onChange={(e) => setNovaDataInicio(e.target.value)}
+            aria-label="Início da nova subtarefa"
+            className={campo}
+          />
+        </label>
+        <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
+          Entrega
+          <input
+            type="date"
+            value={novaDataEntrega}
+            min={novaDataInicio || undefined}
+            onChange={(e) => setNovaDataEntrega(e.target.value)}
+            aria-label="Entrega da nova subtarefa"
+            className={campo}
+          />
+        </label>
+        <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
+          Hora início
+          <input
             type="time"
             value={novaHoraInicio}
             onChange={(e) => setNovaHoraInicio(e.target.value)}
@@ -454,7 +490,7 @@ export default function SubtarefasTab({
           />
         </label>
         <label className="inline-flex items-center gap-1 text-xs text-ink-muted">
-          Fim
+          Hora fim
           <input
             type="time"
             value={novaHoraFim}

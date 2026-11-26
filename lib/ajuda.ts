@@ -59,7 +59,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como monto um carrossel em PDF pro LinkedIn?",
     resposta:
-      "No post, escolha o formato PDF (LinkedIn) e envie o arquivo PDF: cada página vira um slide, como o LinkedIn mostra. A rede LinkedIn já fica marcada. O preview e o portal do cliente mostram o PDF, com o botão Abrir o PDF pra ver o arquivo inteiro (no celular o quadro pode mostrar só a primeira página). Esse formato não vai pro Instagram.",
+      "No post, escolha o formato PDF (LinkedIn) e envie o arquivo PDF: cada página vira um slide, como o LinkedIn mostra. A rede LinkedIn já fica marcada. O preview e o portal do cliente mostram o PDF, com o botão Abrir o PDF pra ver o arquivo inteiro (no celular o quadro pode mostrar só a primeira página). Esse formato não vai pro Instagram. Se o mesmo conteúdo também sai como carrossel no Instagram, salve um dos dois e use o botão \"Criar versão PDF pro LinkedIn\" (ou \"Criar versão carrossel pro Instagram\"): abre um post novo com a mesma legenda e data, no outro formato, e só falta subir o arquivo.",
     palavras: ["pdf", "linkedin", "carrossel linkedin", "documento", "carrossel em pdf", "subir pdf"],
   },
   {
@@ -77,7 +77,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como faço uma subtarefa?",
     resposta:
-      "Abra a tarefa e vá em Subtarefas. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o título da tarefa original logo abaixo do título dela (clique nele pra abrir a original).",
+      "Abra a tarefa e vá em Subtarefas. Ao adicionar, já dá pra escolher o responsável, o início, a entrega (já vem com a entrega da tarefa principal) e o horário. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. O agente de IA também cria subtarefas: \"divide a tarefa X em subtarefas...\". Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o título da tarefa original logo abaixo do título dela (clique nele pra abrir a original).",
     palavras: ["subtarefa", "sub", "dividir tarefa", "tarefa filha"],
   },
   {
@@ -211,7 +211,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como ligo o Claude (IA) ao d.hub?",
     resposta:
-      "No menu Agente de IA tem o passo a passo: no claude.ai, Configurações → Conectores → Adicionar conector personalizado, cole o endereço e autorize no d.hub. Depois é só pedir: \"o que está atrasado pra mim?\", \"cria uma tarefa...\", \"como está minha agenda da semana?\", \"cria os posts de dezembro do cliente X\". Ele mexe nos dois calendários (o normal e o de postagem); os arquivos dos posts você sobe pelo site.",
+      "No menu Agente de IA tem o passo a passo: no claude.ai, Configurações → Conectores → Adicionar conector personalizado, cole o endereço e autorize no d.hub. Depois é só pedir: \"o que está atrasado pra mim?\", \"cria uma tarefa...\", \"divide a tarefa X em subtarefas...\", \"como está minha agenda da semana?\", \"cria os posts de dezembro do cliente X\". Ele mexe nos dois calendários (o normal e o de postagem); os arquivos dos posts você sobe pelo site.",
     palavras: ["ia", "claude", "chatgpt", "agente", "inteligência artificial", "conectar", "calendário", "postagem"],
     link: { rotulo: "Abrir Agente de IA", href: "/agente" },
   },

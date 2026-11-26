@@ -172,9 +172,10 @@ Args:
   - projeto (string, opcional): nome do projeto (ou parte dele). Se não informar, a tarefa entra em "Geral", sem projeto. Use now_listar_projetos se não souber o nome exato.
   - status (string, opcional): um de "todo" (a fazer, padrão), "doing" (em andamento), "dependency" (em dependência: parada esperando algo), "approval" (em aprovação), "done" (concluída), "cancelled" (cancelada).
   - data_inicio (string, opcional): início do período, no formato AAAA-MM-DD. Se informar o prazo sem o início, a tarefa começa hoje.
-  - data_prazo (string, obrigatório): data de entrega (fim do período), no formato AAAA-MM-DD.
+  - data_prazo (string, obrigatório, exceto em subtarefa): data de entrega (fim do período), no formato AAAA-MM-DD. Na subtarefa, sem ela, entrega junto com a tarefa principal (ou hoje, se a principal já venceu).
   - responsavel (string, opcional): nome de quem deve ficar responsável. Aceita "eu"/"mim" pra atribuir a quem pediu a tarefa. Se não informar, a tarefa fica sem responsável.
-  - projeto_do_cliente (string, opcional): nome de um projeto DENTRO do cliente (ex: "Site novo"), pra tarefa entrar nele. Exige "projeto". Veja os nomes com now_listar_projetos_do_cliente.
+  - projeto_do_cliente (string, opcional): nome de um projeto DENTRO do cliente (ex: "Site novo"), pra tarefa entrar nele. Exige "projeto". Veja os nomes com now_listar_projetos_do_cliente. Não use em subtarefa.
+  - subtarefa_de (string, opcional): título (ou parte do título) da tarefa principal. Com ele, a tarefa nasce como SUBTAREFA dentro dela (aba "Subtarefas"), no mesmo cliente e projeto da principal. Use sempre que pedirem subtarefa ou pra dividir uma tarefa em partes. "projeto" aqui só ajuda a achar a principal. Uma subtarefa não pode ter subtarefas.
 
 Retorna: confirmação com o título, projeto e link da tarefa criada.
 
@@ -208,7 +209,8 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           data_prazo: z
             .string()
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD")
-            .describe("Data de entrega (fim do período), AAAA-MM-DD. Obrigatória."),
+            .optional()
+            .describe("Data de entrega (fim do período), AAAA-MM-DD. Obrigatória, exceto em subtarefa (aí entrega junto com a principal)."),
           responsavel: z
             .string()
             .max(200)
@@ -218,7 +220,12 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
             .string()
             .max(200)
             .optional()
-            .describe('Projeto dentro do cliente (ex: "Site novo"). Exige "projeto".'),
+            .describe('Projeto dentro do cliente (ex: "Site novo"). Exige "projeto". Não use em subtarefa.'),
+          subtarefa_de: z
+            .string()
+            .max(200)
+            .optional()
+            .describe("Título (ou parte) da tarefa principal: cria como subtarefa dentro dela."),
         },
         annotations: {
           readOnlyHint: false,
@@ -227,7 +234,7 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           openWorldHint: false,
         },
       },
-      async ({ titulo, descricao, checklist, projeto, status, data_inicio, data_prazo, responsavel, projeto_do_cliente }, extra) => {
+      async ({ titulo, descricao, checklist, projeto, status, data_inicio, data_prazo, responsavel, projeto_do_cliente, subtarefa_de }, extra) => {
         try {
           const perfil = perfilDoContexto(extra as ContextoFerramenta);
           const admin = createAdminClient();
@@ -240,6 +247,62 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           const resolResp = await resolverResponsavel(admin, perfil.profileId, responsavel);
           if (!resolResp.ok) {
             return { isError: true, content: [{ type: "text", text: resolResp.erro }] };
+          }
+
+          // Subtarefa: acha a principal (entre as que a pessoa enxerga); a
+          // subtarefa fica no cliente e no projeto dela (o banco garante o
+          // cliente, migration 0067) e com a mesma cor, como na tela.
+          let principal: {
+            id: string;
+            title: string;
+            project_id: string | null;
+            subproject_id: string | null;
+            parent_id: string | null;
+            color: string | null;
+            due_date: string | null;
+          } | null = null;
+          if (subtarefa_de?.trim()) {
+            if (projeto_do_cliente?.trim()) {
+              return {
+                isError: true,
+                content: [{ type: "text", text: 'A subtarefa fica no mesmo cliente e projeto da tarefa principal: não informe "projeto_do_cliente".' }],
+              };
+            }
+            const candidatas = await encontrarTarefasPorTitulo(admin, perfil.profileId, subtarefa_de.trim(), resolProjeto.projeto?.id ?? null);
+            if (candidatas.length === 0) {
+              return { isError: true, content: [{ type: "text", text: `Não achei nenhuma tarefa com "${subtarefa_de}" no título pra ser a principal.` }] };
+            }
+            const exata = candidatas.filter((t) => t.title.trim().toLowerCase() === subtarefa_de.trim().toLowerCase());
+            const escolhidas = exata.length === 1 ? exata : candidatas;
+            if (escolhidas.length > 1) {
+              const lista = escolhidas.map((t) => `- ${t.title}`).join("\n");
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: "text",
+                    text: `Mais de uma tarefa bate com "${subtarefa_de}":\n${lista}\nChame de novo com o título mais específico ou informando o projeto.`,
+                  },
+                ],
+              };
+            }
+            const { data: mae } = await admin
+              .from("tasks")
+              .select("id, title, project_id, subproject_id, parent_id, color, due_date")
+              .eq("id", escolhidas[0].id)
+              .maybeSingle();
+            if (!mae) {
+              return { isError: true, content: [{ type: "text", text: "Não consegui abrir a tarefa principal. Tente de novo." }] };
+            }
+            if (mae.parent_id) {
+              return {
+                isError: true,
+                content: [{ type: "text", text: `"${mae.title}" já é uma subtarefa, e subtarefa não pode ter subtarefas. Use a tarefa principal dela.` }],
+              };
+            }
+            principal = mae;
+          } else if (!data_prazo) {
+            return { isError: true, content: [{ type: "text", text: 'Informe "data_prazo" (AAAA-MM-DD): a data de entrega é obrigatória.' }] };
           }
 
           let subprojeto: { id: string; name: string } | null = null;
@@ -256,12 +319,16 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
           const posicao = await proximaPosicao(admin, statusFinal);
 
           // Período: sem início informado, começa hoje (horário de Brasília).
-          const inicioFinal =
-            data_inicio ?? (data_prazo ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }) : null);
-          if (inicioFinal && data_prazo && inicioFinal > data_prazo) {
+          // Subtarefa sem entrega: entrega junto com a principal (ou hoje, se
+          // a principal já venceu), como na tela.
+          const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+          const prazoFinal =
+            data_prazo ?? (principal ? (principal.due_date && principal.due_date >= hoje ? principal.due_date : hoje) : null);
+          const inicioFinal = data_inicio ?? (prazoFinal ? hoje : null);
+          if (inicioFinal && prazoFinal && inicioFinal > prazoFinal) {
             return {
               isError: true,
-              content: [{ type: "text", text: `O início (${inicioFinal}) não pode ser depois da entrega (${data_prazo}).` }],
+              content: [{ type: "text", text: `O início (${inicioFinal}) não pode ser depois da entrega (${prazoFinal}).` }],
             };
           }
 
@@ -273,9 +340,18 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
               status: statusFinal,
               position: posicao,
               start_date: inicioFinal,
-              due_date: data_prazo || null,
-              project_id: resolProjeto.projeto?.id ?? null,
-              ...(subprojeto ? { subproject_id: subprojeto.id } : {}),
+              due_date: prazoFinal,
+              ...(principal
+                ? {
+                    parent_id: principal.id,
+                    project_id: principal.project_id,
+                    ...(principal.subproject_id ? { subproject_id: principal.subproject_id } : {}),
+                    ...(principal.color ? { color: principal.color } : {}),
+                  }
+                : {
+                    project_id: resolProjeto.projeto?.id ?? null,
+                    ...(subprojeto ? { subproject_id: subprojeto.id } : {}),
+                  }),
               assigned_to: resolResp.ids,
               created_by: perfil.profileId,
               created_by_label: `${perfil.nome} (via IA)`,
@@ -302,6 +378,21 @@ Erros: se o nome do projeto ou do responsável não for encontrado (ou bater com
             await admin.from("task_checklist_items").insert(
               itensChecklist.map((title, i) => ({ task_id: tarefa.id, title, position: i + 1 }))
             );
+          }
+
+          if (principal) {
+            // O quadro abre a tarefa pedida no link, esteja ela no quadro ou não.
+            const linkDaPrincipal = urlDoApp(`/board?tarefa=${principal.id}`);
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Subtarefa "${tarefa.title}" criada dentro de "${principal.title}" (status: ${STATUS_LABEL[statusFinal]}, entrega ${prazoFinal})${
+                    itensChecklist.length ? `, com ${itensChecklist.length} itens no checklist` : ""
+                  }. ${linkDaPrincipal}`,
+                },
+              ],
+            };
           }
 
           const link = urlDoApp(

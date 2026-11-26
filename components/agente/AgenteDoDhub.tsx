@@ -18,6 +18,7 @@ const PEDIDOS = [
   { grupo: "Resumir", texto: "Resume o andamento do cliente X: tarefas abertas, projetos e posts esperando aprovação." },
   { grupo: "Resumir", texto: "Lê a última ata do cliente X e me diz o que ficou decidido e o que ainda está pendente." },
   { grupo: "Agir", texto: "Cria uma tarefa no cliente X, no projeto Site novo, pra Ana, entrega sexta, com checklist: texto, arte, aprovação." },
+  { grupo: "Agir", texto: "Divide a tarefa Y em subtarefas: roteiro pra Ana, gravação pro Bruno e edição pra Carla." },
   { grupo: "Agir", texto: "Pega os próximos passos da última ata do cliente X e cria uma tarefa pra cada um." },
   { grupo: "Agir", texto: "Marca a tarefa Y como concluída e comenta que foi entregue ao cliente." },
   { grupo: "Agir", texto: "Monta o calendário de postagem de dezembro do cliente X: 3 posts por semana, com legenda, alternando estático e carrossel." },
@@ -28,7 +29,7 @@ const FERRAMENTAS = [
   "Ler tarefas (com checklist, subtarefas e comentários)",
   "Ler posts, atas e projetos de cada cliente",
   "Ver o calendário de qualquer período, seu ou da equipe",
-  "Criar e editar tarefas, mudar status e remarcar datas",
+  "Criar e editar tarefas e subtarefas, mudar status e remarcar datas",
   "Criar, remarcar e editar posts do calendário de postagem, e enviar ao cliente",
   "Comentar, fazer checklist, registrar horas e anexar arquivos",
 ];
