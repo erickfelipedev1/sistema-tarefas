@@ -1,6 +1,6 @@
 import { useId } from "react";
-import type { PostNetwork } from "@/lib/types";
-import { REDES, redesValidas } from "@/lib/posts";
+import type { RedeDaTarefa } from "@/lib/types";
+import { NOMES_DAS_REDES, redesDaTarefaValidas } from "@/lib/posts";
 
 // Ícones pequenos das redes sociais (desenho simplificado de cada uma, nas
 // cores delas), usados no cartão da tarefa de postagem no quadro
@@ -8,9 +8,9 @@ import { REDES, redesValidas } from "@/lib/posts";
 // Cores fixas: cada ícone tem o próprio fundo, então serve no tema claro e no
 // escuro.
 
-export function IconeDaRede({ rede, className = "h-4 w-4" }: { rede: PostNetwork; className?: string }) {
+export function IconeDaRede({ rede, className = "h-4 w-4" }: { rede: RedeDaTarefa; className?: string }) {
   const comum = { viewBox: "0 0 24 24", className, "aria-hidden": true as const };
-  // Id do degradê do Instagram único por ícone (são vários na mesma tela).
+  // Id do degradê (Instagram, InCicle) único por ícone (são vários na tela).
   const degrade = `ig-${useId().replace(/:/g, "")}`;
   switch (rede) {
     case "instagram":
@@ -73,6 +73,59 @@ export function IconeDaRede({ rede, className = "h-4 w-4" }: { rede: PostNetwork
           <path d="M9.8 8.2v7.6l6.4-3.8z" fill="#fff" />
         </svg>
       );
+    case "spotify":
+      return (
+        <svg {...comum}>
+          <rect width="24" height="24" rx="6" fill="#1DB954" />
+          {/* As três ondas, da maior pra menor. */}
+          <g fill="none" stroke="#121212" strokeLinecap="round">
+            <path d="M6.2 9.4c3.8-1.15 8.3-.85 11.6 1.05" strokeWidth="1.9" />
+            <path d="M6.9 12.6c3.1-.9 6.7-.65 9.4.9" strokeWidth="1.6" />
+            <path d="M7.5 15.6c2.5-.65 5.2-.45 7.3.75" strokeWidth="1.35" />
+          </g>
+        </svg>
+      );
+    case "whatsapp":
+      return (
+        <svg {...comum}>
+          <rect width="24" height="24" rx="6" fill="#25D366" />
+          {/* Balão de conversa com o telefone dentro. */}
+          <path
+            d="M12 5.1a6.7 6.7 0 0 0-5.8 10.05L5.3 18.7l3.65-.95A6.7 6.7 0 1 0 12 5.1z"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.55 8.75c.2-.35.4-.4.6-.4h.45c.15 0 .3.05.4.3l.6 1.45c.05.15.05.3-.05.45l-.4.5c-.1.1-.1.25-.05.4.55.95 1.35 1.7 2.35 2.2.15.05.3.05.4-.05l.55-.6c.1-.15.3-.2.45-.1l1.45.7c.2.1.3.2.3.35 0 .4-.15.95-.5 1.3-.45.45-1.15.6-1.65.5-1.95-.35-4.45-2.45-5.05-4.45-.2-.75-.05-1.65.6-2.55z"
+            fill="#fff"
+          />
+        </svg>
+      );
+    case "incicle":
+      return (
+        <svg {...comum}>
+          <defs>
+            <linearGradient id={degrade} x1="0" y1="0" x2="0.4" y2="1">
+              <stop offset="0" stopColor="#2BB3E6" />
+              <stop offset="1" stopColor="#17598F" />
+            </linearGradient>
+          </defs>
+          <rect width="24" height="24" rx="6" fill="#fff" />
+          {/* O arco grosso (do alto, pela esquerda, até embaixo), os
+              tracinhos à direita e o "i" no meio. */}
+          <path d="M12 5.2A6.8 6.8 0 1 0 17.9 15.4" fill="none" stroke={`url(#${degrade})`} strokeWidth="2.6" />
+          <g stroke="#2BA3DA" strokeWidth="1.1" strokeLinecap="round">
+            <path d="M15.1 5.95l.35-.6" />
+            <path d="M17.35 7.75l.55-.4" />
+            <path d="M18.6 10.4l.65-.15" />
+            <path d="M18.75 13.2l.65.15" />
+          </g>
+          <circle cx="12" cy="8.7" r="1.45" fill="#1E8FD0" />
+          <rect x="10.85" y="10.9" width="2.3" height="5.4" rx="1.15" fill="#1B5F95" />
+        </svg>
+      );
   }
 }
 
@@ -91,9 +144,9 @@ export function IconesDasRedes({
   // Classes de tamanho de cada ícone.
   tamanho?: string;
 }) {
-  const lista = redesValidas(redes);
+  const lista = redesDaTarefaValidas(redes);
   if (lista.length === 0) return null;
-  const nomes = lista.map((r) => REDES[r]).join(", ");
+  const nomes = lista.map((r) => NOMES_DAS_REDES[r]).join(", ");
   return (
     <span className={`flex items-center gap-1 ${className}`} role="img" aria-label={`Redes: ${nomes}`} title={`Redes: ${nomes}`}>
       {lista.map((r) => (

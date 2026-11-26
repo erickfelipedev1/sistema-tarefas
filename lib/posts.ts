@@ -1,7 +1,7 @@
 // Preview de posts (migration 0051): rótulos e regras que a aba da equipe
 // (components/PostsManager.tsx) e a do cliente (components/onboarding/
 // ClientPosts.tsx) dividem. Funções puras, sem rede.
-import type { PostCategory, PostMedia, PostNetwork, PostStatus } from "@/lib/types";
+import type { PostCategory, PostMedia, PostNetwork, PostStatus, RedeDaTarefa } from "@/lib/types";
 
 export const BUCKET_DOS_POSTS = "post-media";
 
@@ -94,6 +94,17 @@ export const REDES: Record<PostNetwork, string> = {
 };
 
 export const ORDEM_DAS_REDES: PostNetwork[] = ["instagram", "facebook", "tiktok", "linkedin", "youtube"];
+
+// Redes da tarefa de postagem (checks ao lado do Tipo, migrations 0127/0128):
+// as do post e mais Spotify, WhatsApp e InCicle, que só existem na tarefa. A
+// ordem é a mesma de redes_em_ordem() no banco.
+export const SO_DA_TAREFA: RedeDaTarefa[] = ["spotify", "whatsapp", "incicle"];
+export const ORDEM_DAS_REDES_DA_TAREFA: RedeDaTarefa[] = [...ORDEM_DAS_REDES, ...SO_DA_TAREFA];
+export const NOMES_DAS_REDES: Record<RedeDaTarefa, string> = { ...REDES, spotify: "Spotify", whatsapp: "WhatsApp", incicle: "InCicle" };
+
+export function redesDaTarefaValidas(redes: readonly string[] | null | undefined): RedeDaTarefa[] {
+  return ORDEM_DAS_REDES_DA_TAREFA.filter((r) => (redes ?? []).includes(r));
+}
 
 type Tom = "neutral" | "brand" | "success" | "warning" | "danger";
 

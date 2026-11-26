@@ -17,6 +17,7 @@ import type {
   ChecklistItem,
   PostNetwork,
   Profile,
+  RedeDaTarefa,
   Project,
   RepeatRule,
   Task,
@@ -34,7 +35,7 @@ import {
 import { carregarResumos, resumoVazio, type ResumoTarefa } from "@/lib/task-resumo";
 import { avisarMencao, avisarMencaoNaDescricao, avisarResposta, avisarTarefaAtribuida } from "@/lib/actions/push";
 import PostDaTarefa from "./posts/PostDaTarefa";
-import { ORDEM_DAS_REDES, REDES, redesValidas } from "@/lib/posts";
+import { NOMES_DAS_REDES, ORDEM_DAS_REDES_DA_TAREFA, redesDaTarefaValidas, SO_DA_TAREFA } from "@/lib/posts";
 import { IconeDaRede } from "./ui/IconesDasRedes";
 import StatusDaPostagemPicker from "./posts/StatusDaPostagemPicker";
 import VisualizadorDeArquivos, { tipoDoArquivoPeloNome } from "./VisualizadorDeArquivos";
@@ -145,7 +146,7 @@ export default function TaskModal({
   // Geral (padrão) ou Postagem: na postagem, a copy e o post ficam em Detalhes.
   const [tipo, setTipo] = useState<"geral" | "postagem">(task?.tipo ?? "geral");
   // Redes da postagem (migration 0127), os checks ao lado do Tipo.
-  const [redes, setRedes] = useState<PostNetwork[]>(() => redesValidas(task?.redes));
+  const [redes, setRedes] = useState<RedeDaTarefa[]>(() => redesDaTarefaValidas(task?.redes));
   // O valor mais novo, pra dois cliques seguidos não partirem do mesmo.
   const redesRef = useRef(redes);
   redesRef.current = redes;
@@ -339,9 +340,9 @@ export default function TaskModal({
   }
 
   // Marca/desmarca uma rede da postagem. Na tarefa nova, vai junto na criação.
-  function alternarRede(rede: PostNetwork) {
+  function alternarRede(rede: RedeDaTarefa) {
     const atuais = redesRef.current;
-    const nova = atuais.includes(rede) ? atuais.filter((r) => r !== rede) : redesValidas([...atuais, rede]);
+    const nova = atuais.includes(rede) ? atuais.filter((r) => r !== rede) : redesDaTarefaValidas([...atuais, rede]);
     redesRef.current = nova;
     setRedes(nova);
     if (!isNovo) salvarCampo({ redes: nova });
@@ -349,7 +350,10 @@ export default function TaskModal({
 
   // O post da tarefa gravou: o banco já copiou as redes dele pra tarefa
   // (migration 0127); a tela acompanha, sem gravar de novo.
-  function aplicarRedesDoPost(novas: PostNetwork[]) {
+  // Spotify e WhatsApp só existem na tarefa: o banco mantém os marcados (0128).
+  function aplicarRedesDoPost(doPost: PostNetwork[]) {
+    const novas = redesDaTarefaValidas([...doPost, ...redesRef.current.filter((r) => SO_DA_TAREFA.includes(r))]);
+    redesRef.current = novas;
     setRedes(novas);
     const agora = currentRef.current;
     if (!agora) return;
@@ -409,7 +413,7 @@ export default function TaskModal({
     if (error && "redes" in campos) {
       setCurrent(antes);
       onUpdated(antes);
-      setRedes(redesValidas(antes.redes));
+      setRedes(redesDaTarefaValidas(antes.redes));
       setErro(
         /redes/i.test(error.message) && /column|schema/i.test(error.message)
           ? "Não deu pra salvar as redes. Confere se a migration 0127_redes_da_tarefa.sql já foi rodada no Supabase."
@@ -635,7 +639,7 @@ export default function TaskModal({
                 />
               </div>
 
-              <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+              <div className="flex flex-wrap items-start gap-x-2 gap-y-3">
               <div>
                 <p className="mb-1 text-xs font-medium text-ink-muted">Tipo</p>
                 <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Tipo da tarefa">
@@ -668,8 +672,10 @@ export default function TaskModal({
               {tipo === "postagem" && (
                 <div>
                   <p className="mb-1 text-xs font-medium text-ink-muted">Redes</p>
-                  <div className="flex flex-wrap gap-1" role="group" aria-label="Redes da postagem">
-                    {ORDEM_DAS_REDES.map((r) => {
+                  {/* Enxutos (quadradinho + ícone, nome ao passar o mouse) pra
+                      caberem ao lado do Tipo; em tela estreita quebram linha. */}
+                  <div className="flex flex-wrap" role="group" aria-label="Redes da postagem">
+                    {ORDEM_DAS_REDES_DA_TAREFA.map((r) => {
                       const marcada = redes.includes(r);
                       return (
                         <button
@@ -677,11 +683,11 @@ export default function TaskModal({
                           type="button"
                           role="checkbox"
                           aria-checked={marcada}
-                          aria-label={REDES[r]}
-                          title={REDES[r]}
+                          aria-label={NOMES_DAS_REDES[r]}
+                          title={NOMES_DAS_REDES[r]}
                           onClick={() => alternarRede(r)}
-                          className={`inline-flex items-center gap-1.5 rounded-lg border px-1.5 py-1.5 text-xs font-medium transition-colors ${
-                            marcada ? "border-brand bg-brand/10 text-ink" : "border-line bg-surface text-ink-muted hover:text-ink"
+                          className={`inline-flex items-center gap-[2px] rounded-md px-px py-1.5 transition-colors ${
+                            marcada ? "bg-brand/10" : "hover:bg-surface-hover"
                           }`}
                         >
                           <span
@@ -696,7 +702,7 @@ export default function TaskModal({
                               </svg>
                             )}
                           </span>
-                          <IconeDaRede rede={r} className="h-4 w-4" />
+                          <IconeDaRede rede={r} className={`h-4 w-4 transition-opacity ${marcada ? "" : "opacity-50"}`} />
                         </button>
                       );
                     })}

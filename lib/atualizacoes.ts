@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-26",
     area: "Tarefas",
+    titulo: "Spotify, WhatsApp e InCicle nas redes da postagem",
+    texto: "Os checks de redes da tarefa de postagem ganharam Spotify, WhatsApp e InCicle, e os ícones aparecem no cartão do quadro. Essas três ficam só na tarefa: o post que vai pro cliente aprovar continua com Instagram, Facebook, TikTok, LinkedIn e YouTube.",
+  },
+  {
+    data: "2026-11-26",
+    area: "Tarefas",
     titulo: "Redes na tarefa de postagem",
     texto: "Na tarefa de postagem, ao lado do Tipo, agora tem os checks das redes (Instagram, Facebook, TikTok, LinkedIn, YouTube). As marcadas aparecem no cartão do quadro e nas subtarefas. O post da tarefa já nasce com essas redes, e se você mudar as redes no post, a tarefa acompanha.",
   },

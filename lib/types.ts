@@ -38,7 +38,7 @@ export interface Task {
   // Redes da postagem (migration 0127): os checks ao lado do Tipo. O quadro
   // mostra os ícones delas; o post da tarefa nasce com elas e, quando as redes
   // do post mudam, a tarefa acompanha.
-  redes?: PostNetwork[];
+  redes?: RedeDaTarefa[];
   // Status da postagem (migration 0086): etiqueta de andamento da peça; a cor
   // dela é a cor do post no Calendário de postagem.
   post_status_id?: string | null;
@@ -415,6 +415,10 @@ export interface ReportAnalysis {
 // cliente aprovar. Ver lib/posts.ts pros rótulos de cada valor.
 export type PostCategory = "carrossel" | "estatico" | "reel" | "shorts" | "youtube" | "story" | "documento";
 export type PostNetwork = "instagram" | "facebook" | "tiktok" | "linkedin" | "youtube";
+// Redes da tarefa de postagem (0127/0128): as do post e mais Spotify,
+// WhatsApp e InCicle, que só existem na tarefa (o post do cliente tem prévia
+// por rede).
+export type RedeDaTarefa = PostNetwork | "spotify" | "whatsapp" | "incicle";
 export type PostStatus = "rascunho" | "enviado" | "ajuste" | "publicado";
 
 // Um arquivo do post, guardado em posts.media. "path" é o caminho no bucket
