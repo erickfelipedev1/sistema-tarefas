@@ -160,16 +160,19 @@ export async function criarContainers(
   }
 
   // Carrossel: um container por item, depois o do carrossel juntando todos.
+  // Até 20 itens: cria de 5 em 5 ao mesmo tempo (um por vez demorava demais),
+  // mantendo a ordem do post.
   const filhos: string[] = [];
-  for (const m of midias) {
-    filhos.push(
-      await criarContainer(
+  for (let i = 0; i < midias.length; i += 5) {
+    const lote = midias.slice(i, i + 5).map((m) =>
+      criarContainer(
         igId,
         m.tipo === "video"
           ? { media_type: "VIDEO", video_url: m.url, is_carousel_item: "true" }
           : { image_url: m.url, is_carousel_item: "true" }
       )
     );
+    filhos.push(...(await Promise.all(lote)));
   }
   const principal = await criarContainer(igId, { media_type: "CAROUSEL", children: filhos.join(","), caption: legenda });
   return { principal, filhos };

@@ -5,7 +5,7 @@ import type { Post, PostCategory } from "@/lib/types";
 export const LIMITE_DA_LEGENDA = 2200;
 export const LIMITE_DE_HASHTAGS = 30;
 
-// Formatos que o d.hub sabe mandar: estático (1 imagem), carrossel, reel e
+// Formatos que o d.hub sabe mandar: estático (1 imagem), carrossel (de 2 a 20), reel e
 // story (de 1 a 10 arquivos, cada um é um story publicado em ordem). O "Shorts" (vídeo vertical curto) segue como reel
 // no Instagram.
 export function categoriaVaiProInstagram(categoria: PostCategory): boolean {
@@ -29,8 +29,8 @@ export function oQueImpedeDePublicar(post: Pick<Post, "category" | "caption" | "
   if (post.category === "estatico" && (post.media.length !== 1 || post.media[0].type !== "image")) {
     return "Post estático leva uma imagem só.";
   }
-  if (post.category === "carrossel" && (post.media.length < 2 || post.media.length > 10)) {
-    return "Carrossel leva de 2 a 10 arquivos.";
+  if (post.category === "carrossel" && (post.media.length < 2 || post.media.length > 20)) {
+    return "Carrossel leva de 2 a 20 arquivos.";
   }
   if (post.category === "story" && post.media.length > 10) return "Story leva de 1 a 10 arquivos.";
   if (post.category !== "story" && post.caption.length > LIMITE_DA_LEGENDA) return `A legenda passa de ${LIMITE_DA_LEGENDA} caracteres (limite do Instagram).`;

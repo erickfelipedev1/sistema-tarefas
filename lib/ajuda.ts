@@ -57,6 +57,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["enviar post", "aprovar", "cliente aprovar", "portal", "posts"],
   },
   {
+    pergunta: "Quantos arquivos cabem num carrossel?",
+    resposta:
+      "De 2 a 20 imagens ou vídeos (pode misturar), na ordem em que vão aparecer. É o limite do Instagram, e a publicação direta pelo d.hub também aceita os 20. O Story vai de 1 a 10 arquivos, um por story.",
+    palavras: ["carrossel", "20 imagens", "quantas imagens", "limite", "10 imagens", "fotos"],
+  },
+  {
     pergunta: "Como monto um carrossel em PDF pro LinkedIn?",
     resposta:
       "No post, escolha o formato PDF (LinkedIn) e envie o arquivo PDF: cada página vira um slide, como o LinkedIn mostra. A rede LinkedIn já fica marcada. O preview e o portal do cliente mostram o PDF, com o botão Abrir o PDF pra ver o arquivo inteiro (no celular o quadro pode mostrar só a primeira página). Esse formato não vai pro Instagram. Se o mesmo conteúdo também sai como carrossel no Instagram, salve um dos dois e use o botão \"Criar versão PDF pro LinkedIn\" (ou \"Criar versão carrossel pro Instagram\"): abre um post novo com a mesma legenda e data, no outro formato, e só falta subir o arquivo.",

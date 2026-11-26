@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-26",
     area: "Posts",
+    titulo: "Carrossel com até 20 arquivos",
+    texto: "O carrossel agora aceita de 2 a 20 imagens ou vídeos (antes eram 10), como o Instagram passou a permitir. Vale na aba de postagens da tarefa, nos Posts do cliente e na publicação direta no Instagram pelo d.hub. O Story continua com até 10.",
+  },
+  {
+    data: "2026-11-26",
+    area: "Posts",
     titulo: "Versão PDF pro LinkedIn",
     texto: "Num post de carrossel, o botão \"Criar versão PDF pro LinkedIn\" abre um post novo com a mesma legenda e data, no formato PDF (LinkedIn): só falta subir o PDF. Também tem o caminho contrário, do PDF pro carrossel do Instagram. Vale no post da tarefa e nos Posts do cliente.",
   },
