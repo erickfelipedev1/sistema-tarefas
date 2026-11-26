@@ -53,7 +53,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como envio o post pro cliente aprovar?",
     resposta:
-      "Na tarefa de Postagem, monte o post no bloco de baixo (formato, redes, data, arquivos e legenda) e clique em enviar pros Posts do cliente. O cliente aprova ou pede ajuste pelo portal, e você acompanha na aba Posts do cliente.",
+      "Na tarefa de Postagem, monte o post no bloco de baixo (formato, redes, data, arquivos e legenda) e clique em enviar pros Posts do cliente. O cliente aprova ou pede ajuste pelo portal, e você acompanha na aba Posts do cliente. Pra ver o post pronto (a imagem, o vídeo tocando ou o carrossel com as setas), clique em \"Ver post\" ou na miniatura dele, ali na tarefa.",
     palavras: ["enviar post", "aprovar", "cliente aprovar", "portal", "posts"],
   },
   {

@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-26",
     area: "Posts",
+    titulo: "Ver o post dentro da tarefa",
+    texto: "Na tarefa de Postagem, o botão \"Ver post\" (ou clicar na miniatura) abre o post ali mesmo, como vai ficar na rede: a imagem, o vídeo tocando ou o carrossel com as setas. Se o post vai pra mais de uma rede, dá pra trocar entre elas.",
+  },
+  {
+    data: "2026-11-26",
+    area: "Posts",
     titulo: "Carrossel e Story com até 20 arquivos",
     texto: "O carrossel agora aceita de 2 a 20 imagens ou vídeos (antes eram 10), como o Instagram passou a permitir, e o Story de 1 a 20 (um story por arquivo). Vale na aba de postagens da tarefa, nos Posts do cliente e na publicação direta no Instagram pelo d.hub.",
   },

@@ -49,6 +49,7 @@ import CalendarioDePostagem from "./posts/CalendarioDePostagem";
 import MiniaturaDeVideo from "./posts/MiniaturaDeVideo";
 import MiniaturaDePdf from "./posts/MiniaturaDePdf";
 import PostPreview, { type MidiaDoPreview } from "./posts/PostPreview";
+import SeletorDeRede from "./posts/SeletorDeRede";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
@@ -1370,38 +1371,6 @@ function PostAberto({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function SeletorDeRede({
-  redes,
-  atual,
-  aoTrocar,
-}: {
-  redes: PostNetwork[];
-  atual: PostNetwork;
-  aoTrocar: (rede: PostNetwork) => void;
-}) {
-  return (
-    <div
-      className="scrollbar-thin mb-3 flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-canvas p-1"
-      role="group"
-      aria-label="Rede do preview"
-    >
-      {redes.map((r) => (
-        <button
-          key={r}
-          type="button"
-          onClick={() => aoTrocar(r)}
-          aria-pressed={r === atual}
-          className={`flex-1 flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-            r === atual ? "bg-brand text-navy" : "text-ink-muted hover:text-ink"
-          }`}
-        >
-          {REDES[r]}
-        </button>
-      ))}
     </div>
   );
 }

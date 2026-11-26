@@ -40,11 +40,13 @@ import { subirMiniatura } from "@/lib/miniatura-de-imagem";
 import { descartarVideosDoDrive, enviarMidiaParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, XIcon } from "../ui/icons";
 import MiniaturaDeVideo from "./MiniaturaDeVideo";
 import MiniaturaDePdf from "./MiniaturaDePdf";
 import CapaDoReel, { type CapaDoForm } from "./CapaDoReel";
 import ArquivosParaBaixar from "./ArquivosParaBaixar";
+import PostPreview from "./PostPreview";
+import SeletorDeRede from "./SeletorDeRede";
 import { BaixarItem, BaixarTodos } from "./BaixarDoForm";
 
 const campoClasse =
@@ -100,6 +102,8 @@ export default function PostDaTarefa({
   };
   const [posts, setPosts] = useState<Post[]>([]);
   const [links, setLinks] = useState<Record<string, string>>({});
+  // Posts abertos na lista (preview com a imagem, o vídeo ou o carrossel).
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [carregando, setCarregando] = useState(true);
   const [erroCarregar, setErroCarregar] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
@@ -175,8 +179,12 @@ export default function PostDaTarefa({
         .filter((m): m is NonNullable<typeof m> => !!m),
       // No post em edição, todos os arquivos (e a capa) precisam de miniatura.
       ...(editando ? [...editando.media.filter((m) => !ehDoDrive(m)), ...(editando.cover ? [editando.cover] : [])] : []),
+      // No post aberto, todos os arquivos (e a capa) aparecem no preview.
+      ...posts
+        .filter((p) => abertos.has(p.id))
+        .flatMap((p) => [...p.media.filter((m) => !ehDoDrive(m)), ...(p.cover ? [p.cover] : [])]),
     ],
-    [posts, editando]
+    [posts, editando, abertos]
   );
   useEffect(() => {
     const faltam = caminhos.filter((m) => !(m.path in links));
@@ -647,66 +655,87 @@ export default function PostDaTarefa({
             const miniatura = post.cover ?? post.media[0];
             const mini = miniaturaDoItem(miniatura, links);
             const url = mini?.url ?? "";
+            const aberto = abertos.has(post.id);
+            const alternar = () =>
+              setAbertos((atual) => {
+                const novo = new Set(atual);
+                if (novo.has(post.id)) novo.delete(post.id);
+                else novo.add(post.id);
+                return novo;
+              });
             return (
-              <li key={post.id} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3">
-                <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-black">
-                  {mini?.tipo === "pdf" ? (
-                    <MiniaturaDePdf />
-                  ) : url && miniatura ? (
-                    mini?.tipo === "video" ? (
-                      <MiniaturaDeVideo />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={url} alt="" className="h-full w-full object-cover" />
-                    )
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge tone="neutral">{CATEGORIAS[post.category].rotulo}</Badge>
-                    <Badge tone={STATUS_DO_POST[post.status].tom}>{rotuloDoStatus(post.status, post.sent_count, "equipe")}</Badge>
-                    <span className="text-xs text-ink-muted">
-                      {post.scheduled_date ? formatarDataBR(post.scheduled_date) : "Sem data"}
-                    </span>
+              <li key={post.id} className="rounded-xl border border-line bg-surface p-3">
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={alternar}
+                    aria-label={aberto ? "Fechar o post" : "Ver o post"}
+                    title={aberto ? "Fechar o post" : "Ver o post"}
+                    className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-black transition-opacity hover:opacity-80"
+                  >
+                    {mini?.tipo === "pdf" ? (
+                      <MiniaturaDePdf />
+                    ) : url && miniatura ? (
+                      mini?.tipo === "video" ? (
+                        <MiniaturaDeVideo />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      )
+                    ) : null}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge tone="neutral">{CATEGORIAS[post.category].rotulo}</Badge>
+                      <Badge tone={STATUS_DO_POST[post.status].tom}>{rotuloDoStatus(post.status, post.sent_count, "equipe")}</Badge>
+                      <span className="text-xs text-ink-muted">
+                        {post.scheduled_date ? formatarDataBR(post.scheduled_date) : "Sem data"}
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-sm text-ink">
+                      {post.caption || <span className="italic text-ink-muted">Sem legenda.</span>}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <Button variant="secondary" size="sm" onClick={alternar} aria-expanded={aberto}>
+                        <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform ${aberto ? "rotate-180" : ""}`} />
+                        {aberto ? "Fechar" : "Ver post"}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => abrirEdicao(post)} disabled={salvando !== null}>
+                        <PencilIcon className="h-3.5 w-3.5" />
+                        Editar
+                      </Button>
+                      {post.status === "rascunho" && (
+                        <Button size="sm" onClick={() => enviarRascunho(post)}>
+                          Enviar ao cliente
+                        </Button>
+                      )}
+                      {post.status === "enviado" && (
+                        <Button variant="secondary" size="sm" onClick={() => cancelarEnvio(post)}>
+                          Cancelar envio
+                        </Button>
+                      )}
+                      {post.category === "carrossel" && !posts.some((p) => p.category === "documento") && (
+                        <Button variant="secondary" size="sm" onClick={() => criarVersao(post)} disabled={salvando !== null}>
+                          Criar versão PDF pro LinkedIn
+                        </Button>
+                      )}
+                      {post.category === "documento" && !posts.some((p) => p.category === "carrossel") && (
+                        <Button variant="secondary" size="sm" onClick={() => criarVersao(post)} disabled={salvando !== null}>
+                          Criar versão carrossel pro Instagram
+                        </Button>
+                      )}
+                      <Link
+                        href={`/projetos/${projectId}?aba=posts`}
+                        className="text-xs font-medium text-brand-forte hover:underline"
+                      >
+                        Abrir nos Posts do cliente
+                      </Link>
+                    </div>
+                    {/* Arquivos e capa pra baixar na hora de postar. */}
+                    <ArquivosParaBaixar post={post} />
                   </div>
-                  <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-sm text-ink">
-                    {post.caption || <span className="italic text-ink-muted">Sem legenda.</span>}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <Button variant="secondary" size="sm" onClick={() => abrirEdicao(post)} disabled={salvando !== null}>
-                      <PencilIcon className="h-3.5 w-3.5" />
-                      Editar
-                    </Button>
-                    {post.status === "rascunho" && (
-                      <Button size="sm" onClick={() => enviarRascunho(post)}>
-                        Enviar ao cliente
-                      </Button>
-                    )}
-                    {post.status === "enviado" && (
-                      <Button variant="secondary" size="sm" onClick={() => cancelarEnvio(post)}>
-                        Cancelar envio
-                      </Button>
-                    )}
-                    {post.category === "carrossel" && !posts.some((p) => p.category === "documento") && (
-                      <Button variant="secondary" size="sm" onClick={() => criarVersao(post)} disabled={salvando !== null}>
-                        Criar versão PDF pro LinkedIn
-                      </Button>
-                    )}
-                    {post.category === "documento" && !posts.some((p) => p.category === "carrossel") && (
-                      <Button variant="secondary" size="sm" onClick={() => criarVersao(post)} disabled={salvando !== null}>
-                        Criar versão carrossel pro Instagram
-                      </Button>
-                    )}
-                    <Link
-                      href={`/projetos/${projectId}?aba=posts`}
-                      className="text-xs font-medium text-brand-forte hover:underline"
-                    >
-                      Abrir nos Posts do cliente
-                    </Link>
-                  </div>
-                  {/* Arquivos e capa pra baixar na hora de postar. */}
-                  <ArquivosParaBaixar post={post} />
                 </div>
+                {aberto && <PostAbertoNaTarefa post={post} links={links} conta={projectName} />}
               </li>
             );
           })}
@@ -1012,5 +1041,30 @@ function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => voi
     >
       {children}
     </button>
+  );
+}
+
+// O post aberto na tarefa: o preview da rede, com a imagem, o vídeo (toca ali)
+// ou o carrossel (com as setas), igual aos Posts do cliente.
+function PostAbertoNaTarefa({ post, links, conta }: { post: Post; links: Record<string, string>; conta: string }) {
+  const redes = redesValidas(post.networks);
+  const [rede, setRede] = useState<PostNetwork>(redes[0] ?? "instagram");
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <div className="mx-auto w-full max-w-[380px]">
+        {redes.length > 1 && <SeletorDeRede redes={redes} atual={rede} aoTrocar={setRede} />}
+        <PostPreview
+          rede={redes.includes(rede) ? rede : redes[0] ?? "instagram"}
+          categoria={post.category}
+          legenda={post.caption}
+          midias={post.media.map((m) =>
+            ehDoDrive(m) ? { url: "", tipo: m.type, driveId: m.drive_id } : { url: links[m.path] ?? "", tipo: m.type }
+          )}
+          capa={post.cover ? links[post.cover.path] || null : null}
+          conta={conta}
+          data={post.scheduled_date ? formatarDataBR(post.scheduled_date) : null}
+        />
+      </div>
+    </div>
   );
 }
