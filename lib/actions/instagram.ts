@@ -238,8 +238,11 @@ export async function iniciarPublicacaoNoInstagram(postId: string): Promise<Anda
     const capaUrl = post.cover && !variosStories ? urlDe(post.cover.path) : null;
 
     if (variosStories) {
+      // Até 20 stories: cria de 5 em 5 ao mesmo tempo, mantendo a ordem.
       const containers: string[] = [];
-      for (const m of midias) containers.push(await criarContainerDeStory(igId, m));
+      for (let i = 0; i < midias.length; i += 5) {
+        containers.push(...(await Promise.all(midias.slice(i, i + 5).map((m) => criarContainerDeStory(igId, m)))));
+      }
       const { error: erroAoGuardar } = await admin
         .from("posts_ig_stories")
         .insert(

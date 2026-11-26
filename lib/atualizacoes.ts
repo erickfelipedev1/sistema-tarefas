@@ -14,8 +14,8 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-26",
     area: "Posts",
-    titulo: "Carrossel com até 20 arquivos",
-    texto: "O carrossel agora aceita de 2 a 20 imagens ou vídeos (antes eram 10), como o Instagram passou a permitir. Vale na aba de postagens da tarefa, nos Posts do cliente e na publicação direta no Instagram pelo d.hub. O Story continua com até 10.",
+    titulo: "Carrossel e Story com até 20 arquivos",
+    texto: "O carrossel agora aceita de 2 a 20 imagens ou vídeos (antes eram 10), como o Instagram passou a permitir, e o Story de 1 a 20 (um story por arquivo). Vale na aba de postagens da tarefa, nos Posts do cliente e na publicação direta no Instagram pelo d.hub.",
   },
   {
     data: "2026-11-26",

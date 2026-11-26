@@ -10,8 +10,8 @@ export type TipoDeMidia = PostMedia["type"];
 
 // O que cada categoria aceita de arquivo. Carrossel pode misturar imagem e
 // vídeo, como nas redes, e leva até 20 (o teto do Instagram e do banco,
-// migration 0130); reel é um vídeo só; story aceita de 1 a 10 (cada
-// arquivo é um story);
+// migration 0130); reel é um vídeo só; story aceita de 1 a 20 (cada
+// arquivo é um story, migration 0131);
 // "documento" é um PDF só, o carrossel do LinkedIn (migration 0121).
 export const CATEGORIAS: Record<
   PostCategory,
@@ -62,8 +62,8 @@ export const CATEGORIAS: Record<
     artigo: "um Story",
     aceita: "image/*,video/*",
     minimo: 1,
-    maximo: 10,
-    dica: "De 1 a 10 imagens ou vídeos na vertical (9:16), um por story, na ordem em que vão aparecer. Some em 24 horas.",
+    maximo: 20,
+    dica: "De 1 a 20 imagens ou vídeos na vertical (9:16), um por story, na ordem em que vão aparecer. Some em 24 horas.",
   },
   documento: {
     rotulo: "PDF (LinkedIn)",
