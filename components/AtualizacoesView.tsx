@@ -1,5 +1,6 @@
 "use client";
 
+import { CartaoDoVideoDeNovidades } from "./VideoDeNovidades";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATUALIZACOES, CHAVE_VISTO, ULTIMA_ATUALIZACAO, type AreaDaAtualizacao } from "@/lib/atualizacoes";
 import PedidosDhub from "./PedidosDhub";
@@ -94,6 +95,7 @@ export default function AtualizacoesView({
   return (
     <div>
       {abas}
+      <CartaoDoVideoDeNovidades />
       <div data-mov="topo" className="mb-5 flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por área">
         {(["", ...AREAS] as const).map((a) => (
           <button

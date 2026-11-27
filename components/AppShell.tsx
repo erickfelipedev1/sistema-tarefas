@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar";
 import BotaoAtualizar from "./BotaoAtualizar";
 import Sininho from "./Sininho";
 import BolinhaDeAjuda from "./BolinhaDeAjuda";
+import VideoDeNovidades from "./VideoDeNovidades";
 import { Logo } from "./ui/Logo";
 import { MenuIcon, XIcon } from "./ui/icons";
 import type { Project } from "@/lib/types";
@@ -90,6 +91,8 @@ export default function AppShell({
 
       <div className="conteudo-do-app min-h-screen min-w-0 flex-1 pt-14 lg:pt-0">{children}</div>
       <BolinhaDeAjuda />
+      {/* Vídeo de novidades: abre sozinho uma vez por pessoa (lib/video-de-novidades.ts). */}
+      <VideoDeNovidades euId={currentUserId} />
     </div>
   );
 }
