@@ -193,6 +193,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     link: { rotulo: "Abrir Meu perfil", href: "/conta/perfil" },
   },
   {
+    pergunta: "Dá pra reagir com emoji a um comentário?",
+    resposta:
+      "Dá. Nos comentários da tarefa, clique em Reagir e escolha 👍 ❤️ 😂 😮 😢 ou 🙏. As reações aparecem embaixo do comentário com a contagem; passe o mouse pra ver quem reagiu. Clique de novo no seu emoji pra tirar.",
+    palavras: ["reagir", "reação", "emoji", "curtir", "comentário", "like", "joinha"],
+  },
+  {
     pergunta: "Como menciono alguém?",
     resposta:
       "Digite @ na descrição, nos comentários, no chat ou na resposta ao cliente e escolha a pessoa (ou @Todos). Quem é citado recebe aviso no sininho e no celular.",

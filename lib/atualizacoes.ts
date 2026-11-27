@@ -13,6 +13,18 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-27",
+    area: "Tarefas",
+    titulo: "Reagir com emoji aos comentários",
+    texto: "Nos comentários da tarefa, o Reagir põe 👍 ❤️ 😂 😮 😢 ou 🙏, como no WhatsApp. As reações aparecem embaixo do comentário com a contagem, e passar o mouse mostra quem reagiu.",
+  },
+  {
+    data: "2026-11-27",
+    area: "Sistema",
+    titulo: "Vídeo com as novidades da semana",
+    texto: "Um vídeo curto mostra o que mudou no d.hub de 23 a 27/11. Ele abre sozinho uma vez pra cada pessoa e fica no topo desta página pra rever quando quiser.",
+  },
+  {
+    data: "2026-11-27",
     area: "Sistema",
     titulo: "Compartilhar página da Wiki",
     texto: "Na página da Wiki que você criou, o botão Compartilhar convida pessoas da equipe, cada uma com Pode editar ou Só ver. Quem recebe é avisado no sininho e acha a página em Compartilhadas comigo. As suas páginas continuam só suas até você compartilhar (agora isso vale também no banco de dados).",

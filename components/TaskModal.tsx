@@ -12,6 +12,8 @@ import { enviarAnexoParaODrive, LIMITE_DO_SUPABASE } from "@/lib/drive-upload";
 import { descartarAnexoDoDrive } from "@/lib/actions/drive";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ehEmojiDeReacao, type EmojiDeReacao, type Reacao } from "@/lib/reacoes";
+import { ChipsDeReacao, PaletaDeReacoes } from "./ReacoesDoComentario";
 import { createClient } from "@/lib/supabase/client";
 import type {
   ChecklistItem,
@@ -1867,6 +1869,10 @@ function ComentariosTab({
   const [escolhidosEdicao, setEscolhidosEdicao] = useState<string[]>([]);
   // Comentário a que o próximo envio responde (migration 0112).
   const [respondendoA, setRespondendoA] = useState<TaskComment | null>(null);
+  // Reações com emoji (migration 0135) e o comentário com a paleta aberta.
+  const [reacoes, setReacoes] = useState<Reacao[]>([]);
+  const [reagindoEm, setReagindoEm] = useState<string | null>(null);
+  const idsDosComentarios = comentarios.map((c) => c.id).join(",");
   // Ao clicar em "Responder", o cursor vai pra caixa de texto.
   useEffect(() => {
     if (respondendoA) document.querySelector<HTMLElement>('[aria-label="Novo comentário"]')?.focus();
@@ -1934,6 +1940,91 @@ function ComentariosTab({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
+
+  // Reações dos comentários desta tarefa: carrega quando a lista muda e
+  // acompanha em tempo real (sem a migration 0135, fica sem reações).
+  useEffect(() => {
+    const ids = idsDosComentarios ? idsDosComentarios.split(",") : [];
+    if (ids.length === 0) {
+      setReacoes([]);
+      return;
+    }
+    let ativo = true;
+    supabase
+      .from("task_comment_reactions")
+      .select("comment_id, profile_id, emoji")
+      .in("comment_id", ids)
+      .then(({ data, error }) => {
+        if (!ativo || error) return;
+        setReacoes(((data ?? []) as Reacao[]).filter((r) => ehEmojiDeReacao(r.emoji)));
+      });
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsDosComentarios]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`reacoes-${taskId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_comment_reactions" }, (payload) => {
+        const mesma = (a: Reacao, b: Partial<Reacao>) =>
+          a.comment_id === b.comment_id && a.profile_id === b.profile_id && a.emoji === b.emoji;
+        if (payload.eventType === "INSERT") {
+          const nova = payload.new as Reacao;
+          if (!ehEmojiDeReacao(nova.emoji)) return;
+          setReacoes((atual) =>
+            // Só as dos comentários que estão na tela.
+            !idsAtuais.current.has(nova.comment_id) || atual.some((r) => mesma(r, nova)) ? atual : [...atual, nova]
+          );
+        }
+        if (payload.eventType === "DELETE") {
+          const velha = payload.old as Partial<Reacao>;
+          setReacoes((atual) => atual.filter((r) => !mesma(r, velha)));
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId]);
+  const idsAtuais = useRef<Set<string>>(new Set());
+  idsAtuais.current = new Set(comentarios.map((c) => c.id));
+
+  // Põe ou tira a minha reação (na tela na hora; volta se o banco recusar).
+  async function alternarReacao(comentarioId: string, emoji: EmojiDeReacao) {
+    if (!euId) return;
+    const minha: Reacao = { comment_id: comentarioId, profile_id: euId, emoji };
+    const jaTem = reacoes.some((r) => r.comment_id === comentarioId && r.profile_id === euId && r.emoji === emoji);
+    setReacoes((atual) =>
+      jaTem
+        ? atual.filter((r) => !(r.comment_id === comentarioId && r.profile_id === euId && r.emoji === emoji))
+        : [...atual, minha]
+    );
+    const { error } = jaTem
+      ? await supabase
+          .from("task_comment_reactions")
+          .delete()
+          .eq("comment_id", comentarioId)
+          .eq("profile_id", euId)
+          .eq("emoji", emoji)
+      : await supabase.from("task_comment_reactions").insert(minha);
+    // Chave repetida = já estava lá (outra aba): fica como está.
+    if (error && error.code !== "23505") {
+      setReacoes((atual) =>
+        jaTem
+          ? [...atual, minha]
+          : atual.filter((r) => !(r.comment_id === comentarioId && r.profile_id === euId && r.emoji === emoji))
+      );
+      window.alert("Não deu pra salvar a reação. Tente de novo.");
+    }
+  }
+
+  const nomeDaPessoa = (id: string) => {
+    const p = pessoas.find((x) => x.id === id);
+    return (p ? p.name?.trim() || p.username : null) || "Alguém";
+  };
 
   async function salvarEdicao(c: TaskComment) {
     const texto = textoEditado.trim();
@@ -2100,6 +2191,14 @@ function ComentariosTab({
                 <div className="flex gap-2 text-[11px] text-ink-muted">
                   <button
                     type="button"
+                    onClick={() => setReagindoEm((atual) => (atual === c.id ? null : c.id))}
+                    aria-expanded={reagindoEm === c.id}
+                    className="hover:text-ink hover:underline"
+                  >
+                    Reagir
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setRespondendoA(c)}
                     className="hover:text-ink hover:underline"
                   >
@@ -2126,6 +2225,21 @@ function ComentariosTab({
                 </div>
               )}
             </div>
+            <ChipsDeReacao
+              reacoes={reacoes.filter((r) => r.comment_id === c.id)}
+              euId={euId}
+              nomeDe={nomeDaPessoa}
+              aoAlternar={(emoji) => alternarReacao(c.id, emoji)}
+            />
+            {reagindoEm === c.id && (
+              <PaletaDeReacoes
+                minhas={reacoes.filter((r) => r.comment_id === c.id && r.profile_id === euId).map((r) => r.emoji)}
+                aoEscolher={(emoji) => {
+                  alternarReacao(c.id, emoji);
+                  setReagindoEm(null);
+                }}
+              />
+            )}
           </div>
           );
         })}
