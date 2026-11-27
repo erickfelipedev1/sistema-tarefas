@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { VIDEO_DE_NOVIDADES, videoDeNovidadesNoAr } from "@/lib/video-de-novidades";
@@ -86,15 +86,7 @@ export default function VideoDeNovidades({ euId }: { euId: string }) {
             <XIcon className="h-5 w-5" />
           </button>
         </div>
-        <video
-          src={v.src}
-          poster={v.capa}
-          controls
-          autoPlay
-          muted
-          playsInline
-          className="block aspect-video w-full bg-black"
-        />
+        <VideoComSom src={v.src} capa={v.capa} />
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs text-ink-muted sm:px-5">
           <span>Pra rever depois, o vídeo fica em Atualizações.</span>
           <Link
@@ -106,6 +98,52 @@ export default function VideoDeNovidades({ euId }: { euId: string }) {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+// O vídeo tem música: tenta tocar com som. Se o navegador não deixar (sem
+// clique antes na página), toca mudo e mostra o botão de ativar o som.
+function VideoComSom({ src, capa }: { src: string; capa: string }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [mudo, setMudo] = useState(false);
+
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    el.muted = false;
+    el.play().catch(() => {
+      el.muted = true;
+      setMudo(true);
+      el.play().catch(() => {});
+    });
+  }, []);
+
+  return (
+    <div className="relative">
+      <video
+        ref={video}
+        src={src}
+        poster={capa}
+        controls
+        playsInline
+        onVolumeChange={(e) => setMudo(e.currentTarget.muted)}
+        className="block aspect-video w-full bg-black"
+      />
+      {mudo && (
+        <button
+          type="button"
+          onClick={() => {
+            const el = video.current;
+            if (!el) return;
+            el.muted = false;
+            el.play().catch(() => {});
+          }}
+          className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-navy shadow-dropdown hover:bg-brand-hover"
+        >
+          🔊 Ativar som
+        </button>
+      )}
     </div>
   );
 }
