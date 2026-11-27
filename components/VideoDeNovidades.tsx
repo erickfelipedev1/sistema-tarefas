@@ -86,7 +86,7 @@ export default function VideoDeNovidades({ euId }: { euId: string }) {
             <XIcon className="h-5 w-5" />
           </button>
         </div>
-        <VideoComSom src={v.src} capa={v.capa} />
+        <VideoComSom src={v.src} capa={v.capa} autoPlay />
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs text-ink-muted sm:px-5">
           <span>Pra rever depois, o vídeo fica em Atualizações.</span>
           <Link
@@ -102,22 +102,28 @@ export default function VideoDeNovidades({ euId }: { euId: string }) {
   );
 }
 
-// O vídeo tem música: tenta tocar com som. Se o navegador não deixar (sem
-// clique antes na página), toca mudo e mostra o botão de ativar o som.
-function VideoComSom({ src, capa }: { src: string; capa: string }) {
+// O vídeo tem música. Na janela ele começa a tocar mudo (assim todo
+// navegador deixa tocar sozinho) com o botão grande "Ative o som", que liga o
+// som e volta pro começo. No cartão de Atualizações o botão também dá o play.
+function VideoComSom({ src, capa, autoPlay = false }: { src: string; capa: string; autoPlay?: boolean }) {
   const video = useRef<HTMLVideoElement>(null);
-  const [mudo, setMudo] = useState(false);
+  const [mudo, setMudo] = useState(true);
 
   useEffect(() => {
     const el = video.current;
     if (!el) return;
+    el.muted = true;
+    if (autoPlay) el.play().catch(() => {});
+  }, [autoPlay]);
+
+  function ativarSom() {
+    const el = video.current;
+    if (!el) return;
     el.muted = false;
-    el.play().catch(() => {
-      el.muted = true;
-      setMudo(true);
-      el.play().catch(() => {});
-    });
-  }, []);
+    el.volume = 1;
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  }
 
   return (
     <div className="relative">
@@ -127,21 +133,18 @@ function VideoComSom({ src, capa }: { src: string; capa: string }) {
         poster={capa}
         controls
         playsInline
+        muted
+        preload={autoPlay ? "auto" : "metadata"}
         onVolumeChange={(e) => setMudo(e.currentTarget.muted)}
         className="block aspect-video w-full bg-black"
       />
       {mudo && (
         <button
           type="button"
-          onClick={() => {
-            const el = video.current;
-            if (!el) return;
-            el.muted = false;
-            el.play().catch(() => {});
-          }}
-          className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-navy shadow-dropdown hover:bg-brand-hover"
+          onClick={ativarSom}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 rounded-full bg-brand px-6 py-3 text-base font-bold text-navy shadow-dropdown ring-4 ring-black/30 transition-transform hover:scale-105 hover:bg-brand-hover"
         >
-          🔊 Ativar som
+          🔊 Ative o som
         </button>
       )}
     </div>
@@ -157,7 +160,7 @@ export function CartaoDoVideoDeNovidades() {
         <p className="text-sm font-semibold text-ink">Vídeo: {v.titulo.toLowerCase()}</p>
         <p className="text-xs text-ink-muted">{v.periodo}</p>
       </div>
-      <video src={v.src} poster={v.capa} controls playsInline preload="none" className="block aspect-video w-full bg-black" />
+      <VideoComSom src={v.src} capa={v.capa} />
     </section>
   );
 }
