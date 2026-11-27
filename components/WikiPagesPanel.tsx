@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "./ui/PageHeader";
 import { SearchInput } from "./ui/SearchInput";
 import { EmptyState } from "./ui/EmptyState";
-import { BookOpenIcon, PinIcon } from "./ui/icons";
+import { BookOpenIcon, PinIcon, UsersIcon } from "./ui/icons";
 import NewPageButton from "./NewPageButton";
 import DeletePageButton from "./DeletePageButton";
 import FixarPaginaButton from "./FixarPaginaButton";
@@ -16,10 +16,13 @@ const MAX_RECENTES = 6;
 
 export default function WikiPagesPanel({
   pages,
+  compartilhadas = [],
   title,
   subtitle,
 }: {
   pages: PaginaResumo[];
+  // Páginas que outras pessoas compartilharam comigo (migration 0133).
+  compartilhadas?: PaginaResumo[];
   title: string;
   subtitle: string;
 }) {
@@ -32,6 +35,10 @@ export default function WikiPagesPanel({
       (p.title || "Sem título").toLowerCase().includes(termo)
     );
   }, [pages, termo]);
+  const compartilhadasFiltradas = useMemo(
+    () => (termo ? compartilhadas.filter((p) => (p.title || "Sem título").toLowerCase().includes(termo)) : compartilhadas),
+    [compartilhadas, termo]
+  );
 
   const fixadas = useMemo(() => pages.filter((p) => p.pinned_at), [pages]);
   const naoFixadas = useMemo(() => pages.filter((p) => !p.pinned_at), [pages]);
@@ -46,7 +53,7 @@ export default function WikiPagesPanel({
 
   // Nenhuma página existe ainda: estado vazio profissional, sem listas ou
   // seções pela metade.
-  if (pages.length === 0) {
+  if (pages.length === 0 && compartilhadas.length === 0) {
     return (
       <div>
         <PageHeader title={title} subtitle={subtitle} />
@@ -109,18 +116,21 @@ export default function WikiPagesPanel({
         </section>
       )}
 
+      {(pages.length > 0 || termo) && (
       <section>
         <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          {termo ? `Resultados (${paginasFiltradas.length})` : fixadas.length > 0 ? "Outras páginas" : "Todas as páginas"}
+          {termo ? `Resultados (${paginasFiltradas.length + compartilhadasFiltradas.length})` : fixadas.length > 0 ? "Outras páginas" : "Todas as páginas"}
         </h2>
 
         {paginasFiltradas.length === 0 ? (
+          termo && compartilhadasFiltradas.length > 0 ? null : (
           <div className="rounded-2xl border border-line bg-surface">
             <EmptyState
               title="Nenhuma página encontrada"
               description="Tente buscar por outro termo."
             />
           </div>
+          )
         ) : (
           <div data-mov="card" className="divide-y divide-line rounded-2xl border border-line bg-surface">
             {(termo ? paginasFiltradas : naoFixadas).map((p) => (
@@ -129,6 +139,33 @@ export default function WikiPagesPanel({
           </div>
         )}
       </section>
+      )}
+
+      {compartilhadasFiltradas.length > 0 && (
+        <section className={pages.length > 0 || termo ? "mt-6" : ""}>
+          <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Compartilhadas comigo</h2>
+          <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
+            {compartilhadasFiltradas.map((p) => (
+              <Link
+                key={p.id}
+                href={`/wiki/${p.id}`}
+                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-hover"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-ink">
+                  <UsersIcon className="h-3.5 w-3.5 flex-shrink-0 text-ink-muted" />
+                  <span className="truncate">{p.title || "Sem título"}</span>
+                  {p.pode_editar === false && (
+                    <span className="flex-shrink-0 rounded-full bg-surface-hover px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+                      só ver
+                    </span>
+                  )}
+                </span>
+                <span className="hidden flex-shrink-0 whitespace-nowrap text-xs text-ink-muted sm:block">{metaTexto(p)}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

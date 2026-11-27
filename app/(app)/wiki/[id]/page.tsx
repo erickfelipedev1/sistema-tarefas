@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { clienteDaRequisicao, usuarioAtual } from "@/lib/sessao";
-import { getMinhasPaginas } from "@/lib/wiki";
-import PageEditor from "@/components/PageEditor";
+import { getCompartilhadasComigo, getMinhasPaginas } from "@/lib/wiki";
+import PageEditor from "@/components/PageEditorNoNavegador";
 import WikiSidebar from "@/components/WikiSidebar";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 
@@ -34,8 +34,32 @@ export default async function WikiDocPage({
   // da Wiki só lista páginas "gerais" (sem projeto), então não faz sentido
   // mostrá-la aqui — quem volta, volta pro próprio projeto.
   const ehPaginaDeProjeto = !!page.project_id;
+  const ehDono = !!user?.id && page.created_by === user.id;
 
-  const pages = ehPaginaDeProjeto ? [] : await getMinhasPaginas(supabase, user?.id);
+  // Compartilhamento (migration 0133): quem recebeu com "só ver" abre a
+  // página sem editar; quem criou a página pessoal escolhe com quem dividir.
+  let podeEditar = ehPaginaDeProjeto || ehDono || !!tarefaVinculada;
+  if (!podeEditar && user?.id) {
+    const { data: meuAcesso } = await supabase
+      .from("pages_compartilhadas")
+      .select("pode_editar")
+      .eq("page_id", id)
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    podeEditar = meuAcesso?.pode_editar === true;
+  }
+  let quantasCompartilhadas = 0;
+  if (ehDono && !ehPaginaDeProjeto) {
+    const { count } = await supabase
+      .from("pages_compartilhadas")
+      .select("page_id", { count: "exact", head: true })
+      .eq("page_id", id);
+    quantasCompartilhadas = count ?? 0;
+  }
+
+  const [pages, compartilhadas] = ehPaginaDeProjeto
+    ? [[], []]
+    : await Promise.all([getMinhasPaginas(supabase, user?.id), getCompartilhadasComigo(supabase, user?.id)]);
 
   const voltarHref = ehPaginaDeProjeto ? `/projetos/${page.project_id}` : "/wiki";
   const voltarLabel = ehPaginaDeProjeto ? "Voltar para o cliente" : "Wiki";
@@ -44,7 +68,7 @@ export default async function WikiDocPage({
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex gap-6">
         {!ehPaginaDeProjeto && (
-          <WikiSidebar pages={pages} activePageId={page.id} />
+          <WikiSidebar pages={pages} compartilhadas={compartilhadas} activePageId={page.id} />
         )}
 
         <div className="min-w-0 flex-1">
@@ -78,7 +102,12 @@ export default async function WikiDocPage({
               )}
             </div>
 
-            <PageEditor key={page.id} page={page} />
+            <PageEditor
+              key={page.id}
+              page={page}
+              somenteLeitura={!podeEditar}
+              compartilhar={ehDono && !ehPaginaDeProjeto && user?.id ? { euId: user.id, quantas: quantasCompartilhadas } : null}
+            />
           </div>
         </div>
       </div>

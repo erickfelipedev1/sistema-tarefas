@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-27",
     area: "Sistema",
+    titulo: "Compartilhar página da Wiki",
+    texto: "Na página da Wiki que você criou, o botão Compartilhar convida pessoas da equipe, cada uma com Pode editar ou Só ver. Quem recebe é avisado no sininho e acha a página em Compartilhadas comigo. As suas páginas continuam só suas até você compartilhar (agora isso vale também no banco de dados).",
+  },
+  {
+    data: "2026-11-27",
+    area: "Sistema",
     titulo: "Tempo médio de execução mais justo",
     texto: "No Painel, o tempo médio agora conta de quando a tarefa vai pra Em andamento até Concluída, sem o tempo que ela ficou esperando pra começar (antes contava desde a criação). Vale pras tarefas concluídas a partir de hoje. E o quadro de Demandas do cartão Eficiência só aparece quando você tem demanda no período.",
   },

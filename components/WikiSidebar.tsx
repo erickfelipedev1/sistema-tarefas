@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileTextIcon, PinIcon } from "./ui/icons";
+import { FileTextIcon, PinIcon, UsersIcon } from "./ui/icons";
 import type { PaginaResumo } from "@/lib/wiki";
 
 // Navegação interna da Wiki: uma lista simples e real das páginas (sem
@@ -7,9 +7,12 @@ import type { PaginaResumo } from "@/lib/wiki";
 // escondida abaixo de "lg" (a lista principal já mostra tudo em mobile).
 export default function WikiSidebar({
   pages,
+  compartilhadas = [],
   activePageId,
 }: {
   pages: PaginaResumo[];
+  // Compartilhadas comigo por outras pessoas (migration 0133).
+  compartilhadas?: PaginaResumo[];
   activePageId?: string;
 }) {
   return (
@@ -46,6 +49,30 @@ export default function WikiSidebar({
             );
           })}
         </nav>
+        {compartilhadas.length > 0 && (
+          <>
+            <p className="mb-2 mt-5 px-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Compartilhadas comigo
+            </p>
+            <nav className="space-y-0.5">
+              {compartilhadas.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/wiki/${p.id}`}
+                  title={p.created_by_label ? `De ${p.created_by_label}` : undefined}
+                  className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                    p.id === activePageId
+                      ? "bg-brand/10 font-medium text-brand-forte"
+                      : "text-ink-muted hover:bg-surface-hover hover:text-ink"
+                  }`}
+                >
+                  <UsersIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="truncate">{p.title || "Sem título"}</span>
+                </Link>
+              ))}
+            </nav>
+          </>
+        )}
       </div>
     </aside>
   );

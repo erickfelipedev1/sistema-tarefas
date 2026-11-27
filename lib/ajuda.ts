@@ -104,6 +104,13 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["filtro", "filtrar", "cliente", "tarefas por cliente"],
   },
   {
+    pergunta: "Como compartilho uma página da Wiki com alguém?",
+    resposta:
+      "Abra a página e clique em Compartilhar (aparece nas páginas que você criou). Marque as pessoas e escolha, pra cada uma, Pode editar ou Só ver. Elas são avisadas no sininho e a página aparece na Wiki delas, em Compartilhadas comigo. Pra tirar alguém, é só desmarcar. Sem compartilhar, só você vê as suas páginas. Se duas pessoas editam ao mesmo tempo, o d.hub avisa antes de gravar por cima do que a outra escreveu.",
+    palavras: ["compartilhar", "wiki", "nota", "convidar", "dividir", "página", "compartilhadas comigo", "só ver"],
+    link: { rotulo: "Abrir a Wiki", href: "/wiki" },
+  },
+  {
     pergunta: "Como fixo uma página da Wiki?",
     resposta:
       "Na Minha Wiki (e na Wiki de cada cliente), passe o mouse na página e clique no alfinete. As fixadas ficam no topo, na seção \"Fixadas\"; clique de novo pra soltar.",

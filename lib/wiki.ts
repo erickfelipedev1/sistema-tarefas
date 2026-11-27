@@ -8,6 +8,26 @@ export interface PaginaResumo {
   // Quando foi fixada em destaque (migration 0054), na Wiki do cliente ou na
   // Minha Wiki; nulo ou ausente = não fixada.
   pinned_at?: string | null;
+  // Página que outra pessoa compartilhou comigo (migration 0133): posso editar?
+  pode_editar?: boolean;
+}
+
+// As páginas que outras pessoas compartilharam comigo (migration 0133), da
+// mais recém atualizada pra mais antiga. Sem a migration, lista vazia.
+export async function getCompartilhadasComigo(
+  supabase: SupabaseClient,
+  userId: string | undefined
+): Promise<PaginaResumo[]> {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("pages_compartilhadas")
+    .select("pode_editar, pages(id, title, created_by_label, updated_at)")
+    .eq("profile_id", userId);
+  if (error || !data) return [];
+  return (data as unknown as { pode_editar: boolean; pages: PaginaResumo | null }[])
+    .filter((c) => c.pages)
+    .map((c) => ({ ...(c.pages as PaginaResumo), pode_editar: c.pode_editar }))
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
 // A Wiki do menu é o bloco de notas pessoal de cada um: só entram as páginas
