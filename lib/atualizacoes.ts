@@ -14,6 +14,12 @@ export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-27",
     area: "Tarefas",
+    titulo: "Aviso quando a subtarefa é concluída",
+    texto: "Quando uma subtarefa vai pra Concluída, quem criou a tarefa principal e os responsáveis dela recebem aviso no sininho, com o nome da subtarefa e de quem concluiu. O clique abre a tarefa principal.",
+  },
+  {
+    data: "2026-11-27",
+    area: "Tarefas",
     titulo: "Reagir com emoji aos comentários",
     texto: "Nos comentários da tarefa, o Reagir põe 👍 ❤️ 😂 😮 😢 ou 🙏, como no WhatsApp. As reações aparecem embaixo do comentário com a contagem, e passar o mouse mostra quem reagiu.",
   },

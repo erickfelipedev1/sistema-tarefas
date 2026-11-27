@@ -83,7 +83,7 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como faço uma subtarefa?",
     resposta:
-      "Abra a tarefa e vá em Subtarefas. Ao adicionar, já dá pra escolher o responsável, o início, a entrega (já vem com a entrega da tarefa principal) e o horário. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. O agente de IA também cria subtarefas: \"divide a tarefa X em subtarefas...\". Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o título da tarefa original logo abaixo do título dela (clique nele pra abrir a original).",
+      "Abra a tarefa e vá em Subtarefas. Ao adicionar, já dá pra escolher o responsável, o início, a entrega (já vem com a entrega da tarefa principal) e o horário. Cada subtarefa é uma tarefa completa, com responsável, datas, checklist e comentários. O agente de IA também cria subtarefas: \"divide a tarefa X em subtarefas...\". Quando uma subtarefa é concluída, quem criou a tarefa principal e os responsáveis dela recebem aviso no sininho. Quem é responsável por ela vê a subtarefa como um cartão próprio em Minhas tarefas, com o título da tarefa original logo abaixo do título dela (clique nele pra abrir a original).",
     palavras: ["subtarefa", "sub", "dividir tarefa", "tarefa filha"],
   },
   {
