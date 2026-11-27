@@ -9,6 +9,8 @@ export interface TarefaMetrica {
   due_date: string | null;
   created_at: string;
   completed_at: string | null;
+  // Início da execução (migration 0132): quando entrou em "Em andamento".
+  iniciada_em?: string | null;
   project_id: string | null;
   created_by?: string | null;
   created_by_label?: string | null;
@@ -47,6 +49,8 @@ export interface Painel {
   noPrazo: number;
   taxaNoPrazo: number | null; // 0..1, null = nenhuma concluída com prazo
   tempoMedioDias: number | null;
+  // Quantas concluídas do período entraram no tempo médio (as que têm início).
+  tempoMedioBase: number;
   semDataDeConclusao: number; // concluídas antigas, sem completed_at
   abertas: number;
   emAndamento: number;
@@ -74,9 +78,12 @@ export function calcularPainel(
   const comPrazo = doPeriodo.filter((t) => t.due_date);
   const noPrazo = comPrazo.filter((t) => diaSP(t.completed_at!) <= t.due_date!).length;
 
-  const duracoes = doPeriodo.map(
-    (t) => (new Date(t.completed_at!).getTime() - new Date(t.created_at).getTime()) / DIA_MS
-  );
+  // Tempo de execução: de "Em andamento" até "Concluída" (iniciada_em,
+  // migration 0132), sem o tempo que a tarefa ficou esperando pra começar.
+  // Concluídas antes do d.hub registrar o início ficam de fora.
+  const duracoes = doPeriodo
+    .filter((t) => t.iniciada_em)
+    .map((t) => (new Date(t.completed_at!).getTime() - new Date(t.iniciada_em!).getTime()) / DIA_MS);
   const tempoMedioDias = duracoes.length
     ? duracoes.reduce((a, b) => a + Math.max(0, b), 0) / duracoes.length
     : null;
@@ -115,6 +122,7 @@ export function calcularPainel(
     noPrazo,
     taxaNoPrazo: comPrazo.length ? noPrazo / comPrazo.length : null,
     tempoMedioDias,
+    tempoMedioBase: duracoes.length,
     semDataDeConclusao: tarefas.filter((t) => t.status === "done" && !t.completed_at).length,
     abertas: abertasLista.length,
     emAndamento: abertasLista.filter((t) => t.status === "doing" || t.status === "approval").length,

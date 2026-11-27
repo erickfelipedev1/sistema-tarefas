@@ -6,13 +6,15 @@ import { linkDoArquivo } from "@/lib/arquivos";
 import { nomeSeguro } from "@/lib/nome-arquivo";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
-import { ImageIcon, SendIcon, Trash2Icon, XIcon } from "./ui/icons";
+import { ImageIcon, PencilIcon, SendIcon, Trash2Icon, XIcon } from "./ui/icons";
 
 const BUCKET = "pedido-imagens";
 const MAX_IMAGENS = 10;
 
 // Pedidos de alteração no d.hub (migration 0088). As regras de quem aprova e
 // quem faz moram no banco; a tela só mostra os botões de quem pode.
+// Quem pediu edita o pedido até alguém começar (aguardando ou aprovado,
+// migration 0132); a edição fica marcada e avisa quem faz.
 type StatusDoPedido = "aguardando" | "aprovado" | "recusado" | "em_andamento" | "feito";
 
 interface Pedido {
@@ -27,13 +29,155 @@ interface Pedido {
   decidido_em: string | null;
   feito_em: string | null;
   created_at: string;
+  updated_at?: string;
   // Prints e exemplos (migration 0089): caminhos no bucket "pedido-imagens".
   imagens?: string[];
+  // Quem pediu editou depois de enviar (migration 0132).
+  editado_em?: string | null;
 }
 
 interface ImagemNova {
   caminho: string;
   previa: string;
+  // Já estava no pedido (na edição): só sai do bucket depois de salvar.
+  existente?: boolean;
+}
+
+// As imagens de um formulário de pedido (o novo e o de edição): cada imagem
+// sobe na hora, na pasta de quem envia; o pedido guarda os caminhos.
+function useImagensDoPedido(euId: string, avisar: (m: string | null) => void, iniciais: ImagemNova[] = []) {
+  const supabase = createClient();
+  const [imagens, setImagens] = useState<ImagemNova[]>(iniciais);
+  const [subindo, setSubindo] = useState(0);
+
+  async function adicionar(arquivos: File[]) {
+    const validas = arquivos.filter((a) => a.type.startsWith("image/"));
+    if (validas.length === 0) return;
+    const cabem = MAX_IMAGENS - imagens.length - subindo;
+    if (cabem <= 0) return avisar(`No máximo ${MAX_IMAGENS} imagens por pedido.`);
+    const lote = validas.slice(0, cabem);
+    avisar(validas.length > cabem ? `No máximo ${MAX_IMAGENS} imagens por pedido: entraram ${cabem}.` : null);
+    setSubindo((n) => n + lote.length);
+    for (const arquivo of lote) {
+      if (arquivo.size > 10 * 1024 * 1024) {
+        avisar(`"${arquivo.name}" passa de 10 MB.`);
+        setSubindo((n) => n - 1);
+        continue;
+      }
+      const nome = arquivo.name && arquivo.name !== "image.png" ? arquivo.name : `print.${arquivo.type.split("/")[1] || "png"}`;
+      const caminho = `${euId}/${Date.now()}-${nomeSeguro(nome)}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(caminho, arquivo, { contentType: arquivo.type });
+      setSubindo((n) => n - 1);
+      if (error) {
+        avisar(`Não deu pra enviar a imagem: ${error.message}`);
+        continue;
+      }
+      setImagens((atual) => [...atual, { caminho, previa: URL.createObjectURL(arquivo) }]);
+    }
+  }
+
+  // A que subiu agora sai do bucket na hora; a que já estava no pedido só
+  // sai quando a edição for salva.
+  async function tirar(img: ImagemNova) {
+    setImagens((atual) => atual.filter((i) => i.caminho !== img.caminho));
+    if (img.existente) return;
+    URL.revokeObjectURL(img.previa);
+    await supabase.storage.from(BUCKET).remove([img.caminho]);
+  }
+
+  function colar(e: React.ClipboardEvent) {
+    const arquivos = Array.from(e.clipboardData.files ?? []).filter((a) => a.type.startsWith("image/"));
+    if (arquivos.length === 0) return;
+    e.preventDefault();
+    adicionar(arquivos);
+  }
+
+  // Formulário enviado: solta as prévias locais.
+  function esvaziar() {
+    for (const i of imagens) if (!i.existente) URL.revokeObjectURL(i.previa);
+    setImagens([]);
+  }
+
+  return { imagens, subindo, adicionar, tirar, colar, esvaziar };
+}
+
+// Miniaturas das imagens do formulário + o botão de adicionar.
+function ImagensDoForm({
+  imagens,
+  subindo,
+  aoAdicionar,
+  aoTirar,
+  children,
+}: {
+  imagens: ImagemNova[];
+  subindo: number;
+  aoAdicionar: (arquivos: File[]) => void;
+  aoTirar: (img: ImagemNova) => void;
+  children?: React.ReactNode;
+}) {
+  const seletor = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      {(imagens.length > 0 || subindo > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {imagens.map((img) => (
+            <div key={img.caminho} className="relative h-20 w-20 overflow-hidden rounded-lg border border-line bg-canvas">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.previa} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => aoTirar(img)}
+                aria-label="Tirar imagem"
+                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+              >
+                <XIcon className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+          {Array.from({ length: subindo }, (_, i) => (
+            <div key={`subindo-${i}`} className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-line text-[10px] text-ink-muted">
+              Enviando...
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={() => seletor.current?.click()} disabled={imagens.length + subindo >= MAX_IMAGENS}>
+          <ImageIcon className="h-3.5 w-3.5" />
+          Adicionar imagens
+        </Button>
+        <input
+          ref={seletor}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            const arquivos = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            aoAdicionar(arquivos);
+          }}
+        />
+        {children}
+      </div>
+    </>
+  );
+}
+
+// Soltar arquivos de imagem em cima do formulário.
+function soltarImagens(aoAdicionar: (arquivos: File[]) => void) {
+  return {
+    onDragOver: (e: React.DragEvent) => {
+      if (Array.from(e.dataTransfer.items).some((i) => i.kind === "file")) e.preventDefault();
+    },
+    onDrop: (e: React.DragEvent) => {
+      const arquivos = Array.from(e.dataTransfer.files ?? []);
+      if (arquivos.some((a) => a.type.startsWith("image/"))) {
+        e.preventDefault();
+        aoAdicionar(arquivos);
+      }
+    },
+  };
 }
 
 const STATUS: Record<StatusDoPedido, { rotulo: string; classe: string }> = {
@@ -83,49 +227,8 @@ export default function PedidosDhub({
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [verFeitos, setVerFeitos] = useState(false);
-  const [imagens, setImagens] = useState<ImagemNova[]>([]);
-  const [subindo, setSubindo] = useState(0);
-  const seletor = useRef<HTMLInputElement>(null);
-
-  // Cada imagem sobe na hora (pasta de quem envia); o pedido guarda os caminhos.
-  async function adicionarImagens(arquivos: File[]) {
-    const validas = arquivos.filter((a) => a.type.startsWith("image/"));
-    if (validas.length === 0) return;
-    const cabem = MAX_IMAGENS - imagens.length - subindo;
-    if (cabem <= 0) return setAviso(`No máximo ${MAX_IMAGENS} imagens por pedido.`);
-    const lote = validas.slice(0, cabem);
-    setAviso(validas.length > cabem ? `No máximo ${MAX_IMAGENS} imagens por pedido: entraram ${cabem}.` : null);
-    setSubindo((n) => n + lote.length);
-    for (const arquivo of lote) {
-      if (arquivo.size > 10 * 1024 * 1024) {
-        setAviso(`"${arquivo.name}" passa de 10 MB.`);
-        setSubindo((n) => n - 1);
-        continue;
-      }
-      const nome = arquivo.name && arquivo.name !== "image.png" ? arquivo.name : `print.${arquivo.type.split("/")[1] || "png"}`;
-      const caminho = `${euId}/${Date.now()}-${nomeSeguro(nome)}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(caminho, arquivo, { contentType: arquivo.type });
-      setSubindo((n) => n - 1);
-      if (error) {
-        setAviso(`Não deu pra enviar a imagem: ${error.message}`);
-        continue;
-      }
-      setImagens((atual) => [...atual, { caminho, previa: URL.createObjectURL(arquivo) }]);
-    }
-  }
-
-  async function tirarImagem(img: ImagemNova) {
-    setImagens((atual) => atual.filter((i) => i.caminho !== img.caminho));
-    URL.revokeObjectURL(img.previa);
-    await supabase.storage.from(BUCKET).remove([img.caminho]);
-  }
-
-  function colarImagem(e: React.ClipboardEvent) {
-    const arquivos = Array.from(e.clipboardData.files ?? []).filter((a) => a.type.startsWith("image/"));
-    if (arquivos.length === 0) return;
-    e.preventDefault();
-    adicionarImagens(arquivos);
-  }
+  const { imagens, subindo, adicionar: adicionarImagens, tirar: tirarImagem, colar: colarImagem, esvaziar } =
+    useImagensDoPedido(euId, setAviso);
 
   useEffect(() => {
     let ativo = true;
@@ -188,8 +291,7 @@ export default function PedidosDhub({
     setPedidos((atual) => (atual.some((p) => p.id === novo.id) ? atual : [novo, ...atual]));
     setTitulo("");
     setDescricao("");
-    imagens.forEach((i) => URL.revokeObjectURL(i.previa));
-    setImagens([]);
+    esvaziar();
     setAviso(
       novo.status === "aprovado"
         ? "Pedido enviado e já aprovado. Foi pro Erick fazer."
@@ -206,6 +308,24 @@ export default function PedidosDhub({
       setPedidos((atual) => atual.map((x) => (x.id === p.id ? antes : x)));
       setErro(error.message);
     }
+  }
+
+  // Edição de quem pediu: grava título, texto e imagens; devolve o erro (ou null).
+  // Só grava se o pedido não mudou desde que a edição abriu (versao =
+  // updated_at de então), pra não apagar o que quem faz marcou nesse meio tempo.
+  async function salvarEdicao(p: Pedido, campos: Pick<Pedido, "titulo" | "descricao" | "imagens">, versao?: string) {
+    let consulta = supabase.from("dhub_pedidos").update(campos).eq("id", p.id);
+    if (versao) consulta = consulta.eq("updated_at", versao);
+    const { data, error } = await consulta.select().maybeSingle();
+    if (error) return error.message;
+    if (!data) {
+      // Traz o pedido como está agora, pra edição reaberta partir dele.
+      const { data: atual } = await supabase.from("dhub_pedidos").select("*").eq("id", p.id).maybeSingle();
+      if (atual) setPedidos((lista) => lista.map((x) => (x.id === p.id ? { ...x, ...(atual as Pedido) } : x)));
+      return "O pedido mudou enquanto você editava. Cancele e abra a edição de novo.";
+    }
+    setPedidos((atual) => atual.map((x) => (x.id === p.id ? { ...x, ...(data as Pedido) } : x)));
+    return null;
   }
 
   async function recusar(p: Pedido) {
@@ -225,16 +345,7 @@ export default function PedidosDhub({
     <div className="space-y-6">
       <form
         onSubmit={pedir}
-        onDragOver={(e) => {
-          if (Array.from(e.dataTransfer.items).some((i) => i.kind === "file")) e.preventDefault();
-        }}
-        onDrop={(e) => {
-          const arquivos = Array.from(e.dataTransfer.files ?? []);
-          if (arquivos.some((a) => a.type.startsWith("image/"))) {
-            e.preventDefault();
-            adicionarImagens(arquivos);
-          }
-        }}
+        {...soltarImagens(adicionarImagens)}
         data-mov="card"
         className="space-y-3 rounded-2xl border border-line bg-surface p-4 sm:p-5"
       >
@@ -264,49 +375,10 @@ export default function PedidosDhub({
           aria-label="Detalhes do pedido"
           className={campo}
         />
-        {(imagens.length > 0 || subindo > 0) && (
-          <div className="flex flex-wrap gap-2">
-            {imagens.map((img) => (
-              <div key={img.caminho} className="relative h-20 w-20 overflow-hidden rounded-lg border border-line bg-canvas">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.previa} alt="" className="h-full w-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => tirarImagem(img)}
-                  aria-label="Tirar imagem"
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                >
-                  <XIcon className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-            {Array.from({ length: subindo }, (_, i) => (
-              <div key={`subindo-${i}`} className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-line text-[10px] text-ink-muted">
-                Enviando...
-              </div>
-            ))}
-          </div>
-        )}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => seletor.current?.click()} disabled={imagens.length + subindo >= MAX_IMAGENS}>
-              <ImageIcon className="h-3.5 w-3.5" />
-              Adicionar imagens
-            </Button>
-            <input
-              ref={seletor}
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              onChange={(e) => {
-                const arquivos = Array.from(e.target.files ?? []);
-                e.target.value = "";
-                adicionarImagens(arquivos);
-              }}
-            />
+          <ImagensDoForm imagens={imagens} subindo={subindo} aoAdicionar={adicionarImagens} aoTirar={tirarImagem}>
             {aviso && <p className="text-xs text-ink-muted">{aviso}</p>}
-          </div>
+          </ImagensDoForm>
           <Button type="submit" size="sm" disabled={enviando || subindo > 0}>
             <SendIcon className="h-3.5 w-3.5" />
             {enviando ? "Enviando..." : "Enviar pedido"}
@@ -350,6 +422,7 @@ export default function PedidosDhub({
                       aoReabrir={() => mudar(p, { status: "aguardando" })}
                       aoMudarAndamento={(s) => mudar(p, { status: s })}
                       aoMudarDescricao={(d) => mudar(p, { descricao: d })}
+                      aoSalvarEdicao={(campos, versao) => salvarEdicao(p, campos, versao)}
                       aoApagar={() => apagar(p)}
                     />
                   ))}
@@ -373,6 +446,7 @@ function CartaoDoPedido({
   aoReabrir,
   aoMudarAndamento,
   aoMudarDescricao,
+  aoSalvarEdicao,
   aoApagar,
 }: {
   pedido: Pedido;
@@ -384,11 +458,32 @@ function CartaoDoPedido({
   aoReabrir: () => void;
   aoMudarAndamento: (s: StatusDoPedido) => void;
   aoMudarDescricao: (descricao: string) => void;
+  aoSalvarEdicao: (campos: Pick<Pedido, "titulo" | "descricao" | "imagens">, versao?: string) => Promise<string | null>;
   aoApagar: () => void;
 }) {
+  const [editando, setEditando] = useState(false);
   const status = STATUS[p.status];
   const podeApagar = aprova || (p.created_by === euId && p.status === "aguardando");
+  // Quem pediu edita até alguém começar (o banco confere, migration 0132).
+  const podeEditar = p.created_by === euId && (p.status === "aguardando" || p.status === "aprovado");
   const faz = executa || aprova;
+  // A edição continua aberta mesmo se o pedido começar nesse meio tempo (o
+  // formulário avisa e só deixa cancelar), pra não sumir com o que foi digitado.
+  if (editando) {
+    return (
+      <EdicaoDoPedido
+        pedido={p}
+        euId={euId}
+        podeSalvar={podeEditar}
+        aoSalvar={async (campos, versao) => {
+          const erro = await aoSalvarEdicao(campos, versao);
+          if (!erro) setEditando(false);
+          return erro;
+        }}
+        aoCancelar={() => setEditando(false)}
+      />
+    );
+  }
   return (
     <article className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -420,10 +515,17 @@ function CartaoDoPedido({
       )}
       <p className="mt-2 text-[11px] text-ink-muted">
         Pedido por {p.created_by_label ?? "alguém"} em {dataCurta(p.created_at)}
+        {p.editado_em ? ` · editado em ${dataCurta(p.editado_em)}` : ""}
         {p.feito_em ? ` · feito em ${dataCurta(p.feito_em)}` : ""}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {podeEditar && (
+          <Button size="sm" variant="secondary" onClick={() => setEditando(true)}>
+            <PencilIcon className="h-3.5 w-3.5" />
+            Editar
+          </Button>
+        )}
         {p.status === "aguardando" && aprova && (
           <>
             <Button size="sm" onClick={aoAprovar}>
@@ -476,6 +578,121 @@ function CartaoDoPedido({
         )}
       </div>
     </article>
+  );
+}
+
+// Edição do pedido por quem pediu: título, texto e imagens. As imagens que
+// saem só são apagadas do bucket depois de salvar; as que subiram e foram
+// canceladas saem na hora.
+function EdicaoDoPedido({
+  pedido: p,
+  euId,
+  podeSalvar,
+  aoSalvar,
+  aoCancelar,
+}: {
+  pedido: Pedido;
+  euId: string;
+  podeSalvar: boolean;
+  aoSalvar: (campos: Pick<Pedido, "titulo" | "descricao" | "imagens">, versao?: string) => Promise<string | null>;
+  aoCancelar: () => void;
+}) {
+  const supabase = createClient();
+  const [titulo, setTitulo] = useState(p.titulo);
+  const [descricao, setDescricao] = useState(p.descricao ?? "");
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  // O pedido como estava quando a edição abriu.
+  const [originais] = useState(() => p.imagens ?? []);
+  const [versao] = useState(() => p.updated_at);
+  const { imagens, subindo, adicionar, tirar, colar } = useImagensDoPedido(
+    euId,
+    setAviso,
+    originais.map((caminho) => ({ caminho, previa: linkDoArquivo(BUCKET, caminho), existente: true }))
+  );
+
+  // Fechou sem salvar (Cancelar, ou a tela trocou): as imagens que subiram
+  // nesta edição saem do bucket.
+  const salvo = useRef(false);
+  const novas = useRef<ImagemNova[]>([]);
+  novas.current = imagens.filter((i) => !i.existente);
+  useEffect(
+    () => () => {
+      if (salvo.current) return;
+      for (const i of novas.current) URL.revokeObjectURL(i.previa);
+      if (novas.current.length) supabase.storage.from(BUCKET).remove(novas.current.map((i) => i.caminho));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!podeSalvar) return;
+    if (!titulo.trim()) return setAviso("Diga em poucas palavras o que você quer mudar.");
+    if (subindo > 0) return setAviso("Espere as imagens terminarem de subir.");
+    setSalvando(true);
+    setAviso(null);
+    const caminhos = imagens.map((i) => i.caminho);
+    salvo.current = true;
+    const erro = await aoSalvar({ titulo: titulo.trim(), descricao: descricao.trim() || null, imagens: caminhos }, versao);
+    if (erro) {
+      salvo.current = false;
+      setSalvando(false);
+      return setAviso(`Não deu pra salvar. ${erro}`);
+    }
+    const tiradas = originais.filter((c) => !caminhos.includes(c) && c.startsWith(`${euId}/`));
+    if (tiradas.length) await supabase.storage.from(BUCKET).remove(tiradas);
+  }
+
+  return (
+    <form
+      onSubmit={salvar}
+      {...soltarImagens(adicionar)}
+      className="space-y-3 rounded-2xl border border-brand-forte/40 bg-surface p-4"
+    >
+      <p className="text-xs font-semibold text-ink">
+        Editar pedido
+        {podeSalvar && p.status === "aprovado" && (
+          <span className="ml-1 font-normal text-ink-muted">· já aprovado: quem aprovou e quem faz são avisados da mudança</span>
+        )}
+      </p>
+      {!podeSalvar && (
+        <p className="rounded-lg bg-warning-light px-3 py-2 text-xs text-warning">
+          Alguém já começou este pedido, então ele não pode mais ser editado. Copie o que escreveu, se precisar, e cancele.
+        </p>
+      )}
+      <input
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        maxLength={160}
+        aria-label="O que você quer mudar"
+        className={campo}
+      />
+      <textarea
+        value={descricao}
+        onChange={(e) => setDescricao(e.target.value)}
+        onPaste={colar}
+        maxLength={5000}
+        rows={4}
+        placeholder="Detalhes (opcional). Dá pra colar um print aqui (Ctrl+V)."
+        aria-label="Detalhes do pedido"
+        className={campo}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ImagensDoForm imagens={imagens} subindo={subindo} aoAdicionar={adicionar} aoTirar={tirar}>
+          {aviso && <p className="text-xs text-ink-muted">{aviso}</p>}
+        </ImagensDoForm>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={aoCancelar} disabled={salvando || subindo > 0}>
+            Cancelar
+          </Button>
+          <Button type="submit" size="sm" disabled={!podeSalvar || salvando || subindo > 0}>
+            {salvando ? "Salvando..." : "Salvar"}
+          </Button>
+        </div>
+      </div>
+    </form>
   );
 }
 

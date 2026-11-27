@@ -155,6 +155,7 @@ export default function PainelView({
           eficiencia={eficiencia}
           taxaNoPrazo={painel.taxaNoPrazo}
           tempoMedio={formatarDuracao(painel.tempoMedioDias)}
+          tempoMedioBase={painel.tempoMedioBase}
           concluidas={painel.concluidas}
           variacao={variacao}
         />
@@ -495,24 +496,27 @@ function pctTexto(valor: number | null) {
 }
 
 // Cartão "Eficiência": anéis concêntricos (Total, Tarefas e Demandas),
-// barras com o percentual de cada um e o detalhe por categoria.
+// barras com o percentual de cada um e o detalhe por categoria. Sem nenhuma
+// demanda no período, o anel e o quadro de Demandas somem.
 function CartaoEficiencia({
   eficiencia,
   taxaNoPrazo,
   tempoMedio,
+  tempoMedioBase,
   concluidas,
   variacao,
 }: {
   eficiencia: Eficiencia;
   taxaNoPrazo: number | null;
   tempoMedio: string;
+  tempoMedioBase: number;
   concluidas: number;
   variacao: number;
 }) {
   const categorias: { rotulo: string; cor: string; bloco: BlocoEficiencia }[] = [
     { rotulo: "Tarefas", cor: "var(--viz-tarefas)", bloco: eficiencia.tarefas },
     { rotulo: "Demandas", cor: "var(--viz-demandas)", bloco: eficiencia.demandas },
-  ];
+  ].filter((c) => c.rotulo !== "Demandas" || c.bloco.total > 0);
   const total = { rotulo: "Total", cor: "rgb(var(--color-brand-forte))", bloco: eficiencia.geral };
 
   return (
@@ -555,7 +559,7 @@ function CartaoEficiencia({
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className={`mt-4 grid gap-2 ${categorias.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
         {categorias.map((c) => (
           <div key={c.rotulo} className="rounded-xl border border-line">
             <p className="border-b border-line py-1.5 text-center text-xs font-semibold text-ink">
@@ -585,9 +589,14 @@ function CartaoEficiencia({
           <dt className="text-ink-muted">Entregas no prazo</dt>
           <dd className="font-semibold text-ink">{pctTexto(taxaNoPrazo)}</dd>
         </div>
-        <div>
-          <dt className="text-ink-muted">Tempo médio de entrega</dt>
-          <dd className="font-semibold text-ink">{tempoMedio}</dd>
+        <div title="De quando a tarefa vai pra Em andamento até Concluída. Conta as tarefas concluídas desde 27/11/2026, quando o d.hub passou a registrar o início.">
+          <dt className="text-ink-muted">Tempo médio de execução</dt>
+          <dd className="font-semibold text-ink">
+            {tempoMedio}
+            {tempoMedioBase === 0 && concluidas > 0 && (
+              <span className="block text-[11px] font-normal text-ink-muted">conta a partir de 27/11</span>
+            )}
+          </dd>
         </div>
         <div className="col-span-2">
           <dt className="text-ink-muted">Concluídas no período</dt>

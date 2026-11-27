@@ -12,6 +12,18 @@ export interface Atualizacao {
 
 export const ATUALIZACOES: Atualizacao[] = [
   {
+    data: "2026-11-27",
+    area: "Sistema",
+    titulo: "Tempo médio de execução mais justo",
+    texto: "No Painel, o tempo médio agora conta de quando a tarefa vai pra Em andamento até Concluída, sem o tempo que ela ficou esperando pra começar (antes contava desde a criação). Vale pras tarefas concluídas a partir de hoje. E o quadro de Demandas do cartão Eficiência só aparece quando você tem demanda no período.",
+  },
+  {
+    data: "2026-11-27",
+    area: "Sistema",
+    titulo: "Editar o seu pedido de alteração",
+    texto: "Em Atualizações → Pedidos de alteração, o botão Editar no seu pedido muda o título, o texto e as imagens até alguém começar a fazer. O pedido fica marcado como editado e, se já estava aprovado, quem aprovou e quem faz são avisados.",
+  },
+  {
     data: "2026-11-26",
     area: "Posts",
     titulo: "Ver o post dentro da tarefa",

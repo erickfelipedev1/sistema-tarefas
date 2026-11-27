@@ -173,6 +173,13 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     link: { rotulo: "Abrir o Calendário", href: "/calendario" },
   },
   {
+    pergunta: "Como é contado o tempo médio de execução no Painel?",
+    resposta:
+      "Do momento em que a tarefa vai pra Em andamento até ela ir pra Concluída: o tempo que ficou esperando pra começar não entra. Se a tarefa vai direto pra Concluída, conta da data de início planejada (ou da criação). Vale pras tarefas concluídas a partir de 27/11/2026, quando o d.hub passou a registrar o início. No cartão Eficiência, o quadro de Demandas só aparece quando você tem alguma demanda no período.",
+    palavras: ["tempo médio", "execução", "painel", "eficiência", "em andamento", "demandas", "tempo de entrega"],
+    link: { rotulo: "Abrir o Painel", href: "/painel" },
+  },
+  {
     pergunta: "Onde vejo o que cada pessoa da equipe faz?",
     resposta: "Em Meu perfil, na seção Equipe: a função e a descrição de cada um. A sua você edita em Dados; a liderança edita a de todos.",
     palavras: ["equipe", "função", "cargo", "descrição", "quem faz", "perfil"],
@@ -224,8 +231,8 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
   {
     pergunta: "Como peço uma mudança no d.hub?",
     resposta:
-      "Em Atualizações → Pedidos de alteração, descreva o que quer mudar (dá pra pôr prints). A Emilly aprova e o Erick faz; o sininho avisa cada etapa.",
-    palavras: ["pedido", "sugestão", "melhoria", "mudança", "alteração", "bug", "erro"],
+      "Em Atualizações → Pedidos de alteração, descreva o que quer mudar (dá pra pôr prints). A Emilly aprova e o Erick faz; o sininho avisa cada etapa. Lembrou de mais alguma coisa depois de enviar? Clique em Editar no seu pedido: dá pra mudar o texto e as imagens até alguém começar a fazer (o pedido fica marcado como editado e, se já foi aprovado, quem aprovou e quem faz são avisados).",
+    palavras: ["pedido", "sugestão", "melhoria", "mudança", "alteração", "bug", "erro", "editar pedido"],
     link: { rotulo: "Fazer um pedido", href: "/atualizacoes?aba=pedidos" },
   },
   {

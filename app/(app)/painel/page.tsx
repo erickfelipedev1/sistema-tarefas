@@ -64,7 +64,7 @@ export default async function PainelPage({
   let semMigracao = false;
   const comData = await supabase
     .from("tasks")
-    .select(`${COLUNAS}, completed_at`)
+    .select(`${COLUNAS}, completed_at, iniciada_em`)
     .contains("assigned_to", [pessoaId]);
   let linhas: unknown[] | null = comData.data;
   if (comData.error) {
