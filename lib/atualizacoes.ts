@@ -13,6 +13,12 @@ export interface Atualizacao {
 export const ATUALIZACOES: Atualizacao[] = [
   {
     data: "2026-11-27",
+    area: "Posts",
+    titulo: "Baixar o carrossel em PDF",
+    texto: "Nos arquivos do post (Pra postar), o botão Baixar em PDF junta as imagens do carrossel num PDF só, na ordem do carrossel, sem margem e sem perder qualidade: é o formato do carrossel do LinkedIn. Vale na tarefa e nos Posts do cliente.",
+  },
+  {
+    data: "2026-11-27",
     area: "Tarefas",
     titulo: "Aviso quando a subtarefa é concluída",
     texto: "Quando uma subtarefa vai pra Concluída, quem criou a tarefa principal e os responsáveis dela recebem aviso no sininho, com o nome da subtarefa e de quem concluiu. O clique abre a tarefa principal.",

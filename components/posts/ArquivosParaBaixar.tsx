@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Post } from "@/lib/types";
 import { BUCKET_DOS_POSTS, ehDoDrive, rotuloDoTipo } from "@/lib/posts";
 import { lerEndereco } from "@/lib/baixar-varios";
+import { imagensParaPdf } from "@/lib/imagens-para-pdf";
 import BotaoBaixarTodos from "./BotaoBaixarTodos";
 import { Button } from "../ui/Button";
 import { DownloadIcon } from "../ui/icons";
@@ -17,6 +18,40 @@ export default function ArquivosParaBaixar({ post }: { post: Post }) {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [copiada, setCopiada] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState<string | null>(null);
+
+  // Carrossel de imagens: dá pra baixar tudo num PDF só (LinkedIn). Vídeo e
+  // arquivo do Google Drive ficam de fora.
+  const imagensDoPdf = post.media.filter((m) => m.type === "image" && !ehDoDrive(m));
+  const ficamDeFora = post.media.length - imagensDoPdf.length;
+
+  async function baixarPdf() {
+    setErro(null);
+    setGerandoPdf("Preparando...");
+    try {
+      const blobs: Blob[] = [];
+      for (const [i, m] of imagensDoPdf.entries()) {
+        setGerandoPdf(`Lendo ${i + 1} de ${imagensDoPdf.length}...`);
+        const { data, error } = await supabase.storage.from(BUCKET_DOS_POSTS).createSignedUrl(m.path, 300);
+        if (error || !data?.signedUrl) throw new Error("Não deu pra preparar uma das imagens.");
+        blobs.push(await lerEndereco(data.signedUrl));
+      }
+      const nome = (post.caption.split(/\r?\n/)[0].trim().slice(0, 60) || "carrossel").replace(/[\\/:*?"<>|#]/g, "-");
+      setGerandoPdf("Montando o PDF...");
+      const pdf = await imagensParaPdf(blobs, nome);
+      const url = URL.createObjectURL(pdf);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${nome}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não deu pra montar o PDF. Tente de novo.");
+    }
+    setGerandoPdf(null);
+  }
 
   const itens: { chave: string; rotulo: string; path: string; nome: string; driveId?: string }[] = [
     ...post.media.map((m, i) => {
@@ -118,6 +153,18 @@ export default function ArquivosParaBaixar({ post }: { post: Post }) {
             }))}
           aoErro={setErro}
         />
+        {imagensDoPdf.length >= 2 && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={baixarPdf}
+            disabled={gerandoPdf !== null}
+            title={`As ${imagensDoPdf.length} imagens num PDF só, na ordem do carrossel, sem margem (pro LinkedIn)${ficamDeFora ? `. ${ficamDeFora} arquivo(s) que não são imagem do d.hub ficam de fora` : ""}.`}
+          >
+            <DownloadIcon className="h-3.5 w-3.5" />
+            {gerandoPdf ?? "Baixar em PDF"}
+          </Button>
+        )}
         {post.caption.trim() && (
           <Button size="sm" variant="secondary" onClick={copiarLegenda}>
             {copiada ? "Legenda copiada ✓" : "Copiar legenda"}

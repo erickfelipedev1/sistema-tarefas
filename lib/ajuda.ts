@@ -63,6 +63,12 @@ export const PERGUNTAS: PerguntaDeAjuda[] = [
     palavras: ["carrossel", "story", "stories", "20 imagens", "quantas imagens", "limite", "10 imagens", "fotos"],
   },
   {
+    pergunta: "Como baixo o carrossel em PDF?",
+    resposta:
+      "No post, em Pra postar, clique em Baixar em PDF: as imagens do carrossel viram um PDF só, uma página por imagem, na ordem do carrossel, sem margem e sem perder qualidade (o certo pro LinkedIn). Vídeos e arquivos do Google Drive ficam de fora. Pra baixar as imagens soltas, use Baixar todos.",
+    palavras: ["pdf", "converter", "carrossel em pdf", "baixar pdf", "linkedin", "juntar imagens", "ilovepdf"],
+  },
+  {
     pergunta: "Como monto um carrossel em PDF pro LinkedIn?",
     resposta:
       "No post, escolha o formato PDF (LinkedIn) e envie o arquivo PDF: cada página vira um slide, como o LinkedIn mostra. A rede LinkedIn já fica marcada. O preview e o portal do cliente mostram o PDF, com o botão Abrir o PDF pra ver o arquivo inteiro (no celular o quadro pode mostrar só a primeira página). Esse formato não vai pro Instagram. Se o mesmo conteúdo também sai como carrossel no Instagram, salve um dos dois e use o botão \"Criar versão PDF pro LinkedIn\" (ou \"Criar versão carrossel pro Instagram\"): abre um post novo com a mesma legenda e data, no outro formato, e só falta subir o arquivo.",
